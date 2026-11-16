@@ -2,7 +2,7 @@
 
 Type: grilling
 Status: open
-Blocked by: 02, 13, 14
+Blocked by: 02, 14
 
 ## Question
 
@@ -11,5 +11,6 @@ Blocked by: 02, 13, 14
 - Windows와 macOS 각각의 설치 파일 형식.
 - 서명 경고를 넘기는 안내문의 형태와 전달 방법.
 - Smart App Control 대응 UI(사용자 요청): Smart App Control이 켜진 PC에서는 앱과 설치 파일이 실행 전에 차단되므로 앱 안의 화면으로는 안내할 수 없다. 대응 UI를 어디에 둘지(설치 전 안내 페이지 · 문서, 설치 프로그램 화면, 설치 뒤 앱 안의 도움말)와 무엇을 안내할지(상태 확인 방법, 끄는 절차와 그 영향)를 정한다. 화면 모양은 시안으로 보여 주고 고른다.
+- 학원 PC의 Smart App Control 상태는 확인하지 않았다. 켜져 있을 수 있다고 가정하고 정한다([학원 PC의 Smart App Control 상태 확인](13-academy-pc-sac-check.md)).
 - 빌드를 어디서 하는지(개발 PC, CI).
 - 새 버전을 전달하는 방법(자동 업데이트는 범위 밖).
