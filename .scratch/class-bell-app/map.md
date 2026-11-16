@@ -44,6 +44,7 @@ Label: wayfinder:map
 - [서명 없는 최소 Electron 앱으로 상주 동작 실측](issues/12-unsigned-app-measurement.md): Mac에서 로그인 항목 등록은 성공으로 나오고, 숨긴 창 오디오는 재생되며, 창 없는 앱의 타이머는 늦지 않았다. 화면 잠금 · 잠자기 · Windows 동작은 미확인으로 남기고 구현 뒤 확인한다.
 - [학원 PC의 Smart App Control 상태 확인](issues/13-academy-pc-sac-check.md): 확인하지 않고 구현 뒤로 넘겼다. Smart App Control이 켜져 있을 수 있고 수업 중 화면이 꺼지거나 잠자기에 들어갈 수 있다고 가정하고 결정한다.
 - [상주와 신뢰성 정책 결정](issues/07-background-reliability-policy.md): 자동 실행은 기본 켬이고 닫기 버튼은 트레이로 숨긴다. 수업 구간에는 잠자기를 막고, 1분 넘게 늦은 종은 버리며 놓친 종은 알리지 않는다. 음소거 경고는 넣지 않는다.
+- [서명 없는 빌드 산출물의 설치 실측](issues/14-unsigned-build-install-measurement.md): Apple Silicon에서 NSIS 설치 파일은 기본 툴셋으로는 실패하고 베타 NSIS 툴셋을 지정하면 Wine 없이 만들어진다. ad-hoc 서명 Mac 빌드는 격리 상태에서 "손상됨"이 아닌 "확인할 수 없음" 경고를 받는다. Open Anyway로 여는 확인은 구현 뒤로 넘겼다.
 
 ## Not yet specified
 

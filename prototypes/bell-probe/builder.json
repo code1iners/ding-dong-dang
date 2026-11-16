@@ -1,0 +1,46 @@
+{
+  "appId": "local.bellprobe",
+  "productName": "BellProbe",
+  "directories": {
+    "output": "dist-builder"
+  },
+  "files": [
+    "main.js",
+    "audio.html",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64"
+        ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "arm64"
+        ]
+      }
+    ],
+    "identity": "-"
+  },
+  "toolsets": {
+    "nsis": "1.2.1"
+  }
+}
