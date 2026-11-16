@@ -19,7 +19,7 @@ Label: wayfinder:map
   - 디자인: 강아지와 관련된 귀여운 디자인. 텍스트는 최소화하고 시각 요소 위주로 깔끔하게.
   - 강아지가 화면 바닥을 돌아다니는 연출을 넣고, 설정에서 켜고 끌 수 있게 한다. 종이 울리는 동안 뜨는 강아지는 이 설정과 무관하다.
   - Smart App Control 대응 UI가 필요하다(형태와 위치는 배포와 설치 방식 결정에서 정한다).
-  - Windows 실측은 사용자의 개인 Windows PC에서 한다. 에이전트가 접근할 수 없으므로 점검 목록을 만들어 전달한다.
+  - 사용자가 손으로 해야 하는 실기기 확인(Windows PC 전체, 화면 잠금 · 잠자기 · 로그아웃이 필요한 것)은 지도에서 하지 않고 구현을 마친 뒤 수동 통합 테스트에서 한다. 그 전의 결정은 나쁜 쪽을 가정하고 내린다.
 - 매 세션이 참고할 Skill: 그릴링 티켓은 `grilling` + `domain-modeling`, 시안 티켓은 `prototype` + `ui-design`, 조사 티켓은 `research`.
 - 눈으로 봐야 판단할 수 있는 결정은 단독 HTML 시안으로 만들어 Tailscale 경로(`~/.claude-mukkebi/mockups/ding-dong-dang/`)로 전달한다.
 - 조사 결과는 `research/<name>` 브랜치에 남기고 티켓에서 가리킨다.
@@ -40,6 +40,7 @@ Label: wayfinder:map
 - [무료 강아지 일러스트 소재 조사](issues/21-dog-illustration-sources.md): 표정 · 자세가 한 캐릭터로 모두 묶인 외곽선 없는 무료 소재는 없다. Noto Emoji(Apache-2.0)와 Openclipart(CC0)가 그림체와 라이선스에서 가장 쓸 만하고, 졸림과 걷기는 어느 쪽이든 따로 그려야 한다.
 - [Unsplash 강아지 일러스트 세트 추가 조사](issues/22-unsplash-dog-illustration-sets.md): 표정과 자세를 한 캐릭터로 다 갖춘 무료 묶음은 없다. 무료 일러스트는 SVG 원본을 받아 고쳐 쓸 수 있고, 그림체가 맞는 것은 The Creative Idea의 강아지 1점과 Public domain vectors의 플랫 8점이다.
 - [디자인 시안 비교와 방향 선택](issues/08-design-mockups.md): 말랑 스티커 방향에 글꼴은 Jua. 현황 화면은 줄어드는 고리, 시간표 편집 화면은 12시간 시계판과 요일 선택이다. 강아지는 테마 일곱 개를 설정에서 고르고, 그림 한 장에 코드로 부위별 움직임을 붙인다.
+- [서명 없는 최소 Electron 앱으로 상주 동작 실측](issues/12-unsigned-app-measurement.md): Mac에서 로그인 항목 등록은 성공으로 나오고, 숨긴 창 오디오는 재생되며, 창 없는 앱의 타이머는 늦지 않았다. 화면 잠금 · 잠자기 · Windows 동작은 미확인으로 남기고 구현 뒤 확인한다.
 
 ## Not yet specified
 
@@ -47,6 +48,7 @@ Label: wayfinder:map
 - 강아지 테마가 갖춰야 할 동작 목록(세 상태 외에 걷기, 종이 울릴 때의 동작 등): 강아지 연출 범위가 정해진 뒤.
 - 설정 화면에 들어갈 항목 전체: 각 정책 티켓이 설정 가능한 것을 내놓은 뒤 모인다. 지금까지 나온 것은 강아지 테마 고르기와 돌아다니는 강아지 켜기 · 끄기다.
 - 시각에 의존하는 동작(종 울림, 잠자기 복귀)을 어떻게 자동 검증할지: 상주와 신뢰성 정책이 정해진 뒤.
+- 구현 뒤 수동 통합 테스트에서 확인할 항목의 목록: 각 티켓이 미확인으로 남긴 것이 모인다. 지금까지는 [점검 목록](checklists/12-background-probe.md)의 항목과 Windows 설치 경고 화면이다.
 - 실습실에서 PC 스피커의 종이 실제로 들리는지의 현장 확인: 종소리가 정해진 뒤 학원에서 시험해야 한다.
 
 ## Out of scope

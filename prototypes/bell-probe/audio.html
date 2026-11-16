@@ -1,0 +1,83 @@
+<!doctype html>
+<!-- PROTOTYPE: 소리만 내는 숨긴 창. 버리는 코드. -->
+<meta charset="utf-8" />
+<title>BellProbe audio</title>
+<script>
+  const { ipcRenderer } = require('electron');
+
+  /** 표본화 주파수(Hz). */
+  const SAMPLE_RATE = 44100;
+
+  /** 두 음(딩동)짜리 종소리를 WAV 파일 URL로 만든다. 음원 파일 없이 실제 앱처럼 파일을 재생하기 위해서다. */
+  function makeBellUrl() {
+    /** 음 하나의 길이(초). */
+    const noteSec = 0.45;
+    /** 울릴 음의 주파수 목록(Hz). */
+    const notes = [880, 660];
+    /** 전체 표본 수. */
+    const total = Math.floor(SAMPLE_RATE * noteSec * notes.length);
+    /** WAV 헤더(44바이트)와 16비트 모노 표본을 담는 버퍼. */
+    const view = new DataView(new ArrayBuffer(44 + total * 2));
+    /** 헤더에 ASCII 문자열을 쓴다. */
+    const writeText = (offset, text) => {
+      for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+    };
+
+    // WAV 헤더.
+    writeText(0, 'RIFF');
+    view.setUint32(4, 36 + total * 2, true);
+    writeText(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, SAMPLE_RATE, true);
+    view.setUint32(28, SAMPLE_RATE * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeText(36, 'data');
+    view.setUint32(40, total * 2, true);
+
+    // 음마다 점점 줄어드는 사인파를 채운다.
+    for (let i = 0; i < total; i += 1) {
+      /** 지금 표본이 속한 음의 번호. */
+      const noteIndex = Math.min(notes.length - 1, Math.floor(i / (SAMPLE_RATE * noteSec)));
+      /** 음이 시작된 뒤 흐른 시간(초). */
+      const t = i / SAMPLE_RATE - noteIndex * noteSec;
+      /** 표본 값(-1~1). */
+      const sample = Math.sin(2 * Math.PI * notes[noteIndex] * t) * Math.exp(-5 * t);
+      view.setInt16(44 + i * 2, sample * 0x7fff, true);
+    }
+    return URL.createObjectURL(new Blob([view], { type: 'audio/wav' }));
+  }
+
+  /** 종소리 파일 URL. */
+  const bellUrl = makeBellUrl();
+
+  ipcRenderer.on('ring', async (_event, { scheduledAt, volume }) => {
+    /** 요청을 받은 시각(ms). */
+    const receivedAt = Date.now();
+    /** 이번 종을 재생할 오디오 요소. */
+    const audio = new Audio(bellUrl);
+    audio.volume = volume;
+    /** 메인 프로세스에 돌려줄 결과. */
+    const result = {
+      scheduledAt: new Date(scheduledAt).toISOString(),
+      receivedLateMs: receivedAt - scheduledAt,
+      visibility: document.visibilityState,
+    };
+
+    try {
+      // play()가 거부되면 자동 재생 정책이나 장치 문제다.
+      await audio.play();
+      result.ok = true;
+      result.playStartLateMs = Date.now() - scheduledAt;
+      audio.addEventListener('ended', () => {
+        ipcRenderer.send('ring-result', { ...result, phase: 'ended', endedLateMs: Date.now() - scheduledAt });
+      });
+    } catch (error) {
+      result.ok = false;
+      result.error = String(error);
+    }
+    ipcRenderer.send('ring-result', { ...result, phase: 'play' });
+  });
+</script>

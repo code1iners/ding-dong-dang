@@ -1,0 +1,17 @@
+{
+  "name": "bell-probe",
+  "productName": "BellProbe",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PROTOTYPE: 서명 없는 Electron 앱의 상주 동작 실측용. 버리는 코드.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack:mac": "electron-packager . BellProbe --platform=darwin --arch=arm64 --out=dist --overwrite",
+    "pack:win": "electron-packager . BellProbe --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.3.3"
+  }
+}
