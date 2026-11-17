@@ -9,6 +9,7 @@
     "postinstall": "install-electron",
     "dev": "electron-vite dev",
     "sounds": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-bell-sounds.mts",
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-icons.mts",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
