@@ -102,6 +102,20 @@ test('렌더러는 Node에 닿지 않고 상태 구독과 명령 두 통로만 �
   expect(rejected).toBe(true);
 });
 
+test('지금 화면 단추는 초록 바탕에 글자 색 3px 선택 테두리가 함께 있다', async () => {
+  const style = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.rail [aria-current="page"]')!);
+    return { bg: cs.backgroundColor, width: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor, offset: cs.outlineOffset };
+  });
+  expect(style).toEqual({
+    bg: expect.not.stringMatching(/^rgb\(255, 255, 255\)$/),
+    width: '3px',
+    style: 'solid',
+    color: 'rgb(74, 64, 72)',
+    offset: '3px',
+  });
+});
+
 test('Jua 글꼴이 내장되어 있고 OS가 어두운 모드여도 색이 바뀌지 않는다', async () => {
   /** 내장 글꼴을 불러온 결과와 본문 글꼴. */
   const font = await page.evaluate(async () => {
