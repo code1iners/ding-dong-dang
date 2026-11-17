@@ -1,0 +1,11 @@
+{
+  "name": "dog-window-probe",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PROTOTYPE: 돌아다니는 강아지 창(작은 창 이동 / 화면 전체 투명 창)을 Mac에서 재는 버리는 코드.",
+  "main": "main.js",
+  "scripts": {
+    "build": "python3 build-renderer.py",
+    "start": "../bell-probe/node_modules/.bin/electron . --mode=overlay"
+  }
+}

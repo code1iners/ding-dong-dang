@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>probe-target</title>
+<!-- PROTOTYPE: 강아지 창 밑에서 클릭이 평소처럼 들어오는지 받는 과녁 창. -->
+<body style="margin:0;background:#2f6fb5;color:#fff;font:20px system-ui;display:grid;place-items:center;height:100vh">
+<div id="n">과녁 창 · 클릭 0</div>
+<script>const {ipcRenderer}=require('electron');let n=0;
+addEventListener('mousedown',e=>{n++;document.getElementById('n').textContent='과녁 창 · 클릭 '+n;ipcRenderer.send('log',{ev:'target-click',n,screen:[e.screenX,e.screenY]})});</script>
