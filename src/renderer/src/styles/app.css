@@ -145,6 +145,31 @@ button {
   gap: var(--space-3);
 }
 
+/* 실패 표시: 빨간 글자에 느낌표를 붙여 색만으로 알리지 않는다 */
+.setting-row__error {
+  color: var(--color-red);
+  font-size: var(--font-size-2);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.setting-row__error .icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* 글자 링크: 파란 글자에 밑줄 */
+.text-link {
+  color: var(--color-link);
+  font-size: var(--font-size-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-input);
+}
+
 /* 스위치 46×26: 켜지면 초록에 진한 초록 테두리이고 손잡이가 오른쪽, 꺼지면 꺼짐 색이고 손잡이가 왼쪽 */
 .switch {
   position: relative;
@@ -278,6 +303,7 @@ button {
 .icon-button:focus-visible,
 .toast__close:focus-visible,
 .modal__link:focus-visible,
+.text-link:focus-visible,
 .timetable-option:focus-visible,
 .timetable-select:focus-visible,
 .day:focus-visible {

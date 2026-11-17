@@ -36,6 +36,8 @@ export type AppState = {
   previewingSound: string | null;
   /** 처음 닫는 중이라 "딩동댕은 계속 켜져 있어요" 안내를 보여야 하는지. 창을 숨기기 전에 한 번 뜬다. */
   closeNotice: boolean;
+  /** OS에 물은 자동 시작 등록 상태. 설정의 "컴퓨터를 켜면 자동 시작" 값이 아니라 실제로 로그인 때 뜨도록 등록돼 있는지다. */
+  autoStartRegistered: boolean;
 };
 
 /** 저장소가 화면에 알리는 사실. */
@@ -95,7 +97,11 @@ export type Command =
   /** 처음 닫을 때 안내의 "창 닫기". 안내를 봤다고 저장하고 창을 숨긴다. */
   | { type: 'confirm-hide' }
   /** 처음 닫을 때 안내를 창 닫기 없이 거둔다(Esc). 창은 그대로 남는다. */
-  | { type: 'dismiss-hide-notice' };
+  | { type: 'dismiss-hide-notice' }
+  /** "컴퓨터를 켜면 자동 시작"을 켜거나 끈다. 켜면 OS에 등록하고, 끄면 등록을 지운다. */
+  | { type: 'set-auto-start'; on: boolean }
+  /** 자동 시작 등록에 실패했을 때의 "자동 시작 등록 방법"을 브라우저로 연다. 주소는 메인이 정한다. */
+  | { type: 'open-auto-start-help' };
 
 /** 명령의 결과. 대부분의 명령은 늘 ok다. */
 export type CommandResult = {

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, powerMonitor, powerSaveBlocker, screen, Tray } from 'electron';
+import { app, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, powerMonitor, powerSaveBlocker, screen, shell, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { localDate } from '../shared/bell-decision';
 import { CHANNEL } from '../shared/bridge';
@@ -28,6 +28,7 @@ import {
   type RemovedTimetable,
 } from '../shared/timetable-ops';
 import { validatePeriods } from '../shared/timetable-validation';
+import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, launchedByAutoStart, reconcileAutoStart } from './auto-start';
 import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
@@ -35,7 +36,7 @@ import { DATA_FORMAT } from './data-format';
 import { decideClose, trayIconFile, trayMenuTemplate } from './residency';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
 import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
-import { openStorage } from './storage';
+import { BACKUP_FILE, DATA_FILE, openStorage } from './storage';
 import { usableBounds } from './window-bounds';
 
 /**
@@ -65,6 +66,9 @@ nativeTheme.themeSource = 'light';
 /** 창을 옮기거나 크기를 바꾼 뒤 이만큼 가만히 있으면 자리를 저장한다. */
 const BOUNDS_SAVE_DELAY_MS = 500;
 
+/** 저장 파일이 아직 없는 처음 실행인지. 저장소를 열기 전에 확인한다. */
+const firstRun = !existsSync(join(dataDir, DATA_FILE)) && !existsSync(join(dataDir, BACKUP_FILE));
+
 /** 데이터 폴더의 저장소와 시작할 때 읽은 결과. */
 const { storage, loaded } = openStorage(dataDir, DATA_FORMAT);
 
@@ -73,6 +77,19 @@ function viewOf(data: Data): Pick<AppState, 'settings' | 'timetables' | 'weekday
   const { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume } = data;
   return { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume };
 }
+
+/**
+ * 자동 시작 등록을 읽고 바꾸는 부품. `--data-dir`로 띄운 자동 검증 실행과 패키징하지 않은 개발 실행은
+ * 사용자의 실제 로그인 항목을 건드리지 않도록 OS에 닿지 않는 부품을 쓴다.
+ */
+const loginItem =
+  dataDirFromArgv(process.argv, process.cwd()) === null && app.isPackaged
+    ? electronLoginItem(app, process.platform)
+    : inertLoginItem(storage.get().settings.autoStart);
+/** 이번 실행이 자동 시작으로 뜬 것인지. 직접 실행했을 때만 창을 연다. OS가 알려 주는 시작 정보라 앱 창을 만들기 전에 읽는다. */
+const startedByAutoStart = launchedByAutoStart(process.platform, process.argv, loginItem.get());
+/** 지금 OS의 자동 시작 등록 상태. */
+const autoStartRegistered = (): boolean => isRegistered(process.platform, loginItem.get());
 
 /** 등록 음원을 복사해 두는 폴더. */
 const soundsDir = join(dataDir, 'sounds');
@@ -220,6 +237,7 @@ void app.whenReady().then(() => {
       ...viewOf(storage.get()),
       previewingSound: null,
       closeNotice: false,
+      autoStartRegistered: autoStartRegistered(),
     },
     (command): CommandResult | void | Promise<CommandResult | void> => {
       switch (command.type) {
@@ -240,6 +258,18 @@ void app.whenReady().then(() => {
           break;
         case 'dismiss-hide-notice':
           hub.update({ closeNotice: false });
+          break;
+        case 'set-auto-start':
+          save((d) => ({ ...d, settings: { ...d.settings, autoStart: command.on } }));
+          try {
+            loginItem.set(command.on);
+          } catch {
+            // 등록이 거절되면 OS에 다시 물은 값이 실패로 나와 설정 화면이 알린다
+          }
+          refreshAutoStart();
+          break;
+        case 'open-auto-start-help':
+          void shell.openExternal(AUTO_START_HELP_URL);
           break;
         case 'create-timetable':
           save((d) => createTimetable(d, randomUUID(), command.assignTo));
@@ -324,6 +354,16 @@ void app.whenReady().then(() => {
     },
   );
 
+
+  /** OS의 자동 시작 등록 상태를 다시 물어 달라졌으면 화면에 알린다. 사용자가 시스템 설정에서 바꿨을 수 있다. */
+  function refreshAutoStart(): void {
+    /** OS가 지금 말하는 등록 상태. */
+    const registered = autoStartRegistered();
+    if (registered !== hub.get().autoStartRegistered) hub.update({ autoStartRegistered: registered });
+  }
+  // 처음 실행이면 등록한다. 앱 창의 첫 상태가 등록 결과를 담도록 창을 만들기 전에 맞춘다
+  reconcileAutoStart(process.platform, storage.get().settings.autoStart, firstRun, loginItem);
+  refreshAutoStart();
 
   /** "오늘 종"을 끄거나 켠다. 끄면 오늘 날짜를 끈 날짜로 저장하고, 저장하면서 스케줄러가 바로 판정해 울리던 종을 멈춘다. */
   function setBellsOff(off: boolean): void {
@@ -431,6 +471,8 @@ void app.whenReady().then(() => {
         else hideMainWindow();
       },
     );
+    // 사용자가 시스템 설정에서 바꿨을 수 있으니 창이 앞으로 올 때마다 등록 상태를 다시 묻는다
+    mainWindow.on('focus', refreshAutoStart);
     mainWindow.on('closed', () => {
       mainWindow = null;
     });
@@ -445,6 +487,7 @@ void app.whenReady().then(() => {
 
   /** 숨겼거나 닫힌 앱 창을 앞으로 가져온다. */
   function showMainWindow(): void {
+    refreshAutoStart();
     if (process.platform === 'darwin') void app.dock?.show();
     if (!mainWindow) {
       openMainWindow();
@@ -490,8 +533,13 @@ void app.whenReady().then(() => {
       ),
     );
   }
-  // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다
-  openMainWindow();
+  // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다.
+  // 자동 시작으로 떴으면 창 없이 트레이 · 메뉴 막대에만 머문다
+  if (startedByAutoStart) {
+    if (process.platform === 'darwin') app.dock?.hide();
+  } else {
+    openMainWindow();
+  }
 
   bell = openBellPlayer({
     read: storage.get,

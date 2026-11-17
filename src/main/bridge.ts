@@ -80,6 +80,10 @@ export function parseCommand(raw: unknown): Command | null {
         : null;
     case 'set-hide-on-close':
       return typeof value.on === 'boolean' ? { type: 'set-hide-on-close', on: value.on } : null;
+    case 'set-auto-start':
+      return typeof value.on === 'boolean' ? { type: 'set-auto-start', on: value.on } : null;
+    case 'open-auto-start-help':
+      return { type: 'open-auto-start-help' };
     case 'confirm-hide':
       return { type: 'confirm-hide' };
     case 'dismiss-hide-notice':

@@ -103,6 +103,8 @@ test('렌더러는 Node에 닿지 않고 상태 구독, 명령, 창 닫기 요�
     masterVolume: 100,
     previewingSound: null,
     closeNotice: false,
+    // 자동 검증 실행은 OS에 등록하지 않고 설정 값(기본 켬)을 그대로 보여 준다
+    autoStartRegistered: true,
   });
 
   // 모르는 명령은 메인이 거절한다

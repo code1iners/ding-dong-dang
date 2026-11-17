@@ -127,7 +127,7 @@ export function App() {
           />
         )}
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
-        {screen === 'settings' && state && <SettingsScreen settings={state.settings} />}
+        {screen === 'settings' && state && <SettingsScreen settings={state.settings} autoStartRegistered={state.autoStartRegistered} />}
       </main>
       {state?.closeNotice && (
         <Modal title="딩동댕은 계속 켜져 있어요" onClose={dismissHideNotice}>
