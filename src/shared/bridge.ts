@@ -6,6 +6,16 @@
 export type AppState = {
   /** 앱 버전(package.json의 version). */
   appVersion: string;
+  /** 저장소가 화면 쪽에 알릴 일. 알림 모양은 화면 티켓이 만든다. */
+  storage: StorageNotice;
+};
+
+/** 저장소가 화면에 알리는 사실. */
+export type StorageNotice = {
+  /** 마지막 저장이 실패했는지. 다음 변경에서 다시 쓰는 데 성공하면 false로 돌아온다. */
+  saveFailed: boolean;
+  /** 저장된 시간표를 읽지 못해 새로 시작했는지. 이번 실행의 시작 때 정해지며, 화면이 한 번만 보여 준다. */
+  freshStart: boolean;
 };
 
 /** 렌더러가 메인에 보내는 명령. `type`으로 구분하는 합 타입이고, 아직 명령이 없어 비어 있다. */

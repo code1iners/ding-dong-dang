@@ -89,7 +89,7 @@ test('렌더러는 Node에 닿지 않고 상태 구독과 명령 두 통로만 �
   );
   /** 앱 버전. */
   const version = await app.evaluate(({ app }) => app.getVersion());
-  expect(state).toEqual({ appVersion: version });
+  expect(state).toEqual({ appVersion: version, storage: { saveFailed: false, freshStart: false } });
 
   // 모르는 명령은 메인이 거절한다
   /** 모르는 명령이 거절됐는지. */
