@@ -37,7 +37,7 @@ async function playerState(launched: ElectronApplication) {
 }
 
 test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서 종이 울리고, 앱이 뜨기 직전에 지난 종은 울리지 않는다', async () => {
-  test.setTimeout(150_000);
+  test.setTimeout(230_000);
 
   // 자정을 넘기는 수업 시간은 저장할 수 없어, 하루의 마지막 몇 분이면 자정이 지나기를 기다린다
   while (minuteOfDay(new Date()) >= 24 * 60 - 4) {
@@ -145,4 +145,25 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
       app!.evaluate(() => (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy.menu.items.map((i) => i.label || i.type)),
     )
     .toEqual(['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료']);
+
+  // 트레이의 "딩동댕 열기"로 앱 창을 다시 연다. 현황 화면의 고리 안 강아지는 평소다
+  await app.evaluate(() => {
+    const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy;
+    spy.menu.items.find((i) => i.label === '딩동댕 열기')!.click();
+  });
+  expect(await (await app.browserWindow(page)).evaluate((w) => w.isVisible())).toBe(true);
+  /** 고리 안 강아지의 그림 칸. */
+  const ringDog = page.locator('.ring-dog .dog-art');
+  await expect(ringDog).toHaveAttribute('data-dog-action', 'idle');
+
+  // 1분 뒤 둘째 수업의 끝종이 울리면 고리 안 강아지가 신남이 되고, 누르면 그 종이 멈춘다
+  await expect.poll(ringing, { timeout: ringAt + 60_000 - Date.now() + 10_000, intervals: [250] }).toBe(true);
+  await expect(ringDog).toHaveAttribute('data-dog-action', 'happy');
+  await page.getByRole('button', { name: '종 멈추기' }).click();
+  await expect.poll(ringing).toBe(false);
+  // 멈춘 재생기는 소리 요소를 치운다
+  expect((await playerState(app))?.audio).toBeNull();
+  // 종이 멈춰도 누른 뒤 2초쯤은 신남이고 하트가 나온다
+  await expect(ringDog).toHaveAttribute('data-dog-action', 'happy');
+  await expect(page.locator('.heart')).toHaveCount(8);
 });

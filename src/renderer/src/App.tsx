@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DogArt } from './dog/DogArt';
 import { Modal } from './Modal';
 import { BellScreen, UNDO_SOUND_PREFIX } from './BellScreen';
 import { Rail } from './Rail';
@@ -124,13 +125,18 @@ export function App() {
             toasts={toasts}
             registerGuard={registerGuard}
             onDirtyChange={setEditingDirty}
+            dogTheme={state.settings.dogTheme}
           />
         )}
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
         {screen === 'settings' && state && <SettingsScreen settings={state.settings} autoStartRegistered={state.autoStartRegistered} />}
       </main>
       {state?.closeNotice && (
-        <Modal title="딩동댕은 계속 켜져 있어요" onClose={dismissHideNotice}>
+        <Modal
+          title="딩동댕은 계속 켜져 있어요"
+          illustration={<DogArt themeId={state.settings.dogTheme} action="idle" className="modal__dog" />}
+          onClose={dismissHideNotice}
+        >
           <p>{HIDE_NOTICE_TEXT}</p>
           <div className="modal__actions">
             <button type="button" className="button" data-autofocus onClick={confirmHide}>

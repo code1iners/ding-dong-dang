@@ -346,6 +346,9 @@ void app.whenReady().then(() => {
           sweepUnusedSounds();
           break;
         }
+        case 'stop-bell':
+          bell?.stop();
+          break;
         case 'toggle-preview':
           if (bell?.previewing() === command.id) bell.stopPreview();
           else bell?.preview(command.id);

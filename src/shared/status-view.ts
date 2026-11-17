@@ -1,4 +1,4 @@
-import type { BellStatus } from './bell-decision';
+import type { BellStatus, StatusKind } from './bell-decision';
 
 /** 발바닥 도장 하나의 모양을 정하는 상태. 지난 교시, 지금 교시, 남은 교시. */
 export type PawState = 'done' | 'current' | 'left';
@@ -32,4 +32,19 @@ export function pawStates(status: BellStatus): PawState[] {
     // 지금 교시는 수업 중에만 있고, 그때 periodsDone이 곧 지금 교시의 0부터 센 번호다
     return status.kind === 'in-class' && i === status.periodsDone ? 'current' : 'left';
   });
+}
+
+/** 강아지 그리기가 아는 동작. 이동은 테마에 따라 걷기나 통통 튀기다. */
+export type DogAction = 'idle' | 'happy' | 'sleepy' | 'move' | 'drag' | 'fall';
+
+/** 수업 밖이라 고리 안 강아지가 조는 상태. */
+const SLEEPY_KINDS: ReadonlySet<StatusKind> = new Set<StatusKind>(['before-first', 'after-last', 'no-class-day']);
+
+/**
+ * 현황의 고리 안 강아지 동작. DESIGN.md "현황" 표대로 평소나 졸림이고,
+ * 종이 울리는 동안과 누른 뒤 잠깐(`petted`)은 신남이다.
+ */
+export function ringDogAction(kind: StatusKind, { ringing, petted }: { ringing: boolean; petted: boolean }): DogAction {
+  if (ringing || petted) return 'happy';
+  return SLEEPY_KINDS.has(kind) ? 'sleepy' : 'idle';
 }

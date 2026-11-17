@@ -24,6 +24,8 @@ type Props = {
   registerGuard(guard: LeaveGuard | null): void;
   /** 저장하지 않은 편집이 생기거나 사라질 때 앱에 알린다. */
   onDirtyChange(dirty: boolean): void;
+  /** 시계판 가운데 강아지의 테마 id. */
+  dogTheme: string;
 };
 
 /** 편집 중인 수업 시간 한 줄. `key`는 줄을 구별하는 값이라 시각을 고치거나 줄이 정렬돼도 그대로다. */
@@ -44,7 +46,7 @@ const FIRST_NEW_KEY = 1000;
  * 시간표 화면. 왼쪽 카드에 시간표 선택 입력기, 요일 동그라미 일곱 개, 12시간 시계판이 있고
  * 오른쪽 카드에서 교시별 시작 · 끝 시각을 더하고 고치고 지운다. 고친 내용은 "저장"을 눌러야 저장된다.
  */
-export function TimetableScreen({ timetables, weekdays, toasts, registerGuard, onDirtyChange }: Props) {
+export function TimetableScreen({ timetables, weekdays, toasts, registerGuard, onDirtyChange, dogTheme }: Props) {
   /** 고른 요일. 화면을 열면 오늘이다. */
   const [day, setDay] = useState<Weekday>(todayWeekday);
   /** 시간표 선택 창이 열려 있는지. */
@@ -225,7 +227,7 @@ export function TimetableScreen({ timetables, weekdays, toasts, registerGuard, o
             })}
           </div>
         </div>
-        <Dial periods={rows} color={selected?.color ?? null} />
+        <Dial periods={rows} color={selected?.color ?? null} dogTheme={dogTheme} />
       </div>
 
       <div className="card card--periods">

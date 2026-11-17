@@ -1,0 +1,72 @@
+import { useEffect, useRef, useState } from 'react';
+import type { DogAction } from '../../../shared/status-view';
+import { framesPerSecond } from './moves';
+import { mountDog, type DogRig } from './rig';
+import { themeById } from './themes';
+
+/** OS의 동작 줄이기를 묻는 미디어 쿼리. */
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** OS의 동작 줄이기가 켜져 있는지. 앱이 떠 있는 동안 바꿔도 따라간다. */
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => matchMedia(REDUCED_MOTION).matches);
+  useEffect(function followReducedMotion() {
+    /** 동작 줄이기 미디어 쿼리. */
+    const query = matchMedia(REDUCED_MOTION);
+    /** OS 설정이 바뀌었을 때. */
+    const onChange = () => setReduced(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
+type Props = {
+  /** 저장된 강아지 테마 id. 모르는 id는 기본 테마다. */
+  themeId: string;
+  /** 그릴 동작. */
+  action: DogAction;
+  /** 칸의 크기와 자리를 정하는 클래스. */
+  className?: string;
+};
+
+/**
+ * 창 안의 강아지 그림. 칸을 꽉 채우고 발이 바닥에 닿는다.
+ * 동작마다 정한 횟수로 타이머가 다시 그리고, OS의 동작 줄이기가 켜져 있으면 그 동작의 첫 자세로 멈춘다.
+ */
+export function DogArt({ themeId, action, className }: Props) {
+  /** 그림을 붙일 칸. */
+  const boxRef = useRef<HTMLDivElement>(null);
+  /** 붙인 그림. 테마가 바뀌면 새로 붙인다. */
+  const [rig, setRig] = useState<DogRig | null>(null);
+  /** 동작 줄이기가 켜져 있는지. */
+  const reduced = useReducedMotion();
+
+  useEffect(
+    function mountTheme() {
+      const box = boxRef.current;
+      if (!box) return;
+      /** 이 테마로 붙인 그림. */
+      const mounted = mountDog(box, themeById(themeId));
+      setRig(mounted);
+      return () => mounted.remove();
+    },
+    [themeId],
+  );
+
+  useEffect(
+    function animate() {
+      if (!rig) return;
+      /** 이 동작을 시작한 시각(ms). */
+      const start = performance.now();
+      rig.pose(action, 0);
+      if (reduced) return;
+      /** 동작의 그리는 횟수에 맞춘 타이머. */
+      const timer = setInterval(() => rig.pose(action, (performance.now() - start) / 1000), 1000 / framesPerSecond(action));
+      return () => clearInterval(timer);
+    },
+    [rig, action, reduced],
+  );
+
+  return <div ref={boxRef} className={`dog-art${className ? ` ${className}` : ''}`} data-dog-theme={themeById(themeId).id} data-dog-action={action} />;
+}

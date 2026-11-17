@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BellStatus } from './bell-decision';
-import { formatRemaining, pawStates, remainingFraction } from './status-view';
+import { formatRemaining, pawStates, remainingFraction, ringDogAction } from './status-view';
 
 describe('formatRemaining', () => {
   it('한 시간 미만이면 분:초이고 두 자리로 채운다', () => {
@@ -64,5 +64,26 @@ describe('pawStates', () => {
   it('수업 없는 날과 시간표 없음에는 도장이 없다', () => {
     expect(pawStates(status({ kind: 'no-class-day' }))).toEqual([]);
     expect(pawStates(status({ kind: 'no-timetables' }))).toEqual([]);
+  });
+});
+
+describe('ringDogAction: 고리 안 강아지의 동작(DESIGN.md "현황" 표)', () => {
+  it('수업 중, 쉬는 시간, 시간표가 하나도 없음은 평소다', () => {
+    expect(ringDogAction('in-class', { ringing: false, petted: false })).toBe('idle');
+    expect(ringDogAction('break', { ringing: false, petted: false })).toBe('idle');
+    expect(ringDogAction('no-timetables', { ringing: false, petted: false })).toBe('idle');
+  });
+
+  it('첫 수업 전, 마지막 수업 뒤, 수업 없는 날은 졸림이다', () => {
+    expect(ringDogAction('before-first', { ringing: false, petted: false })).toBe('sleepy');
+    expect(ringDogAction('after-last', { ringing: false, petted: false })).toBe('sleepy');
+    expect(ringDogAction('no-class-day', { ringing: false, petted: false })).toBe('sleepy');
+  });
+
+  it('종이 울리는 동안과 누른 뒤 잠깐은 어느 상태든 신남이다', () => {
+    expect(ringDogAction('after-last', { ringing: true, petted: false })).toBe('happy');
+    expect(ringDogAction('in-class', { ringing: true, petted: false })).toBe('happy');
+    expect(ringDogAction('no-class-day', { ringing: false, petted: true })).toBe('happy');
+    expect(ringDogAction('break', { ringing: false, petted: true })).toBe('happy');
   });
 });

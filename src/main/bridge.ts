@@ -90,6 +90,8 @@ export function parseCommand(raw: unknown): Command | null {
       return { type: 'dismiss-hide-notice' };
     case 'register-sound':
       return { type: 'register-sound' };
+    case 'stop-bell':
+      return { type: 'stop-bell' };
     case 'rename-sound':
       return typeof value.id === 'string' && typeof value.name === 'string' && value.name.trim() !== ''
         ? { type: 'rename-sound', id: value.id, name: value.name }

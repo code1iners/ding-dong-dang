@@ -1,13 +1,14 @@
 import { decideBell, type StatusKind } from '../../shared/bell-decision';
 import type { AppState } from '../../shared/bridge';
 import { formatRemaining, pawStates, remainingFraction, type PawState } from '../../shared/status-view';
+import { RingDog } from './dog/RingDog';
 import { ActionIcon } from './icons';
 import { Switch } from './Switch';
 import { useNow } from './useNow';
 
 type Props = {
   /** 메인에서 받은 앱 상태. */
-  state: Pick<AppState, 'timetables' | 'weekdays' | 'bellsOffDate'>;
+  state: Pick<AppState, 'timetables' | 'weekdays' | 'bellsOffDate' | 'bellRinging'> & { settings: Pick<AppState['settings'], 'dogTheme'> };
   /** "시간표 만들기"를 눌러 시간표 화면으로 갈 때 부른다. */
   onMakeTimetable(): void;
 };
@@ -91,24 +92,27 @@ export function StatusScreen({ state, onMakeTimetable }: Props) {
           />
         </div>
       )}
-      <svg className="ring" viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" data-fraction={fraction.toFixed(4)}>
-        <circle cx={CENTER} cy={CENTER} r={DISC_OUTER} className="ring__disc" />
-        <circle cx={CENTER} cy={CENTER} r={RING_RADIUS} className="ring__track" strokeWidth={RING_WIDTH} />
-        {color && fraction > 0 && (
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RING_RADIUS}
-            fill="none"
-            stroke={color}
-            strokeWidth={RING_WIDTH}
-            strokeDasharray={`${CIRCUMFERENCE * fraction} ${CIRCUMFERENCE}`}
-            transform={`rotate(-90 ${CENTER} ${CENTER})`}
-          />
-        )}
-        <circle cx={CENTER} cy={CENTER} r={DISC_INNER} className="ring__disc" />
-        {/* 고리 안 강아지의 자리. 그림은 강아지 그리기 티켓이 채운다 */}
-      </svg>
+      <div className="ring" data-fraction={fraction.toFixed(4)}>
+        <svg className="ring__art" viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
+          <circle cx={CENTER} cy={CENTER} r={DISC_OUTER} className="ring__disc" />
+          <circle cx={CENTER} cy={CENTER} r={RING_RADIUS} className="ring__track" strokeWidth={RING_WIDTH} />
+          {color && fraction > 0 && (
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={RING_RADIUS}
+              fill="none"
+              stroke={color}
+              strokeWidth={RING_WIDTH}
+              strokeDasharray={`${CIRCUMFERENCE * fraction} ${CIRCUMFERENCE}`}
+              transform={`rotate(-90 ${CENTER} ${CENTER})`}
+            />
+          )}
+          <circle cx={CENTER} cy={CENTER} r={DISC_INNER} className="ring__disc" />
+        </svg>
+        {/* 고리 안 강아지는 누를 수 있어야 해서, 화면 읽기에서 숨긴 고리 그림 위에 따로 얹는다 */}
+        <RingDog themeId={state.settings.dogTheme} kind={status.kind} ringing={state.bellRinging} />
+      </div>
 
       {status.kind === 'no-timetables' && (
         <>
