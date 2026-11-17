@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { emptyData } from '../src/shared/data';
+import { createTimetable } from '../src/shared/timetable-ops';
+import { trayIconFile } from '../src/main/residency';
 
 // 창을 닫아도 앱이 남는 동작을 실제 앱으로 본다. 트레이 메뉴의 항목과 순서는 residency.test.ts가 본다.
 /** 이 파일의 테스트들이 나눠 쓰는 임시 데이터 폴더. */
@@ -144,4 +146,63 @@ test('저장하지 않은 편집이 있어도 종료 요청은 확인 없이 앱
   const exited = new Promise<void>((done) => launched.process().once('exit', () => done()));
   await launched.evaluate(({ app }) => app.quit());
   await exited;
+});
+
+// 트레이는 OS가 그려 에이전트가 볼 수 없다. 대신 메인 프로세스가 트레이에 건넨 메뉴와 아이콘을 가로채어 실제 앱이 만든 것을 읽는다.
+test('트레이 메뉴의 "오늘 종"은 현황의 스위치와 같은 값이고, 끄면 빗금 아이콘으로 바뀐다', async () => {
+  // 시간표가 하나는 있어야 현황에 "오늘 종" 스위치가 나온다
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(createTimetable(emptyData(), 't0')));
+  const launched = await launch();
+  const page = await launched.firstWindow();
+  /** 켜짐과 꺼짐 아이콘 파일 이름. */
+  const files = { on: trayIconFile(process.platform, true), off: trayIconFile(process.platform, false) };
+
+  await launched.evaluate(({ Menu, Tray, nativeImage, app }, f) => {
+    /** 가로챈 값을 담아 두는 곳. */
+    const spy = ((globalThis as Record<string, unknown>).__traySpy = { menu: null as Electron.Menu | null, icon: '' });
+    /** 파일의 그림 바이트(base64). */
+    const png = (file: string) =>
+      nativeImage.createFromPath(`${app.getAppPath()}/resources/icons/${file}`).toPNG().toString('base64');
+    const on = png(f.on);
+    const off = png(f.off);
+    const build = Menu.buildFromTemplate.bind(Menu);
+    Menu.buildFromTemplate = (template) => (spy.menu = build(template));
+    const setImage = Tray.prototype.setImage;
+    Tray.prototype.setImage = function (image) {
+      const bytes = (image as Electron.NativeImage).toPNG().toString('base64');
+      spy.icon = bytes === on ? 'on' : bytes === off ? 'off' : 'unknown';
+      return setImage.call(this, image);
+    };
+  }, files);
+
+  /** 가로챈 메뉴의 항목 글자와 "오늘 종" 체크, 그리고 마지막 아이콘. */
+  const trayNow = () =>
+    launched.evaluate(() => {
+      const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu | null; icon: string } }).__traySpy;
+      return { labels: spy.menu?.items.map((i) => i.label || i.type) ?? null, checked: spy.menu?.items.find((i) => i.label === '오늘 종')?.checked, icon: spy.icon };
+    });
+  /** 현황 화면의 "오늘 종" 스위치. */
+  const statusSwitch = page.getByRole('switch', { name: '오늘 종' });
+  await expect(statusSwitch).toHaveAttribute('aria-checked', 'true');
+
+  // 현황에서 끄면 트레이가 다시 만들어져 체크가 풀리고 아이콘이 꺼짐으로 바뀐다
+  await statusSwitch.click();
+  await expect.poll(trayNow).toEqual({ labels: ['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료'], checked: false, icon: 'off' });
+
+  // 트레이 메뉴에서 켜면 현황의 스위치도 켜지고 아이콘이 돌아온다
+  await launched.evaluate(() => {
+    const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy;
+    spy.menu.items.find((i) => i.label === '오늘 종')!.click();
+  });
+  await expect(statusSwitch).toHaveAttribute('aria-checked', 'true');
+  await expect.poll(trayNow).toMatchObject({ checked: true, icon: 'on' });
+
+  // 트레이 메뉴에서 끄면 현황의 스위치도 꺼진다
+  await launched.evaluate(() => {
+    const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy;
+    // 체크 항목은 누르면 스스로 뒤집힌 값을 동작에 넘긴다
+    spy.menu.items.find((i) => i.label === '오늘 종')!.click();
+  });
+  await expect(statusSwitch).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(trayNow).toMatchObject({ checked: false, icon: 'off' });
 });

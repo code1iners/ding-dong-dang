@@ -101,6 +101,13 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   expect(await playerState(app)).toEqual({ visible: false, audio: null });
   expect(await ringing()).toBe(false);
 
+  // 트레이에 건네는 메뉴를 가로채어 울리는 동안의 항목을 읽는다
+  await app.evaluate(({ Menu }) => {
+    const spy = ((globalThis as Record<string, unknown>).__traySpy = { menu: null as Electron.Menu | null });
+    const build = Menu.buildFromTemplate.bind(Menu);
+    Menu.buildFromTemplate = (template) => (spy.menu = build(template));
+  });
+
   // 닫기 버튼으로 앱 창을 숨긴다. 창이 없어도 메인 프로세스의 스케줄러가 종을 울려야 한다
   await (await app.browserWindow(page)).evaluate((w) => w.close());
   expect(await (await app.browserWindow(page)).evaluate((w) => w.isVisible())).toBe(false);
@@ -121,4 +128,21 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   expect(await ringing()).toBe(true);
   // 종 시각에서 1초 남짓 안에 울리기 시작했다. 상태를 몇 번 읽는 시간까지 더해 넉넉히 본다
   expect(Date.now() - ringAt).toBeLessThan(4_000);
+
+  // 울리는 동안에만 트레이 메뉴에 "종 멈추기"가 있고, 누르면 종이 멈춘다
+  await expect
+    .poll(() =>
+      app!.evaluate(() => (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy.menu.items.map((i) => i.label || i.type)),
+    )
+    .toEqual(['딩동댕 열기', '종 멈추기', '오늘 종', 'separator', '딩동댕 종료']);
+  await app.evaluate(() => {
+    const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy;
+    spy.menu.items.find((i) => i.label === '종 멈추기')!.click();
+  });
+  await expect.poll(ringing).toBe(false);
+  await expect
+    .poll(() =>
+      app!.evaluate(() => (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy.menu.items.map((i) => i.label || i.type)),
+    )
+    .toEqual(['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료']);
 });

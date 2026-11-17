@@ -67,7 +67,7 @@ test('시간표 화면을 열면 오늘 요일이 선택되어 있고, 요일 �
 
 test('시간표를 만들어 요일에 배정하면 즉시 저장되고 앱을 다시 띄워도 남아 있다', async () => {
   await launch();
-  await page.getByRole('button', { name: '수요일' }).click();
+  await page.getByRole('button', { name: /^수요일 · / }).click();
   await page.getByRole('button', { name: /시간표 고르기/ }).click();
 
   /** 시간표 선택 창. */
@@ -84,7 +84,7 @@ test('시간표를 만들어 요일에 배정하면 즉시 저장되고 앱을 �
 
   await quit();
   await launch();
-  await page.getByRole('button', { name: '수요일' }).click();
+  await page.getByRole('button', { name: /^수요일 · / }).click();
   await expect(page.getByRole('button', { name: '수요일 · 새 시간표' })).toBeVisible();
 });
 
