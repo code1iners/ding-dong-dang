@@ -20,16 +20,19 @@ function launch(): Promise<ElectronApplication> {
   return electron.launch({ args: [resolve(__dirname, '..'), `--data-dir=${dataDir}`] });
 }
 
-/** 앱의 첫 창의 바깥 자리와 크기. */
+/** 앱 창. 숨긴 종 재생기 창이 아니라 첫 화면이 붙은 창이다. */
+async function mainWindow(app: ElectronApplication) {
+  return app.browserWindow(await app.firstWindow());
+}
+
+/** 앱 창의 바깥 자리와 크기. */
 async function windowBounds(app: ElectronApplication) {
-  await app.firstWindow();
-  return app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getBounds());
+  return (await mainWindow(app)).evaluate((w) => w.getBounds());
 }
 
 test('옮기고 크기를 바꾼 창은 다시 띄우면 그 자리와 크기로 열린다', async () => {
   const first = await launch();
-  await first.firstWindow();
-  await first.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setBounds({ x: 120, y: 90, width: 1100, height: 700 }));
+  await (await mainWindow(first)).evaluate((w) => w.setBounds({ x: 120, y: 90, width: 1100, height: 700 }));
   /** 자리를 바꾼 직후 창이 실제로 가진 값. */
   const moved = await windowBounds(first);
   // 저장은 잠깐 미뤄서 이루어지므로 파일에 나타날 때까지 기다린다

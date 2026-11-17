@@ -1,10 +1,13 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { app, BrowserWindow, nativeTheme, screen } from 'electron';
-import { openBridge, type StateHub } from './bridge';
+import { app, BrowserWindow, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
+import type { Data } from '../shared/data';
+import { openBellPlayer } from './bell-player';
+import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
 import { DATA_FORMAT } from './data-format';
-import { openStorage, type SaveResult } from './storage';
+import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
+import { openStorage } from './storage';
 import { usableBounds } from './window-bounds';
 
 /**
@@ -26,16 +29,23 @@ const BOUNDS_SAVE_DELAY_MS = 500;
 /** 데이터 폴더의 저장소와 시작할 때 읽은 결과. */
 const { storage, loaded } = openStorage(dataDir, DATA_FORMAT);
 
-/** 저장 결과를 화면 쪽 상태에 반영한다. */
-function reportSave(hub: StateHub, result: SaveResult): void {
-  const saveFailed = !result.ok;
-  if (hub.get().storage.saveFailed !== saveFailed) {
-    hub.update({ storage: { ...hub.get().storage, saveFailed } });
-  }
+/** 잠자기 막기 부품. Electron의 powerSaveBlocker로 막고 푼다. */
+function powerKeepAwake(): SchedulerParts['keepAwake'] {
+  /** 걸어 둔 막기의 id. 없으면 null. */
+  let blockerId: number | null = null;
+  return {
+    start(mode) {
+      blockerId = powerSaveBlocker.start(mode === 'display' ? 'prevent-display-sleep' : 'prevent-app-suspension');
+    },
+    stop() {
+      if (blockerId !== null) powerSaveBlocker.stop(blockerId);
+      blockerId = null;
+    },
+  };
 }
 
 /** 왼쪽 세로 줄과 네 화면이 있는 앱 창을 만든다. */
-function createMainWindow(hub: StateHub): BrowserWindow {
+function createMainWindow(save: (change: (data: Data) => Data) => void): BrowserWindow {
   /** 앱 창. */
   const win = new BrowserWindow({
     // 크기는 제목 표시줄을 뺀 내용 영역 기준이다. 디자인 시안이 920×580의 내용 영역으로 그려졌다
@@ -70,7 +80,7 @@ function createMainWindow(hub: StateHub): BrowserWindow {
     clearTimeout(saveTimer);
     if (win.isDestroyed()) return;
     const bounds = win.getNormalBounds();
-    reportSave(hub, storage.update((d) => ({ ...d, window: bounds })));
+    save((d) => ({ ...d, window: bounds }));
   };
   const saveBoundsLater = (): void => {
     clearTimeout(saveTimer);
@@ -99,18 +109,81 @@ function createMainWindow(hub: StateHub): BrowserWindow {
 
 void app.whenReady().then(() => {
   /** 렌더러와 상태를 주고받는 손잡이. */
-  const hub = openBridge({
-    appVersion: app.getVersion(),
-    storage: { saveFailed: false, freshStart: loaded.startedFresh },
-  });
-  createMainWindow(hub);
+  const hub = openBridge(
+    {
+      appVersion: app.getVersion(),
+      storage: { saveFailed: false, freshStart: loaded.startedFresh },
+      settings: storage.get().settings,
+      bellRinging: false,
+    },
+    (command) => {
+      switch (command.type) {
+        case 'set-keep-screen-on':
+          save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
+          break;
+      }
+    },
+  );
 
+  /** 종 스케줄러. 숨긴 재생기 창과 함께 앱 창 다음에 만들어, 그 전의 저장은 판정을 부르지 않는다. */
+  let scheduler: Scheduler | null = null;
+
+  /** 저장된 값을 바꾸고 파일에 쓴 뒤, 화면 쪽 상태와 스케줄러에 알린다. */
+  function save(change: (data: Data) => Data): void {
+    /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
+    const saveFailed = !storage.update(change).ok;
+    /** 바뀐 뒤의 설정. */
+    const { settings } = storage.get();
+    if (hub.get().storage.saveFailed !== saveFailed || hub.get().settings !== settings) {
+      hub.update({ storage: { ...hub.get().storage, saveFailed }, settings });
+    }
+    // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
+    scheduler?.check();
+  }
+
+  /** 앱 창. 닫혀 있으면 null. */
+  let mainWindow: BrowserWindow | null = null;
+  /** 앱 창을 만들고, 닫히면 비운다. */
+  const openMainWindow = (): void => {
+    mainWindow = createMainWindow(save);
+    mainWindow.on('closed', () => {
+      mainWindow = null;
+      // 창을 닫아도 머무는 동작은 상주 티켓에서 붙인다. 그 전까지 Windows는 OS 관례대로 끝낸다
+      if (process.platform !== 'darwin') app.quit();
+    });
+  };
+  // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다
+  openMainWindow();
+
+  /** 숨긴 창의 종 재생기. */
+  const bell = openBellPlayer({
+    read: storage.get,
+    builtinDir: join(app.getAppPath(), 'resources/sounds/builtin'),
+    registeredDir: join(dataDir, 'sounds'),
+    onRingingChange: (bellRinging) => hub.update({ bellRinging }),
+  });
+
+  /** 돌고 있는 스케줄러. 창이 없어도 메인 프로세스에서 1초마다, 그리고 깨어나면 바로 판정한다. */
+  const running = startScheduler({
+    now: () => Date.now(),
+    everySecond(tick) {
+      /** 1초 타이머. */
+      const timer = setInterval(tick, 1000);
+      return () => clearInterval(timer);
+    },
+    onWake(listener) {
+      powerMonitor.on('resume', listener);
+      return () => powerMonitor.off('resume', listener);
+    },
+    bell,
+    keepAwake: powerKeepAwake(),
+    read: storage.get,
+  });
+  scheduler = running;
+  app.on('will-quit', () => running.stop());
+
+  // 창이 없을 때 Dock 아이콘을 누르면 앱 창을 다시 연다. 숨긴 재생기 창은 세지 않는다
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow(hub);
+    if (!mainWindow) openMainWindow();
   });
-});
-
-// 창을 닫았을 때 트레이에 머무는 동작은 상주 티켓에서 붙인다. 지금은 OS 관례대로 끝낸다
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
 });

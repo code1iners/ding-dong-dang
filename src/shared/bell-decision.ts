@@ -35,6 +35,8 @@ export type BellDecision = {
   status: BellStatus;
   /** 방치로 인한 잠자기를 막아야 하는지. */
   keepAwake: boolean;
+  /** 지금 오늘만 끄기 중인지. 스케줄러가 이 값으로 울리던 종을 멈춘다. */
+  bellsOff: boolean;
 };
 
 /** 늦게 확인했을 때 지난 종을 아직 울려 주는 한도. 정확히 이 길이만큼 늦은 종까지 울린다. */
@@ -161,5 +163,6 @@ export function decideBell(input: BellDecisionInput): BellDecision {
     bell: bellToRing(input) ?? 'none',
     status,
     keepAwake: duringLessons && !bellsOff,
+    bellsOff,
   };
 }

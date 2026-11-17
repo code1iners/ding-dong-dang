@@ -158,6 +158,12 @@ describe('종 판정: 시나리오 표', () => {
     expect(result.status.kind).toBe('in-class');
     expect(result.status.periodNumber).toBe(1);
     expect(result.keepAwake).toBe(false);
+    expect(result.bellsOff).toBe(true);
+  });
+
+  it('오늘만 끄기는 지금 시각의 현지 날짜가 끈 날짜와 같을 때만 켜져 있다', () => {
+    expect(decide('월 08:59:59', '월 09:00:00').bellsOff).toBe(false);
+    expect(decide('화 23:59:59', '수 00:00:00', { bellsOffDate: '2026-11-17' }).bellsOff).toBe(false);
   });
 
   it('17. 오늘만 끄기를 다시 켠 뒤에는 이미 지난 종이 울리지 않는다', () => {

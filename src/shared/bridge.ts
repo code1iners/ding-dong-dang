@@ -2,12 +2,18 @@
 // - 상태 구독: 메인이 가진 앱 상태를 받아 보고, 바뀔 때마다 다시 받는다.
 // - 명령: 렌더러가 메인에 일을 시킨다.
 
+import type { Settings } from './data';
+
 /** 메인이 렌더러에 보내는 앱 상태. 기능 티켓이 필요한 값을 더한다. */
 export type AppState = {
   /** 앱 버전(package.json의 version). */
   appVersion: string;
   /** 저장소가 화면 쪽에 알릴 일. 알림 모양은 화면 티켓이 만든다. */
   storage: StorageNotice;
+  /** 설정 화면의 값. 저장된 값과 같다. */
+  settings: Settings;
+  /** 지금 종이 울리는 중인지. 숨긴 창의 재생이 끝나거나 멈추면 false가 된다. */
+  bellRinging: boolean;
 };
 
 /** 저장소가 화면에 알리는 사실. */
@@ -18,8 +24,10 @@ export type StorageNotice = {
   freshStart: boolean;
 };
 
-/** 렌더러가 메인에 보내는 명령. `type`으로 구분하는 합 타입이고, 아직 명령이 없어 비어 있다. */
-export type Command = never;
+/** 렌더러가 메인에 보내는 명령. `type`으로 구분하는 합 타입이다. */
+export type Command =
+  /** "수업 중 화면 켜 두기"를 켜거나 끈다. */
+  { type: 'set-keep-screen-on'; on: boolean };
 
 /** preload가 렌더러의 `window.dingdong`으로 내보내는 통로. */
 export type DingDongApi = {
