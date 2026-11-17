@@ -2,6 +2,8 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { CHANNEL } from '../shared/bridge';
+import type { CommandResult } from '../shared/bridge';
 import type { Data } from '../shared/data';
 import {
   assignWeekday,
@@ -9,8 +11,10 @@ import {
   deleteTimetable,
   renameTimetable,
   restoreTimetable,
+  setPeriods,
   type RemovedTimetable,
 } from '../shared/timetable-ops';
+import { validatePeriods } from '../shared/timetable-validation';
 import { openBellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
@@ -54,7 +58,10 @@ function powerKeepAwake(): SchedulerParts['keepAwake'] {
 }
 
 /** 왼쪽 세로 줄과 네 화면이 있는 앱 창을 만든다. */
-function createMainWindow(save: (change: (data: Data) => Data, options?: { quiet: boolean }) => void): BrowserWindow {
+function createMainWindow(
+  save: (change: (data: Data) => Data, options?: { quiet: boolean }) => boolean,
+  holdsClose: () => boolean,
+): BrowserWindow {
   /** 앱 창. */
   const win = new BrowserWindow({
     // 크기는 제목 표시줄을 뺀 내용 영역 기준이다. 디자인 시안이 920×580의 내용 영역으로 그려졌다
@@ -96,6 +103,12 @@ function createMainWindow(save: (change: (data: Data) => Data, options?: { quiet
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveBounds, BOUNDS_SAVE_DELAY_MS);
   };
+  // 저장하지 않은 편집이 있으면 닫기를 멈추고 화면에 묻는다. 화면이 정한 뒤 `close-window` 명령으로 다시 닫는다
+  win.on('close', (event) => {
+    if (!holdsClose()) return;
+    event.preventDefault();
+    win.webContents.send(CHANNEL.closeRequested);
+  });
   win.on('move', saveBoundsLater);
   win.on('resize', saveBoundsLater);
   // 닫기 직전에 마지막 자리를 확실히 남긴다
@@ -120,6 +133,10 @@ function createMainWindow(save: (change: (data: Data) => Data, options?: { quiet
 void app.whenReady().then(() => {
   /** 이번 실행에서 지운 시간표. 알림의 "되돌리기"가 id로 찾아 되살린다. */
   const removedTimetables = new Map<string, RemovedTimetable>();
+  /** 화면에 저장하지 않은 수업 시간 편집이 있는지. */
+  let editingDirty = false;
+  /** 화면이 닫기를 허락해 `close-window`로 닫는 중인지. */
+  let closeApproved = false;
 
   /** 렌더러와 상태를 주고받는 손잡이. */
   const hub = openBridge(
@@ -131,7 +148,7 @@ void app.whenReady().then(() => {
       weekdays: storage.get().weekdays,
       bellRinging: false,
     },
-    (command) => {
+    (command): CommandResult | void => {
       switch (command.type) {
         case 'set-keep-screen-on':
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
@@ -162,6 +179,18 @@ void app.whenReady().then(() => {
         case 'ack-fresh-start':
           hub.update({ storage: { ...hub.get().storage, freshStart: false } });
           break;
+        case 'set-periods': {
+          // 화면이 이미 막지만, 잘못된 수업 시간은 여기서도 저장하지 않는다
+          if (validatePeriods(command.periods).length > 0) return { ok: false };
+          return { ok: save((d) => setPeriods(d, command.id, command.periods)) };
+        }
+        case 'set-editing-dirty':
+          editingDirty = command.dirty;
+          break;
+        case 'close-window':
+          closeApproved = true;
+          mainWindow?.close();
+          break;
       }
     },
   );
@@ -171,7 +200,7 @@ void app.whenReady().then(() => {
   let scheduler: Scheduler | null = null;
 
   /** 저장된 값을 바꾸고 파일에 쓴 뒤, 화면 쪽 상태와 스케줄러에 알린다. */
-  function save(change: (data: Data) => Data, options?: { quiet: boolean }): void {
+  function save(change: (data: Data) => Data, options?: { quiet: boolean }): boolean {
     /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
     const saveFailed = !storage.update(change).ok;
     /** 바뀐 뒤의 데이터. */
@@ -190,13 +219,16 @@ void app.whenReady().then(() => {
     }
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();
+    return !saveFailed;
   }
 
   /** 앱 창. 닫혀 있으면 null. */
   let mainWindow: BrowserWindow | null = null;
   /** 앱 창을 만들고, 닫히면 비운다. */
   const openMainWindow = (): void => {
-    mainWindow = createMainWindow(save);
+    editingDirty = false;
+    closeApproved = false;
+    mainWindow = createMainWindow(save, () => editingDirty && !closeApproved);
     mainWindow.on('closed', () => {
       mainWindow = null;
       // 창을 닫아도 머무는 동작은 상주 티켓에서 붙인다. 그 전까지 Windows는 OS 관례대로 끝낸다

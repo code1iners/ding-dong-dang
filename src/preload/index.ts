@@ -26,6 +26,13 @@ const api: DingDongApi = {
     };
   },
   command: (command) => ipcRenderer.invoke(CHANNEL.command, command),
+  onCloseRequested(listener) {
+    const onRequest = () => listener();
+    ipcRenderer.on(CHANNEL.closeRequested, onRequest);
+    return () => {
+      ipcRenderer.off(CHANNEL.closeRequested, onRequest);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('dingdong', api);

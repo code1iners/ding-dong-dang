@@ -549,3 +549,178 @@ button {
   gap: 6px;
   align-items: center;
 }
+
+/* 시간표 화면의 두 카드: 왼쪽은 시계판, 오른쪽은 교시별 시각 */
+.card--dial {
+  flex: 1.3;
+}
+
+.dial {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.dial__track {
+  fill: none;
+  stroke: var(--color-soft);
+}
+
+.dial__hour {
+  font-size: var(--font-size-1);
+  fill: var(--color-ink-2);
+}
+
+.dial__period {
+  font-size: var(--font-size-2);
+  fill: var(--color-ink);
+}
+
+.card--periods {
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+/* 줄이 많아지면 단추와 저장 줄은 그대로 두고 줄만 스크롤한다. 빨간 테두리가 잘리지 않게 여백을 둔다 */
+.period-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+}
+
+.period-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.period-row {
+  background: var(--color-soft);
+  border-radius: var(--radius-button);
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 오류 줄은 색만으로 구분하지 않도록 아래에 느낌표와 이유도 함께 나온다 */
+.period-row--bad {
+  outline: var(--focus-ring) solid var(--color-red);
+}
+
+.period-row__num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  color: var(--color-ink);
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-2);
+  flex: none;
+}
+
+.period-row__remove {
+  margin-left: auto;
+}
+
+.period-add {
+  align-self: flex-start;
+  flex: none;
+}
+
+.period-foot {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: none;
+}
+
+/* 시각 칸: 숫자마다 같은 폭의 칸(0.62em, 쌍점 0.3em)에 넣는다. 실제 입력은 그 위에 투명하게 겹친다 */
+.time-field {
+  position: relative;
+  width: 78px;
+  height: 32px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-input);
+  background: var(--color-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-2);
+}
+
+.time-field__cells {
+  display: flex;
+}
+
+.time-field__digit {
+  display: inline-block;
+  width: var(--digit-width);
+  text-align: center;
+}
+
+.time-field__colon {
+  display: inline-block;
+  width: var(--colon-width);
+  text-align: center;
+}
+
+.time-field__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  text-align: center;
+  cursor: text;
+}
+
+.time-field__input::selection {
+  background: transparent;
+}
+
+.time-field__input:focus-visible {
+  outline: none;
+}
+
+/* 초점은 칸의 테두리에 바로 붙여 그린다 */
+.time-field--focused {
+  outline: var(--focus-ring) solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* 잠긴 단추는 회색이고 이유는 곁의 글이 말한다 */
+.button:disabled {
+  background: var(--color-locked);
+  color: var(--color-locked-ink);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.field-error--center {
+  justify-content: center;
+  text-align: left;
+}
+
+/* 이유가 두 줄로 넘어가도 느낌표가 첫 줄에 붙어 있게 한다 */
+.field-error {
+  align-items: flex-start;
+}
+
+.field-error .icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}

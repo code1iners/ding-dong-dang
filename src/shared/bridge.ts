@@ -3,6 +3,7 @@
 // - 명령: 렌더러가 메인에 일을 시킨다.
 
 import type { Settings, Timetable, Weekday } from './data';
+import type { Period } from './timetable-validation';
 
 /** 메인이 렌더러에 보내는 앱 상태. 기능 티켓이 필요한 값을 더한다. */
 export type AppState = {
@@ -45,14 +46,28 @@ export type Command =
   /** 요일에 시간표 하나 또는 없음(null)을 배정한다. */
   | { type: 'assign-weekday'; day: Weekday; timetableId: string | null }
   /** "저장된 시간표를 읽지 못해 새로 시작했어요" 알림을 보여 줬음을 알린다. 같은 실행에서 다시 보이지 않게 한다. */
-  | { type: 'ack-fresh-start' };
+  | { type: 'ack-fresh-start' }
+  /** 시간표의 수업 시간을 통째로 바꿔 저장한다. 결과의 `ok`가 false면 저장하지 못한 것이다. */
+  | { type: 'set-periods'; id: string; periods: Period[] }
+  /** 저장하지 않은 수업 시간 편집이 있는지 알린다. 있으면 메인은 창 닫기를 멈추고 렌더러에 묻는다. */
+  | { type: 'set-editing-dirty'; dirty: boolean }
+  /** 창을 닫는다. 저장하지 않은 편집을 어떻게 할지 정한 뒤에 보낸다. */
+  | { type: 'close-window' };
+
+/** 명령의 결과. 대부분의 명령은 늘 ok다. */
+export type CommandResult = {
+  /** 하려던 일이 끝났는지. 저장 명령은 파일에 쓰지 못하면 false다. */
+  ok: boolean;
+};
 
 /** preload가 렌더러의 `window.dingdong`으로 내보내는 통로. */
 export type DingDongApi = {
   /** 지금 상태를 한 번 바로 받고, 이후 바뀔 때마다 받는다. 돌려받은 함수를 부르면 구독을 끝낸다. */
   subscribe(listener: (state: AppState) => void): () => void;
   /** 메인에 명령을 보낸다. 메인이 거절하면 실패한 Promise가 된다. */
-  command(command: Command): Promise<void>;
+  command(command: Command): Promise<CommandResult>;
+  /** 저장하지 않은 편집이 있는데 창을 닫으려 할 때마다 부른다. 돌려받은 함수를 부르면 구독을 끝낸다. */
+  onCloseRequested(listener: () => void): () => void;
 };
 
 /** 통로가 쓰는 IPC 채널 이름. */
@@ -63,4 +78,6 @@ export const CHANNEL = {
   stateChanged: 'state:changed',
   /** 렌더러가 명령을 보내는 채널. */
   command: 'command',
+  /** 메인이 창 닫기를 멈추고 렌더러에 알리는 채널. */
+  closeRequested: 'window:close-requested',
 } as const;

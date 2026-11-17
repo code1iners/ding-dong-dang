@@ -2,6 +2,8 @@
 // 바뀌는 것이 없으면 받은 데이터를 그대로 돌려줘서, 부르는 쪽이 `===`로 변경 여부를 알 수 있다.
 
 import { WEEKDAYS, type Data, type Timetable, type Weekday } from './data';
+import { sortByStart } from './period-edit';
+import type { Period } from './timetable-validation';
 
 /** 시간표 색의 개수(DESIGN.md의 여덟 색). */
 export const TIMETABLE_COLOR_COUNT = 8;
@@ -63,4 +65,11 @@ export function assignWeekday(data: Data, day: Weekday, id: string | null): Data
 /** 시간표를 쓰는 요일을 월요일부터 순서대로 돌려준다. */
 export function daysUsing(weekdays: Data['weekdays'], id: string): Weekday[] {
   return WEEKDAYS.filter((day) => weekdays[day] === id);
+}
+
+/** 시간표의 수업 시간을 바꾼다. 시작 시각 순으로 정렬해 저장하고(교시 번호가 이 순서다), 없는 시간표는 무시한다. */
+export function setPeriods(data: Data, id: string, periods: readonly Period[]): Data {
+  if (!data.timetables.some((t) => t.id === id)) return data;
+  const sorted = sortByStart(periods).map(({ start, end }) => ({ start, end }));
+  return { ...data, timetables: data.timetables.map((t) => (t.id === id ? { ...t, periods: sorted } : t)) };
 }

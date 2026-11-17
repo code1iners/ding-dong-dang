@@ -7,6 +7,7 @@ import {
   deleteTimetable,
   renameTimetable,
   restoreTimetable,
+  setPeriods,
 } from './timetable-ops';
 
 /** 이름만 다른 시간표를 n개 만든 데이터. */
@@ -129,5 +130,34 @@ describe('daysUsing', () => {
     data = assignWeekday(data, 'wed', 't1');
     expect(daysUsing(data.weekdays, 't0')).toEqual(['tue', 'sun']);
     expect(daysUsing(data.weekdays, 'none')).toEqual([]);
+  });
+});
+
+describe('setPeriods', () => {
+  it('시작 시각 순으로 정렬해 그 시간표의 수업 시간을 바꾼다', () => {
+    const data = withTimetables(2);
+    const next = setPeriods(data, 't1', [{ start: 600, end: 650 }, { start: 540, end: 590 }]);
+    expect(next.timetables[1]?.periods).toEqual([{ start: 540, end: 590 }, { start: 600, end: 650 }]);
+    expect(next.timetables[0]).toBe(data.timetables[0]);
+  });
+
+  it('그 시간표를 쓰는 모든 요일이 같은 시간표 id를 가리키므로 함께 바뀐다', () => {
+    let data = createTimetable(emptyData(), 'a', 'mon');
+    data = assignWeekday(data, 'wed', 'a');
+    const next = setPeriods(data, 'a', [{ start: 540, end: 590 }]);
+    const used = (['mon', 'wed'] as const).map((d) => next.timetables.find((t) => t.id === next.weekdays[d])?.periods);
+    expect(used).toEqual([[{ start: 540, end: 590 }], [{ start: 540, end: 590 }]]);
+  });
+
+  it('없는 시간표는 무시한다', () => {
+    const data = withTimetables(1);
+    expect(setPeriods(data, 'nope', [{ start: 1, end: 2 }])).toBe(data);
+  });
+
+  it('받은 목록을 고치지 않고 복사해 저장한다', () => {
+    const periods = [{ start: 540, end: 590 }];
+    const next = setPeriods(withTimetables(1), 't0', periods);
+    periods[0]!.start = 1;
+    expect(next.timetables[0]?.periods[0]?.start).toBe(540);
   });
 });

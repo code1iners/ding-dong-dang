@@ -66,7 +66,7 @@ test('창의 내용 영역은 920×580보다 작아지지 않고 크기를 바�
   expect(viewport[1]).toBeGreaterThanOrEqual(580);
 });
 
-test('렌더러는 Node에 닿지 않고 상태 구독과 명령 두 통로만 쓴다', async () => {
+test('렌더러는 Node에 닿지 않고 상태 구독, 명령, 창 닫기 요청 세 통로만 쓴다', async () => {
   /** 렌더러 전역에서 보이는 것. */
   const globals = await page.evaluate(() => ({
     require: typeof (globalThis as { require?: unknown }).require,
@@ -74,7 +74,7 @@ test('렌더러는 Node에 닿지 않고 상태 구독과 명령 두 통로만 �
     api: Object.keys(window.dingdong).sort(),
   }));
   // contextBridge는 contextIsolation이 켜져 있을 때만 값을 내보낸다. 그래서 통로가 보이면 격리가 켜져 있다
-  expect(globals).toEqual({ require: 'undefined', process: 'undefined', api: ['command', 'subscribe'] });
+  expect(globals).toEqual({ require: 'undefined', process: 'undefined', api: ['command', 'onCloseRequested', 'subscribe'] });
 
   /** 상태 구독으로 처음 받은 상태. */
   const state = await page.evaluate(
