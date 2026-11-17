@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>딩동댕 · 업데이트 화면 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#2B2F36;color:#E8EAED;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;padding:16px;min-height:100vh}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.pbar{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;max-width:920px;margin:0 auto 12px;font-size:13px}
+.pbar .grp{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.pbar span{color:#9AA3AF;margin-right:2px}
+.pbar button{padding:6px 10px;border-radius:6px;background:#3A404A}
+.pbar button.on{background:#E8EAED;color:#23272E}
+.note{max-width:920px;margin:10px auto 0;font-size:13px;line-height:1.6;color:#B4BBC6}
+.stage{max-width:920px;margin:0 auto;overflow-x:auto}
+.frame{width:920px;height:580px;border-radius:12px;overflow:hidden}
+
+.A{height:100%;display:flex;background:#CFE3F8;font-family:Jua,sans-serif;color:#4A4048;position:relative}
+.rail{width:80px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.rb{width:48px;height:48px;border-radius:16px;background:#fff;box-shadow:0 4px 0 #A9C4E4;display:grid;place-items:center;color:#7F93AD;position:relative}
+.rb.on{background:#5ED37A;box-shadow:0 4px 0 #3FA95C;color:#fff}
+.rb.end{margin-top:auto}
+.rb svg{width:26px;height:26px}
+.rb .dot{position:absolute;right:-5px;top:-5px;width:16px;height:16px;border-radius:50%;background:#F2A33C;border:3px solid #CFE3F8}
+.ed{flex:1;padding:16px 24px 16px 0;display:flex}
+.card{flex:1;background:#fff;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px}
+.themes{display:flex;gap:14px}
+.th{width:64px;height:64px;border-radius:50%;background:#F1F6FC;display:grid;place-items:center;font-size:30px}
+.th.sel{outline:3px solid #4A4048;outline-offset:3px;background:#fff}
+.row{display:flex;align-items:center;gap:12px;font-size:20px;border-top:2px solid #F1F6FC;padding-top:16px;min-height:48px}
+.row .r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tg{width:44px;height:26px;border-radius:13px;background:#5ED37A;position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:3px;left:21px;width:20px;height:20px;border-radius:50%;background:#fff}
+.tg.off{background:#C4CBD4}.tg.off::after{left:3px}
+.ver{color:#7B6F79;font-size:17px}
+.sub{color:#7B6F79;font-size:16px}
+.new{color:#C97A12}
+.btn{height:42px;padding:0 18px;border-radius:14px;background:#5ED37A;box-shadow:0 4px 0 #3FA95C;color:#fff;font-size:18px;white-space:nowrap}
+.btn.ghost{background:#F1F6FC;box-shadow:0 4px 0 #D3E0EF;color:#4A4048}
+.btn.lock{background:#E3E7EC;box-shadow:0 4px 0 #CDD3DA;color:#98A1AC;cursor:not-allowed}
+.bar{width:150px;height:12px;border-radius:6px;background:#F1F6FC;overflow:hidden}
+.bar i{display:block;height:100%;width:62%;background:#5ED37A;border-radius:6px}
+.dim{position:absolute;inset:0;background:rgba(58,74,96,.45);display:grid;place-items:center}
+.modal{width:380px;background:#fff;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.modal h2{font-size:24px;font-weight:400}
+.modal p{font-size:17px;color:#7B6F79;line-height:1.45}
+.modal .chips{display:flex;gap:8px;align-items:center;font-size:20px}
+.modal .chips b{font-weight:400;padding:4px 12px;border-radius:12px;background:#F1F6FC}
+.modal .chips b.to{background:#E3F7E8;color:#2E8A49}
+.modal .acts{display:flex;gap:10px;width:100%;margin-top:4px}
+.modal .acts .btn{flex:1}
+.steps{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.steps div{display:flex;gap:10px;align-items:center;font-size:17px;background:#F1F6FC;border-radius:12px;padding:10px 12px}
+.steps i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none;font-size:15px}
+.dog{width:72px;height:72px}
+.toast{position:absolute;left:50%;top:20px;transform:translateX(-50%);background:#fff;border-radius:16px;box-shadow:0 4px 0 #A9C4E4;padding:10px 18px;font-size:18px;display:flex;gap:8px;align-items:center}
+.toast i{width:22px;height:22px;border-radius:50%;background:#5ED37A;color:#fff;display:grid;place-items:center;font-style:normal;font-size:14px}
+</style>
+</head>
+<body>
+<div class="pbar">
+  <div class="grp" id="states"></div>
+</div>
+<div class="stage"><div class="frame" id="app"></div></div>
+<p class="note" id="note"></p>
+
+<script>
+const STATES=[
+  ['latest','최신'],['avail','새 버전 있음'],['confirm','확인 모달'],
+  ['lock','종 직전(잠김)'],['offline','확인 못 함'],['done','끝난 뒤']
+];
+const NOTES={
+  latest:'새 버전이 없을 때. 설정 화면 맨 아래 줄에 지금 버전만 보인다. 확인은 앱이 시작할 때와 하루 한 번 저절로 한다.',
+  avail:'새 버전을 미리 내려받아 검증까지 끝냈을 때. 왼쪽 설정 단추에 주황 점이 붙고, 줄에 새 버전 번호와 "업데이트" 단추가 나온다. 저절로 설치하거나 다시 실행하지 않는다.',
+  confirm:'"업데이트"를 누르면 뜨는 확인 모달. "업데이트"를 눌러야 진행한다. Windows와 Mac이 같다.',
+  down:'승인한 뒤 내려받는 동안. 줄 안에서 진행 막대로 보여 주고 창은 계속 쓸 수 있다.',
+  lock:'다음 종까지 2분이 안 남았거나 종이 울리는 중. 단추가 잠기고 이유가 한 줄로 나온다.',
+  offline:'인터넷이 안 될 때. 설정 화면에서만 알리고 다른 화면에는 아무 표시도 하지 않는다.',
+  done:'다시 실행된 직후 창이 뜨고 위쪽에 잠깐 알림이 나온다. Windows와 Mac이 같다.'
+};
+const os='win'; // Windows와 Mac의 화면이 같다
+let st=new URLSearchParams(location.search).get('state')||'avail';
+
+const ICON={
+  now:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  tt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/></svg>',
+  set:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h9M18 7h1M5 12h2M11 12h8M5 17h7M16 17h3"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="17" r="2"/></svg>'
+};
+const DOG='<svg class="dog" viewBox="0 0 80 80"><ellipse cx="18" cy="30" rx="10" ry="16" fill="#C9782B" transform="rotate(18 18 30)"/><ellipse cx="62" cy="30" rx="10" ry="16" fill="#C9782B" transform="rotate(-18 62 30)"/><circle cx="40" cy="42" r="26" fill="#F2A33C"/><ellipse cx="40" cy="52" rx="13" ry="10" fill="#FFF3E0"/><circle cx="30" cy="40" r="3.5" fill="#4A4048"/><circle cx="50" cy="40" r="3.5" fill="#4A4048"/><ellipse cx="40" cy="48" rx="4" ry="3" fill="#4A4048"/><path d="M36 55q4 5 8 0" fill="#E96B6B"/></svg>';
+
+function updateRow(){
+  const cur='<span class="ver">1.2.0</span>';
+  if(st==='latest')return `<span>버전</span><div class="r">${cur}<span class="sub">최신이에요</span></div>`;
+  if(st==='offline')return `<span>버전</span><div class="r">${cur}<span class="sub">새 버전을 확인할 수 없어요</span><button class="btn ghost">다시 확인</button></div>`;
+  if(st==='down')return `<span>버전</span><div class="r"><span class="sub">1.3.0 내려받는 중</span><div class="bar"><i></i></div></div>`;
+  if(st==='lock')return `<span>버전</span><div class="r"><span class="sub">종이 울린 뒤에 할 수 있어요</span><button class="btn lock" disabled>업데이트</button></div>`;
+  if(st==='done'&&os==='win')return `<span>버전</span><div class="r"><span class="ver">1.3.0</span><span class="sub">최신이에요</span></div>`;
+  return `<span>버전</span><div class="r">${cur}<span class="new">새 버전 1.3.0</span><button class="btn" data-go="confirm">업데이트</button></div>`;
+}
+function modal(){
+  if(st==='confirm'){
+    const body=os==='win'
+      ?'앱이 잠깐 꺼졌다가 다시 켜져요.<br>다음 종까지 23분 남았어요.'
+      :'새 버전을 내려받아 설치 창을 열어 드려요.<br>다음 종까지 23분 남았어요.';
+    return `<div class="dim"><div class="modal">${DOG}<h2>업데이트할까요?</h2>
+      <div class="chips"><b>1.2.0</b>→<b class="to">1.3.0</b></div><p>${body}</p>
+      <div class="acts"><button class="btn ghost" data-go="avail">나중에</button><button class="btn" data-go="done">업데이트</button></div></div></div>`;
+  }
+  if(st==='done'&&os==='mac'){
+    return `<div class="dim"><div class="modal"><h2>설치 창을 열었어요</h2>
+      <div class="steps"><div><i>1</i>딩동댕을 응용 프로그램 폴더로 끌어다 놓기</div><div><i>2</i>"대치"를 눌러 덮어쓰기</div><div><i>3</i>딩동댕을 다시 열기</div></div>
+      <p>딩동댕을 종료해야 덮어쓸 수 있어요.</p>
+      <div class="acts"><button class="btn ghost" data-go="avail">나중에</button><button class="btn">딩동댕 종료</button></div></div></div>`;
+  }
+  return '';
+}
+function render(){
+  const dot=['avail','confirm','down','lock'].includes(st)||(st==='done'&&os==='mac');
+  document.getElementById('app').innerHTML=`<div class="A">
+    <div class="rail"><div class="rb">${ICON.now}</div><div class="rb">${ICON.tt}</div><div class="rb on end">${ICON.set}${dot?'<i class="dot"></i>':''}</div></div>
+    <div class="ed"><div class="card">
+      <div class="themes"><div class="th sel">🐶</div><div class="th">🐕</div><div class="th">🐩</div><div class="th">🦮</div><div class="th">🐕‍🦺</div></div>
+      <div class="row"><span>돌아다니는 강아지</span><div class="r"><div class="tg"></div></div></div>
+      <div class="row"><span>컴퓨터를 켜면 자동으로 시작</span><div class="r"><div class="tg"></div></div></div>
+      <div class="row"><span>닫으면 숨기기</span><div class="r"><div class="tg"></div></div></div>
+      <div class="row"><span>수업 중 화면 켜 두기</span><div class="r"><div class="tg off"></div></div></div>
+      <div class="row">${updateRow()}</div>
+    </div></div>
+    ${st==='done'&&os==='win'?'<div class="toast"><i>✓</i>1.3.0으로 업데이트했어요</div>':''}
+    ${modal()}</div>`;
+  document.getElementById('states').innerHTML='<span>상태</span>'+STATES.map(([k,n])=>`<button data-st="${k}" class="${k===st?'on':''}">${n}</button>`).join('');
+  document.querySelectorAll('[data-os]').forEach(b=>b.classList.toggle('on',b.dataset.os===os));
+  document.getElementById('note').textContent=NOTES[st]+' (설정 줄의 다른 항목과 강아지 테마 그림은 자리만 잡은 것이다.)';
+  history.replaceState(null,'',`?state=${st}`);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.os)os=b.dataset.os;
+  else if(b.dataset.st)st=b.dataset.st;
+  else if(b.dataset.go)st=b.dataset.go;
+  else return;
+  render();
+});
+render();
+</script>
+</body>
+</html>
