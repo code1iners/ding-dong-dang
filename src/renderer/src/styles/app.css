@@ -178,3 +178,374 @@ button {
   outline: var(--focus-ring) solid var(--color-focus);
   outline-offset: 0;
 }
+
+/* 단추: 높이 42(작은 것 34), 반지름 14(12), 아래 띠 4px. 주 단추는 초록, 그 밖은 옅은 면, 지우는 단추만 빨강 */
+.button {
+  --band: var(--color-green-band);
+  height: var(--button-height);
+  padding: 0 var(--space-4);
+  flex: none;
+  border-radius: var(--radius-button);
+  background: var(--color-green);
+  box-shadow: 0 var(--band-height) 0 var(--band);
+  font-size: var(--font-size-2);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.button--ghost {
+  --band: var(--color-band);
+  background: var(--color-soft);
+}
+
+.button--red {
+  --band: var(--color-red-band);
+  background: var(--color-red);
+  color: var(--color-card); /* 흰 글자는 빨강 위에만 쓴다 */
+}
+
+.button--sm {
+  height: var(--button-height-sm);
+  padding: 0 14px;
+  border-radius: var(--radius-button-sm);
+}
+
+.button:active {
+  transform: translateY(var(--band-height));
+  box-shadow: none;
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 var(--band-height) 0 var(--band),
+    0 0 0 var(--focus-ring) var(--color-focus),
+    0 var(--band-height) 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 입력 칸: 흰색에 경계 2px 테두리, 반지름 10 */
+.input {
+  height: var(--button-height-sm);
+  min-width: 0;
+  padding: 0 10px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-input);
+  background: var(--color-card);
+  font: inherit;
+  font-size: var(--font-size-2);
+  color: var(--color-ink);
+  user-select: text;
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--color-red);
+}
+
+.input:focus-visible {
+  outline: var(--focus-ring) solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* 아이콘만 있는 작은 단추: 이름 바꾸기, 지우기, 알림 닫기 */
+.icon-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-1);
+  color: var(--color-ink-2);
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-input);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  color: inherit;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.icon-button:focus-visible,
+.toast__close:focus-visible,
+.modal__link:focus-visible,
+.timetable-option:focus-visible,
+.timetable-select:focus-visible,
+.day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* 배정이 없음을 색 대신 점선 고리로 보여 준다 */
+.dot--none {
+  border: 2px dashed var(--color-line);
+}
+
+/* 모달: 폭 380, 반지름 20, 화면 가운데. 뒤는 반투명 면으로 덮는다 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: var(--color-backdrop);
+}
+
+.modal {
+  max-width: calc(100vw - 2 * var(--space-4));
+  max-height: calc(100vh - 2 * var(--space-4));
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+}
+
+.modal p {
+  font-size: var(--font-size-2);
+  color: var(--color-ink-2);
+  line-height: 1.45;
+}
+
+.modal__title {
+  font-size: var(--font-size-4);
+  font-weight: 400;
+}
+
+.modal__actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.modal__actions .button {
+  flex: 1;
+  padding: 0 var(--space-2);
+}
+
+/* 목록이 든 모달은 안쪽 여백이 좁고 왼쪽 정렬이다 */
+.modal--sheet {
+  padding: var(--space-4);
+  gap: var(--space-2);
+  align-items: stretch;
+  text-align: left;
+}
+
+.modal--sheet .modal__title {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.modal__link {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-2);
+  color: var(--color-link);
+}
+
+/* 알림: 창 위쪽 가운데, 흰 면에 띠 색 2px 테두리, 반지름 16. 눌리는 것이 아니라서 아래 띠가 없다 */
+.toasts {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.toast {
+  max-width: 560px;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  background: var(--color-card);
+  border: 2px solid var(--color-band);
+  border-radius: var(--radius-rail);
+  font-size: var(--font-size-2);
+  line-height: 1.4;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.toast__mark {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-green);
+  color: var(--color-ink);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.toast__mark--bad {
+  background: var(--color-red);
+  color: var(--color-card);
+}
+
+.toast__close {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--radius-input);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--color-ink-2);
+}
+
+/* 움직임은 OS의 동작 줄이기가 꺼져 있을 때만. 모달과 알림은 0.15초 동안 흐려지며 나타난다 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .modal-backdrop,
+  .toast {
+    animation: fade-in 0.15s ease-out;
+  }
+}
+
+/* 시간표 화면 */
+.timetable-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timetable-select {
+  height: 44px;
+  min-width: 116px;
+  max-width: 240px;
+  padding: 0 12px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-button);
+  background: var(--color-card);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.timetable-select__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timetable-select .icon {
+  margin-left: auto;
+  color: var(--color-ink-2);
+}
+
+.days {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  padding-right: var(--space-1);
+}
+
+.day {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-2);
+  color: var(--color-ink);
+}
+
+.day--none {
+  border: 2px dashed var(--color-line);
+  color: var(--color-ink-2);
+}
+
+/* 선택 표시: 글자 색 3px 테두리를 3px 띄워 그린다. 초점은 box-shadow로 안쪽에 와서 둘이 겹쳐도 안쪽이 초점이다 */
+.day--selected,
+.timetable-option[aria-current='true'] {
+  outline: var(--focus-ring) solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+/* 시간표 선택 창의 목록: 줄 위로 다섯 줄 반(293)이 보여 여섯째 줄이 반쯤 보인다.
+   스크롤 영역에 잘리지 않게 선택 테두리(3px 두께 + 3px 간격)가 들어갈 여백 8을 위아래 양옆에 둔다 */
+.timetable-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: calc(293px + var(--space-2));
+  overflow-y: auto;
+  padding: var(--space-2);
+  margin: calc(-1 * var(--space-2));
+}
+
+.timetable-option {
+  min-height: 46px;
+  flex: none;
+  padding: 0 14px;
+  border-radius: var(--radius-button);
+  background: var(--color-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.timetable-option__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timetable-option--editing {
+  flex-wrap: wrap;
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.timetable-option__input {
+  flex: 1;
+}
+
+.timetable-option--new {
+  background: none;
+  border: 2px dashed var(--color-line);
+  color: var(--color-ink-2);
+  justify-content: center;
+}
+
+.field-error {
+  flex-basis: 100%;
+  color: var(--color-red);
+  font-size: var(--font-size-2);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}

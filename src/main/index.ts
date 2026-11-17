@@ -1,7 +1,16 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
+import { randomUUID } from 'node:crypto';
 import type { Data } from '../shared/data';
+import {
+  assignWeekday,
+  createTimetable,
+  deleteTimetable,
+  renameTimetable,
+  restoreTimetable,
+  type RemovedTimetable,
+} from '../shared/timetable-ops';
 import { openBellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
@@ -45,7 +54,7 @@ function powerKeepAwake(): SchedulerParts['keepAwake'] {
 }
 
 /** 왼쪽 세로 줄과 네 화면이 있는 앱 창을 만든다. */
-function createMainWindow(save: (change: (data: Data) => Data) => void): BrowserWindow {
+function createMainWindow(save: (change: (data: Data) => Data, options?: { quiet: boolean }) => void): BrowserWindow {
   /** 앱 창. */
   const win = new BrowserWindow({
     // 크기는 제목 표시줄을 뺀 내용 영역 기준이다. 디자인 시안이 920×580의 내용 영역으로 그려졌다
@@ -80,7 +89,8 @@ function createMainWindow(save: (change: (data: Data) => Data) => void): Browser
     clearTimeout(saveTimer);
     if (win.isDestroyed()) return;
     const bounds = win.getNormalBounds();
-    save((d) => ({ ...d, window: bounds }));
+    // 창 자리 저장이 실패해도 알림은 띄우지 않는다. 창을 끌 때마다 알림이 쌓이기 때문이다
+    save((d) => ({ ...d, window: bounds }), { quiet: true });
   };
   const saveBoundsLater = (): void => {
     clearTimeout(saveTimer);
@@ -108,12 +118,17 @@ function createMainWindow(save: (change: (data: Data) => Data) => void): Browser
 }
 
 void app.whenReady().then(() => {
+  /** 이번 실행에서 지운 시간표. 알림의 "되돌리기"가 id로 찾아 되살린다. */
+  const removedTimetables = new Map<string, RemovedTimetable>();
+
   /** 렌더러와 상태를 주고받는 손잡이. */
   const hub = openBridge(
     {
       appVersion: app.getVersion(),
-      storage: { saveFailed: false, freshStart: loaded.startedFresh },
+      storage: { saveFailed: false, freshStart: loaded.startedFresh, saveFailures: 0 },
       settings: storage.get().settings,
+      timetables: storage.get().timetables,
+      weekdays: storage.get().weekdays,
       bellRinging: false,
     },
     (command) => {
@@ -121,21 +136,57 @@ void app.whenReady().then(() => {
         case 'set-keep-screen-on':
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
           break;
+        case 'create-timetable':
+          save((d) => createTimetable(d, randomUUID(), command.assignTo));
+          break;
+        case 'rename-timetable':
+          save((d) => renameTimetable(d, command.id, command.name));
+          break;
+        case 'delete-timetable':
+          save((d) => {
+            const result = deleteTimetable(d, command.id);
+            if (result.removed) removedTimetables.set(command.id, result.removed);
+            return result.data;
+          });
+          break;
+        case 'restore-timetable': {
+          const removed = removedTimetables.get(command.id);
+          if (!removed) break;
+          removedTimetables.delete(command.id);
+          save((d) => restoreTimetable(d, removed));
+          break;
+        }
+        case 'assign-weekday':
+          save((d) => assignWeekday(d, command.day, command.timetableId));
+          break;
+        case 'ack-fresh-start':
+          hub.update({ storage: { ...hub.get().storage, freshStart: false } });
+          break;
       }
     },
   );
+
 
   /** 종 스케줄러. 숨긴 재생기 창과 함께 앱 창 다음에 만들어, 그 전의 저장은 판정을 부르지 않는다. */
   let scheduler: Scheduler | null = null;
 
   /** 저장된 값을 바꾸고 파일에 쓴 뒤, 화면 쪽 상태와 스케줄러에 알린다. */
-  function save(change: (data: Data) => Data): void {
+  function save(change: (data: Data) => Data, options?: { quiet: boolean }): void {
     /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
     const saveFailed = !storage.update(change).ok;
-    /** 바뀐 뒤의 설정. */
-    const { settings } = storage.get();
-    if (hub.get().storage.saveFailed !== saveFailed || hub.get().settings !== settings) {
-      hub.update({ storage: { ...hub.get().storage, saveFailed }, settings });
+    /** 바뀐 뒤의 데이터. */
+    const { settings, timetables, weekdays } = storage.get();
+    /** 화면 쪽에 알릴 저장 상태. quiet이면 실패를 세지 않아 화면이 알림을 띄우지 않는다. */
+    const notice = hub.get().storage;
+    const failures = saveFailed && !options?.quiet ? notice.saveFailures + 1 : notice.saveFailures;
+    if (
+      notice.saveFailed !== saveFailed ||
+      notice.saveFailures !== failures ||
+      hub.get().settings !== settings ||
+      hub.get().timetables !== timetables ||
+      hub.get().weekdays !== weekdays
+    ) {
+      hub.update({ storage: { ...notice, saveFailed, saveFailures: failures }, settings, timetables, weekdays });
     }
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();

@@ -90,8 +90,10 @@ test('렌더러는 Node에 닿지 않고 상태 구독과 명령 두 통로만 �
   const version = await app.evaluate(({ app }) => app.getVersion());
   expect(state).toEqual({
     appVersion: version,
-    storage: { saveFailed: false, freshStart: false },
+    storage: { saveFailed: false, freshStart: false, saveFailures: 0 },
     settings: emptyData().settings,
+    timetables: [],
+    weekdays: emptyData().weekdays,
     bellRinging: false,
   });
 
