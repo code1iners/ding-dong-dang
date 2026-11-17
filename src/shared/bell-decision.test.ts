@@ -220,9 +220,14 @@ describe('현황', () => {
       kind: 'in-class',
       periodNumber: 1,
       periodCount: 4,
+      periodsDone: 0,
       nextBell: { kind: 'end', at: at('월 09:50:00') },
       segment: { start: at('월 09:00:00'), end: at('월 09:50:00') },
     });
+  });
+
+  it('이어지는 수업의 두 번째 교시 중에는 끝난 교시가 하나다', () => {
+    expect(decide('월 10:29:59', '월 10:30:00').status.periodsDone).toBe(1);
   });
 
   it('이어지는 수업 중에는 다음 종이 끝종이 아니라 다음 수업의 시작종이다', () => {
@@ -238,6 +243,7 @@ describe('현황', () => {
       kind: 'break',
       periodNumber: null,
       periodCount: 4,
+      periodsDone: 3,
       nextBell: { kind: 'start', at: at('월 13:00:00') },
       segment: { start: at('월 11:40:00'), end: at('월 13:00:00') },
     });
@@ -249,6 +255,7 @@ describe('현황', () => {
       kind: 'before-first',
       periodNumber: null,
       periodCount: 4,
+      periodsDone: 0,
       nextBell: { kind: 'start', at: at('월 09:00:00') },
       segment: null,
     });
@@ -256,12 +263,26 @@ describe('현황', () => {
 
   it('마지막 수업 뒤: 다음 종도 고리 구간도 없다', () => {
     const { status } = decide('월 18:00:00', '월 18:00:01');
-    expect(status).toEqual({ kind: 'after-last', periodNumber: null, periodCount: 4, nextBell: null, segment: null });
+    expect(status).toEqual({
+      kind: 'after-last',
+      periodNumber: null,
+      periodCount: 4,
+      periodsDone: 4,
+      nextBell: null,
+      segment: null,
+    });
   });
 
   it('수업 없는 날: 교시 수 0에 다음 종이 없다', () => {
     const { status } = decide('목 12:00:00', '목 12:00:01');
-    expect(status).toEqual({ kind: 'no-class-day', periodNumber: null, periodCount: 0, nextBell: null, segment: null });
+    expect(status).toEqual({
+      kind: 'no-class-day',
+      periodNumber: null,
+      periodCount: 0,
+      periodsDone: 0,
+      nextBell: null,
+      segment: null,
+    });
   });
 
   it('시간표가 하나도 없으면 요일 배정이 있어도 시간표 없음이고 종이 없다', () => {

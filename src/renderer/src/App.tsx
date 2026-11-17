@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Rail } from './Rail';
 import { SCREENS, type ScreenId } from './screens';
 import { SettingsScreen } from './SettingsScreen';
+import { StatusScreen } from './StatusScreen';
 import { TimetableScreen, type LeaveGuard } from './TimetableScreen';
 import { ToastStack, useToasts } from './Toasts';
 import { useAppState } from './useAppState';
@@ -80,6 +81,7 @@ export function App() {
       <Rail current={screen} onSelect={(next) => next !== screen && leave(() => setScreen(next))} />
       {/* 화면 제목은 보이지 않게 두고(DESIGN.md "글"), 화면 읽기용 이름만 붙인다. 비어 있는 화면은 화면 티켓에서 채운다 */}
       <main className="screen" aria-label={name}>
+        {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
         {screen === 'timetable' && state && (
           <TimetableScreen
             timetables={state.timetables}

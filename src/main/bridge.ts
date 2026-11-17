@@ -42,6 +42,8 @@ export function parseCommand(raw: unknown): Command | null {
   switch (value.type) {
     case 'set-keep-screen-on':
       return typeof value.on === 'boolean' ? { type: 'set-keep-screen-on', on: value.on } : null;
+    case 'set-bells-off':
+      return typeof value.off === 'boolean' ? { type: 'set-bells-off', off: value.off } : null;
     case 'create-timetable':
       if (value.assignTo === undefined) return { type: 'create-timetable' };
       return isWeekday(value.assignTo) ? { type: 'create-timetable', assignTo: value.assignTo } : null;

@@ -42,6 +42,9 @@ button {
 
 /* 왼쪽 세로 줄: 현황 · 시간표 · 종은 위에서부터, 설정은 맨 아래 */
 .rail {
+  /* 현황 화면이 창 가운데에 맞추려고 세로 줄 아래로 넓어지므로, 줄이 클릭을 받도록 위에 둔다 */
+  position: relative;
+  z-index: 1;
   width: var(--rail-width);
   flex: none;
   padding: var(--space-4);
@@ -723,4 +726,134 @@ button {
   width: 20px;
   height: 20px;
   flex: none;
+}
+
+/* 현황: 고리와 남은 시간이 창 가운데에 온다. 왼쪽 세로 줄의 폭만큼 당겨 창 전체의 가운데에 맞춘다 */
+.status {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin-left: calc(-1 * var(--rail-width));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.status__switch {
+  position: absolute;
+  top: 0;
+  right: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-2);
+}
+
+.ring {
+  width: 290px;
+  height: 290px;
+  flex: none;
+}
+
+.ring__disc {
+  fill: var(--color-card);
+}
+
+.ring__track {
+  fill: none;
+  stroke: var(--color-soft);
+}
+
+/* 남은 시간: 숫자는 0.62em, 쌍점은 0.3em 칸에 넣는다 */
+.status__time {
+  font-size: var(--font-size-6);
+  line-height: 1;
+  margin-top: var(--space-2);
+  display: flex;
+}
+
+.digits {
+  display: flex;
+}
+
+.digits__digit,
+.digits__colon {
+  display: inline-block;
+  text-align: center;
+}
+
+.digits__digit {
+  width: var(--digit-width);
+}
+
+.digits__colon {
+  width: var(--colon-width);
+}
+
+.status__message {
+  font-size: var(--font-size-5);
+  margin-top: var(--space-3);
+}
+
+.status__caption {
+  font-size: var(--font-size-3);
+}
+
+.status .button {
+  margin-top: var(--space-3);
+}
+
+/* 발바닥 도장은 모양으로 구분한다: 지난 교시는 채움, 지금 교시는 크고 밑점, 남은 교시는 테두리만 */
+.paws {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  margin-top: var(--space-3);
+  align-items: flex-end;
+  height: 46px;
+}
+
+.paw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-line-on-bg);
+}
+
+.paw svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.paw--done {
+  color: var(--color-stamp);
+}
+
+.paw--done svg {
+  fill: currentColor;
+}
+
+.paw--current {
+  color: var(--color-ink);
+}
+
+.paw--current svg {
+  width: 36px;
+  height: 36px;
+  fill: var(--color-green);
+}
+
+.paw--current::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-ink);
 }

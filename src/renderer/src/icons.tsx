@@ -60,6 +60,7 @@ const ACTION_ICONS = {
     ),
   },
   plus: { width: 3, shape: <path d="M12 5v14M5 12h14" /> },
+  bell: { width: 2.4, shape: PATHS.bells },
   down: { width: 3, shape: <path d="M6 9.5l6 6 6-6" /> },
 } satisfies Record<string, { width: number; shape: ReactNode }>;
 

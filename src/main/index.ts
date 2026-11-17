@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { localDate } from '../shared/bell-decision';
 import { CHANNEL } from '../shared/bridge';
 import type { CommandResult } from '../shared/bridge';
 import type { Data } from '../shared/data';
@@ -146,12 +147,17 @@ void app.whenReady().then(() => {
       settings: storage.get().settings,
       timetables: storage.get().timetables,
       weekdays: storage.get().weekdays,
+      bellsOffDate: storage.get().bellsOffDate,
       bellRinging: false,
     },
     (command): CommandResult | void => {
       switch (command.type) {
         case 'set-keep-screen-on':
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
+          break;
+        case 'set-bells-off':
+          // 끄면 오늘 날짜를 끈 날짜로 저장하고, 저장하면서 스케줄러가 바로 판정해 울리던 종을 멈춘다
+          save((d) => ({ ...d, bellsOffDate: command.off ? localDate(Date.now()) : null }));
           break;
         case 'create-timetable':
           save((d) => createTimetable(d, randomUUID(), command.assignTo));
@@ -204,7 +210,7 @@ void app.whenReady().then(() => {
     /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
     const saveFailed = !storage.update(change).ok;
     /** 바뀐 뒤의 데이터. */
-    const { settings, timetables, weekdays } = storage.get();
+    const { settings, timetables, weekdays, bellsOffDate } = storage.get();
     /** 화면 쪽에 알릴 저장 상태. quiet이면 실패를 세지 않아 화면이 알림을 띄우지 않는다. */
     const notice = hub.get().storage;
     const failures = saveFailed && !options?.quiet ? notice.saveFailures + 1 : notice.saveFailures;
@@ -213,9 +219,16 @@ void app.whenReady().then(() => {
       notice.saveFailures !== failures ||
       hub.get().settings !== settings ||
       hub.get().timetables !== timetables ||
-      hub.get().weekdays !== weekdays
+      hub.get().weekdays !== weekdays ||
+      hub.get().bellsOffDate !== bellsOffDate
     ) {
-      hub.update({ storage: { ...notice, saveFailed, saveFailures: failures }, settings, timetables, weekdays });
+      hub.update({
+        storage: { ...notice, saveFailed, saveFailures: failures },
+        settings,
+        timetables,
+        weekdays,
+        bellsOffDate,
+      });
     }
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();

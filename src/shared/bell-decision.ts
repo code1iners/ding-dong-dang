@@ -12,6 +12,8 @@ export type BellStatus = {
   periodNumber: number | null;
   /** 오늘 시간표의 교시 수. 수업 없는 날과 시간표가 없을 때는 0. */
   periodCount: number;
+  /** 지금까지 끝난 교시 수. 발바닥 도장의 "지난 교시"다. 수업 없는 날과 시간표가 없을 때는 0. */
+  periodsDone: number;
   /** 오늘 남은 종 가운데 가장 가까운 것. 없으면 null. */
   nextBell: { kind: BellKind; at: number } | null;
   /** 고리가 줄어드는 지금 구간(에포크 ms). 수업 중과 쉬는 시간에만 있다. */
@@ -49,10 +51,10 @@ const WEEKDAY_BY_DAY: readonly Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', '
 type Bell = { kind: BellKind; at: number };
 
 /** 종도 구간도 없는 현황 값. 수업 없는 날과 시간표 없음이 같이 쓴다. */
-const NO_LESSONS = { periodNumber: null, periodCount: 0, nextBell: null, segment: null } as const;
+const NO_LESSONS = { periodNumber: null, periodCount: 0, periodsDone: 0, nextBell: null, segment: null } as const;
 
-/** 현지 날짜 'YYYY-MM-DD'. */
-function localDate(at: number): string {
+/** 현지 날짜 'YYYY-MM-DD'. 오늘만 끄기의 끈 날짜와 견주는 형식이다. */
+export function localDate(at: number): string {
   const d = new Date(at);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -129,14 +131,14 @@ function statusAt(input: BellDecisionInput): BellStatus {
   const index = periods.findIndex((p) => p.start <= now && now < p.end);
   const current = periods[index];
   if (current) {
-    return { kind: 'in-class', periodNumber: index + 1, periodCount, nextBell, segment: current };
+    return { kind: 'in-class', periodNumber: index + 1, periodCount, periodsDone: index, nextBell, segment: current };
   }
   if (now < first.start) {
-    return { kind: 'before-first', periodNumber: null, periodCount, nextBell, segment: null };
+    return { kind: 'before-first', periodNumber: null, periodCount, periodsDone: 0, nextBell, segment: null };
   }
   const last = periods.reduce((latestEnd, p) => Math.max(latestEnd, p.end), 0);
   if (now >= last) {
-    return { kind: 'after-last', periodNumber: null, periodCount, nextBell: null, segment: null };
+    return { kind: 'after-last', periodNumber: null, periodCount, periodsDone: periodCount, nextBell: null, segment: null };
   }
   // 수업 시간 사이: 방금 끝난 수업의 끝부터 다음 수업의 시작까지가 쉬는 시간이다
   const previousEnd = Math.max(...periods.filter((p) => p.end <= now).map((p) => p.end));
@@ -145,6 +147,7 @@ function statusAt(input: BellDecisionInput): BellStatus {
     kind: 'break',
     periodNumber: null,
     periodCount,
+    periodsDone: periods.filter((p) => p.end <= now).length,
     nextBell,
     segment: { start: previousEnd, end: nextStart },
   };

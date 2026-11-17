@@ -17,6 +17,8 @@ export type AppState = {
   timetables: Timetable[];
   /** 요일별로 배정한 시간표 id. 배정이 없으면 null. 저장된 값과 같다. */
   weekdays: Record<Weekday, string | null>;
+  /** 오늘만 끄기를 켠 현지 날짜 'YYYY-MM-DD'. 없으면 null. 오늘 날짜와 같을 때만 꺼진 것이다. 저장된 값과 같다. */
+  bellsOffDate: string | null;
   /** 지금 종이 울리는 중인지. 숨긴 창의 재생이 끝나거나 멈추면 false가 된다. */
   bellRinging: boolean;
 };
@@ -35,6 +37,8 @@ export type StorageNotice = {
 export type Command =
   /** "수업 중 화면 켜 두기"를 켜거나 끈다. */
   | { type: 'set-keep-screen-on'; on: boolean }
+  /** "오늘 종" 스위치. `off`면 오늘 날짜를 끈 날짜로 저장해 울리던 종도 멈추고, 아니면 끈 날짜를 푼다. */
+  | { type: 'set-bells-off'; off: boolean }
   /** 새 시간표를 만든다. `assignTo`를 주면 그 요일에 바로 배정한다. */
   | { type: 'create-timetable'; assignTo?: Weekday }
   /** 시간표 이름을 바꾼다. 비게 되는 이름은 거절한다. */
