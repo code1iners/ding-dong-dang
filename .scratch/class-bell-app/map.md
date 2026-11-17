@@ -48,6 +48,7 @@ Label: wayfinder:map
 - [서명 없는 앱의 앱 내 업데이트 가능성 조사](issues/25-unsigned-in-app-update.md): Windows는 서명 없이도 electron-updater로 내려받아 설치하고 다시 실행할 수 있다(실기기 미확인). macOS는 기본 ad-hoc 서명으로는 자동 설치가 안 되고, 앱이 dmg를 내려받아 열어 주는 방식이 안전하다. GitHub Releases는 공개 저장소여야 하고 최신 파일을 가리키는 고정 주소를 쓸 수 있다.
 - [내려받기 페이지 레퍼런스와 제공 경로 조사](issues/26-download-page-references.md): 경로 후보 넷 중 추천은 학원 사이트의 `/app/`이고, 노출은 경로 이름이 아니라 메뉴 링크와 `noindex`로 정해진다. 버튼은 GitHub Releases의 고정 주소를 평범한 링크로 가리킨다. 학원 사이트는 별도 저장소이고 새 페이지를 더할 때의 제약(빌드 플러그인, 테스트, 파일 25 MiB 한도)을 얻었다.
 - [배포와 설치 방식 결정](issues/11-distribution-decision.md): Windows는 NSIS 원클릭 설치, Mac은 Apple Silicon 전용 dmg이고 개발 Mac에서 명령 하나로 공개 GitHub 저장소에 릴리스한다. 학원 사이트의 "앱 다운로드" 영역에서 내려받고 설치 안내는 README의 영상과 글 절차로 한다. 설정 화면에서 확인 모달을 거쳐 업데이트하고 다시 실행하며 업데이트 진위는 Ed25519로 검증한다.
+- [종소리 청취 시안과 음원 확정](issues/16-bell-sound-selection.md): 내장 음원은 직접 합성한 여섯 짝이고 음색은 부드러운 차임이다. 기본값은 웨스트민스터 차임(시작종 앞 2소절, 끝종 뒤 2소절)이다. 파일 음원 후보는 모두 쓰지 않아 출처 표기가 필요 없다.
 
 ## Not yet specified
 

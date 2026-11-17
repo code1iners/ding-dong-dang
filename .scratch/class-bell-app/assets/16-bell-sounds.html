@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>딩동댕 종소리 청취 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff8ee; --surface:#ffffff; --line:#ead9c2; --text:#3a2a1c; --muted:#7a6753;
+  --accent:#e8743b; --accent-text:#ffffff; --start:#2f7d5b; --end:#8a5a2b; --warn:#b3261e; --warn-bg:#fdecea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding-bottom:190px}
+main{max-width:920px;margin:0 auto;padding:24px 16px}
+h1{font-family:Jua,sans-serif;font-weight:400;font-size:28px;margin:0 0 8px}
+h2{font-family:Jua,sans-serif;font-weight:400;font-size:21px;margin:32px 0 4px}
+p{margin:4px 0 12px}
+.muted{color:var(--muted)}
+.howto{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:12px 0}
+.howto ol{margin:0;padding-left:20px}
+.tools{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin:16px 0}
+.tools label{font-weight:600}
+select,button{font:inherit;color:inherit}
+select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:8px 0;display:grid;grid-template-columns:1fr auto;gap:8px 16px}
+.row h3{margin:0;font-size:16px}
+.row h3 .id{display:inline-block;min-width:34px;font-family:Jua,sans-serif;font-weight:400;color:var(--accent)}
+.meta{font-size:13px;color:var(--muted);margin:2px 0 0}
+.meta a{color:inherit}
+.caution{display:inline-block;font-size:12.5px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:1px 6px;margin-top:4px}
+.plays{display:flex;flex-wrap:wrap;gap:8px;grid-column:1/-1}
+.play{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:40px}
+.play:hover{border-color:var(--accent)}
+.play:focus-visible,select:focus-visible,input:focus-visible,.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.play .ico{width:14px;text-align:center}
+.play .kind{font-weight:700}
+.play.start .kind{color:var(--start)} .play.end .kind{color:var(--end)}
+.play .len{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.play.on{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.play.on .kind,.play.on .len{color:var(--accent-text)}
+.pick{display:flex;flex-direction:column;gap:4px;font-size:13.5px;white-space:nowrap}
+.pick label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.refs{font-size:14px;margin:8px 0 0;padding-left:20px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px}
+.bar .in{max-width:920px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.bar pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:130px;overflow:auto}
+.copy{border:0;background:var(--accent);color:var(--accent-text);border-radius:8px;padding:8px 14px;cursor:pointer}
+.stop{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer}
+@media (max-width:600px){.row{grid-template-columns:1fr}.pick{flex-direction:row;flex-wrap:wrap;gap:4px 16px}.bar .in{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>딩동댕 종소리 청취 시안</h1>
+<p class="muted">v1에 내장할 시작종 · 끝종을 듣고 고르기 위한 시안입니다. 버리는 시안이라 앱 화면과는 무관합니다.</p>
+
+<div class="howto">
+<ol>
+<li>줄마다 <b>시작종</b>과 <b>끝종</b> 버튼을 눌러 듣습니다. 다시 누르면 멈춥니다.</li>
+<li>처음 설치했을 때의 기본값으로 쓸 짝 한 줄에 <b>기본값</b>을, 음원 목록에 함께 넣고 싶은 줄에 <b>목록에 넣기</b>를 고릅니다.</li>
+<li>화면 아래에 모인 선택 내용을 복사해 답으로 붙여 주세요. 줄 번호(A1, B2 …)로 말해 주셔도 됩니다.</li>
+</ol>
+</div>
+<p class="muted">모두 이 페이지가 그 자리에서 만들어 내는 소리이고 음색을 바꿔 들을 수 있습니다. 실제로는 PC 스피커 음량으로 들어 보세요.</p>
+
+<div class="tools">
+  <span><label for="timbre">직접 합성 음색</label>
+  <select id="timbre">
+    <option value="chime">부드러운 차임</option>
+    <option value="box">오르골</option>
+    <option value="chip">옛 학교 종(멜로디 칩풍)</option>
+  </select></span>
+  <button class="stop" id="stopAll" type="button">■ 모두 멈춤</button>
+</div>
+
+<div id="groups"></div>
+</main>
+
+<div class="bar"><div class="in">
+  <pre id="summary" aria-live="polite"></pre>
+  <button class="copy" id="copy" type="button">선택 내용 복사</button>
+</div></div>
+
+<script>
+// 길이(초). 파일 음원은 ffprobe로 잰 값, 합성은 아래 악보에서 계산한다.
+const LEN={"a1-end":5.8,"a1-start":5.8,"a2":5.0,"a3":4.7,"b1-end":2.4,"b1-start":2.4,"b2":4.5,"b3":4.4,"c1":2.9,"c2":3.0,"c3":4.7,"c4-a":2.4,"c4-b":2.3,"c4-c":3.6,"d1-end":2.1,"d1-start":2.5,"d2-end":2.6,"d2-start":4.8,"d3":1.8,"e1":7.0,"e2":4.0,"e3":1.3};
+
+// 합성 악보: [음이름 또는 null(쉼), 길이(박)] 의 목록과 한 박의 초.
+const W=(a,b,c,d)=>[[a,1],[b,1],[c,1],[d,2]];
+const WEST=[W('F4','A4','G4','C4'),W('F4','G4','A4','F4'),W('A4','F4','G4','C4'),W('C4','G4','A4','F4')];
+const T=1/3;
+const SCORES={
+  'west-long':{beat:.7,notes:[...WEST[0],...WEST[1]]},
+  'west-short':{beat:.7,notes:[...WEST[2],...WEST[3]]},
+  'up4':{beat:.45,notes:[['C5',1],['E5',1],['G5',1],['C6',3]]},
+  'down4':{beat:.45,notes:[['C6',1],['G5',1],['E5',1],['C5',3]]},
+  'usb-in':{beat:.13,notes:[['E5',1],['B5',2]]},
+  'usb-out':{beat:.13,notes:[['B5',1],['E5',2]]},
+  // 5음 음계(솔라도레미)
+  'penta-up':{beat:.38,notes:[['G4',1],['A4',1],['C5',1],['D5',1],['E5',3]]},
+  'penta-down':{beat:.38,notes:[['E5',1],['D5',1],['C5',1],['A4',1],['G4',3]]},
+  'harp-up':{beat:.1,notes:[['C5',1],['E5',1],['G5',1],['C6',1],['E6',1],['G6',6]]},
+  'harp-down':{beat:.1,notes:[['G6',1],['E6',1],['C6',1],['G5',1],['E5',1],['C5',6]]},
+  // 화음 세 번. 시작종은 열린 화음으로 끝나고 끝종은 으뜸화음으로 내려와 맺는다.
+  'chord-up':{beat:.75,gain:.45,notes:[['C4+E4+G4',1],['F4+A4+C5',1],['G4+B4+D5',2.5]]},
+  'chord-down':{beat:.75,gain:.45,notes:[['G4+B4+D5',1],['F4+A4+C5',1],['C4+E4+G4+C5',2.5]]},
+  'up3':{beat:.55,notes:[['C5',1],['E5',1],['G5',3]]},
+  'down3':{beat:.55,notes:[['G5',1],['E5',1],['C5',3]]},
+  // 소녀의 기도 주제 4마디. 위키미디어 공용의 퍼블릭 도메인 MIDI(A Maiden's Prayer.mid)에서 주선율만 옮겼다.
+  'maiden':{beat:.74,octave:-1,gain:.5,notes:[[null,T],['Bb4',T],['Eb5',T],['G5',T],['Bb5',T],['Eb6',T],['G6',1.5],['F6',.5],
+    ['F6',.75],['Eb6',.25],['Eb6',T],['D6',T],['C6',T],['C6',2],
+    [null,T],['D4',T],['F4',T],['Bb4',T],['D5',T],['F5',T],['D6',1.5],['C6',.5],
+    ['C6',.75],['Bb5',.25],['Bb5',T],['Ab5',T],['G5',T],['G5',3]]},
+  // 엘리제를 위하여 첫 8마디의 주선율.
+  'elise':{beat:.2,gain:.55,notes:[['E5',1],['D#5',1],['E5',1],['D#5',1],['E5',1],['B4',1],['D5',1],['C5',1],
+    ['A4',2],[null,1],['C4',1],['E4',1],['A4',1],['B4',2],[null,1],['E4',1],['G#4',1],['B4',1],
+    ['C5',2],[null,1],['E4',1],['E5',1],['D#5',1],['E5',1],['D#5',1],['E5',1],['B4',1],['D5',1],['C5',1],
+    ['A4',2],[null,1],['C4',1],['E4',1],['A4',1],['B4',2],[null,1],['E4',1],['C5',1],['B4',1],['A4',6]]},
+};
+const RING=1.6; // 마지막 음이 울리다 사라지는 시간
+for(const k in SCORES){const s=SCORES[k];LEN[k]=Math.round((s.notes.reduce((a,n)=>a+n[1],0)*s.beat+RING)*10)/10;}
+
+const FS='https://freesound.org/people/';
+const GROUPS=[
+ {title:'남은 후보',desc:'A1 · B1은 쓸 만하다고 한 줄이고, U1과 N1~N3은 새로 넣은 줄입니다. 모두 직접 합성이라 출처 표기가 필요 없습니다.',rows:[
+  {id:'A1',name:'웨스트민스터 차임',start:['west-long','앞 2소절'],end:['west-short','뒤 2소절'],meta:'직접 합성 · 멜로디는 1793년 작곡으로 저작권 없음'},
+  {id:'B1',name:'4음 딩동댕동',start:['up4','도미솔도 ↗'],end:['down4','도솔미도 ↘'],meta:'직접 합성'},
+  {id:'U1',name:'USB 꽂는 소리 / 빼는 소리 느낌',start:['usb-in','꽂을 때 ↗'],end:['usb-out','뺄 때 ↘'],meta:'직접 합성 · Windows의 실제 효과음은 Microsoft 저작물이라 내장할 수 없어, 짧게 올라가고 내려가는 두 음으로 비슷한 느낌만 냈습니다'},
+  {id:'N1',name:'5음 음계 차임',start:['penta-up','솔라도레미 ↗'],end:['penta-down','미레도라솔 ↘'],meta:'직접 합성 · 계단처럼 한 음씩 오르내립니다'},
+  {id:'N2',name:'빠른 아르페지오',start:['harp-up','또로롱 ↗'],end:['harp-down','또로롱 ↘'],meta:'직접 합성 · B1과 같은 음을 하프처럼 빠르게 훑습니다'},
+  {id:'N3',name:'화음 차임',start:['chord-up','화음 세 번, 올라가며 열림'],end:['chord-down','화음 세 번, 내려오며 맺음'],meta:'직접 합성 · 한 번에 세 음이 함께 울립니다'},
+ ]},
+];
+
+// ---- 재생 ----
+let ctx=null,master=null,current=null; // current: {btn, stop()}
+const audio=new Audio();
+audio.addEventListener('ended',()=>stopCurrent());
+
+function stopCurrent(){
+  if(!current)return;
+  const c=current;current=null;
+  c.stop();c.btn.classList.remove('on');c.btn.querySelector('.ico').textContent='▶';
+  c.btn.setAttribute('aria-pressed','false');
+}
+function freq(n){
+  const m=/^([A-G])([#b]?)(\d)$/.exec(n);
+  const semi={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0);
+  return 440*Math.pow(2,(semi-9)/12+(+m[3]-4));
+}
+// 음색마다 배음 구성과 감쇠가 다르다. [배음 배수, 크기, 감쇠 시간(초)]
+const TIMBRES={
+  chime:{type:'sine',parts:[[1,1,1.5],[2,.3,1.0],[3,.1,.6],[4.2,.06,.4]]},
+  box:{type:'sine',parts:[[1,1,.7],[3,.22,.35],[6.3,.08,.15]]},
+  chip:{type:'square',parts:[[1,.85,.55]],lowpass:2600},
+};
+function tone(f,t,gain,tb){
+  const nodes=[];
+  for(const [mul,amp,tau] of tb.parts){
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=tb.type;o.frequency.value=f*mul;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(amp*gain,t+.008);
+    g.gain.exponentialRampToValueAtTime(.0005,t+tau*3);
+    let out=g;
+    if(tb.lowpass){const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=tb.lowpass;g.connect(lp);out=lp;}
+    o.connect(g);out.connect(master);
+    o.start(t);o.stop(t+tau*3+.05);nodes.push(o);
+  }
+  return nodes;
+}
+function playSynth(key,btn){
+  if(!ctx){ctx=new AudioContext();const comp=ctx.createDynamicsCompressor();master=ctx.createGain();master.gain.value=.45;master.connect(comp);comp.connect(ctx.destination);}
+  ctx.resume();
+  const s=SCORES[key],tb=TIMBRES[document.getElementById('timbre').value];
+  let t=ctx.currentTime+.05;const nodes=[];
+  for(const [n,b] of s.notes){
+    if(n)for(const one of n.split('+')){const f=freq(one),g=s.gain||1;nodes.push(...tone(f,t,g,tb));if(s.octave)nodes.push(...tone(f*Math.pow(2,s.octave),t,.3*g,tb));}
+    t+=b*s.beat;
+  }
+  const timer=setTimeout(stopCurrent,(t-ctx.currentTime+RING)*1000);
+  current={btn,stop(){clearTimeout(timer);for(const o of nodes){try{o.stop()}catch(e){}}}};
+}
+function playFile(key,btn){
+  audio.src='assets/bells/'+key+'.mp3';audio.currentTime=0;audio.play();
+  current={btn,stop(){audio.pause()}};
+}
+function toggle(key,btn){
+  const same=current&&current.btn===btn;
+  stopCurrent();
+  if(same)return;
+  (SCORES[key]?playSynth:playFile)(key,btn);
+  btn.classList.add('on');btn.querySelector('.ico').textContent='■';btn.setAttribute('aria-pressed','true');
+}
+document.getElementById('stopAll').onclick=stopCurrent;
+document.getElementById('timbre').onchange=()=>{stopCurrent();update();};
+
+// ---- 화면 ----
+function playBtn([key,label],kind){
+  const b=document.createElement('button');
+  b.type='button';b.className='play '+(kind==='시작종'?'start':kind==='끝종'?'end':'');
+  b.setAttribute('aria-pressed','false');
+  b.innerHTML=`<span class="ico">▶</span>${kind?`<span class="kind">${kind}</span>`:''}<span>${label}</span><span class="len">${LEN[key].toFixed(1)}초</span>`;
+  b.onclick=()=>toggle(key,b);
+  return b;
+}
+const root=document.getElementById('groups');
+for(const g of GROUPS){
+  const h=document.createElement('h2');h.textContent=g.title;root.append(h);
+  const p=document.createElement('p');p.className='muted';p.textContent=g.desc;root.append(p);
+  for(const r of g.rows){
+    const d=document.createElement('div');d.className='row';
+    const info=document.createElement('div');
+    info.innerHTML=`<h3><span class="id">${r.id}</span>${r.name}</h3><p class="meta">${r.meta}</p>${r.caution?`<span class="caution">${r.caution}</span>`:''}`;
+    d.append(info);
+    const pick=document.createElement('div');pick.className='pick';
+    if(!g.noPick){
+      pick.innerHTML=(r.start?`<label><input type="radio" name="def" value="${r.id}">기본값</label>`:'')+`<label><input type="checkbox" value="${r.id}">목록에 넣기</label>`;
+    }
+    d.append(pick);
+    const plays=document.createElement('div');plays.className='plays';
+    if(r.start)plays.append(playBtn(r.start,'시작종'),playBtn(r.end,'끝종'));
+    if(r.extra)plays.append(playBtn(r.extra,''));
+    if(r.one)plays.append(playBtn(r.one,''));
+    d.append(plays);root.append(d);
+  }
+  if(g.refs){
+    const n=document.createElement('p');n.className='muted';n.style.marginTop='12px';n.textContent=g.refNote;root.append(n);
+    const ul=document.createElement('ul');ul.className='refs';
+    ul.innerHTML=g.refs.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${t}</a></li>`).join('');root.append(ul);
+  }
+}
+
+// ---- 선택 요약 ----
+const names=Object.fromEntries(GROUPS.flatMap(g=>g.rows.map(r=>[r.id,r.name])));
+function update(){
+  const def=document.querySelector('input[name=def]:checked');
+  const extra=[...document.querySelectorAll('.pick input[type=checkbox]:checked')].map(i=>i.value).filter(v=>!def||v!==def.value);
+  const tb=document.getElementById('timbre').selectedOptions[0].textContent;
+  document.getElementById('summary').textContent=
+    `기본값 짝: ${def?`${def.value} ${names[def.value]}`:'(아직 고르지 않음)'}\n`+
+    `목록에 함께 넣기: ${extra.length?extra.map(v=>`${v} ${names[v]}`).join(', '):'(없음)'}\n`+
+    `직접 합성 음색: ${tb}`;
+}
+root.addEventListener('change',update);update();
+document.getElementById('copy').onclick=async e=>{
+  await navigator.clipboard.writeText(document.getElementById('summary').textContent);
+  e.target.textContent='복사했어요';setTimeout(()=>e.target.textContent='선택 내용 복사',1500);
+};
+</script>
+</body>
+</html>
