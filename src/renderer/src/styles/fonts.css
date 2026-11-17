@@ -1,0 +1,8 @@
+/* Jua(SIL OFL 1.1, assets/fonts/OFL.txt)를 앱에 내장한다. 굵기는 하나뿐이다 */
+@font-face {
+  font-family: 'Jua';
+  src: url('../assets/fonts/Jua-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

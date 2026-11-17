@@ -1,0 +1,101 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-family);
+  font-size: var(--font-size-3);
+  font-weight: 400;
+  overflow: hidden;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.app {
+  display: flex;
+  height: 100%;
+}
+
+/* 왼쪽 세로 줄: 현황 · 시간표 · 종은 위에서부터, 설정은 맨 아래 */
+.rail {
+  width: var(--rail-width);
+  flex: none;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rail-button {
+  --band: var(--color-band);
+  width: var(--rail-button-size);
+  height: var(--rail-button-size);
+  border-radius: var(--radius-rail);
+  background: var(--color-card);
+  box-shadow: 0 var(--band-height) 0 var(--band);
+  color: var(--color-line-on-bg);
+  display: grid;
+  place-items: center;
+}
+
+.rail-button .icon {
+  width: 26px;
+  height: 26px;
+}
+
+.rail-button[aria-current='page'] {
+  --band: var(--color-green-band);
+  background: var(--color-green);
+  color: var(--color-ink);
+}
+
+.rail-button--end {
+  margin-top: auto;
+}
+
+/* 누르면 띠만큼 내려간다 */
+.rail-button:active {
+  transform: translateY(var(--band-height));
+  box-shadow: none;
+}
+
+/* 키보드 초점은 부품에 바로 붙여 그리고 아래 띠까지 감싼다 */
+.rail-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 var(--band-height) 0 var(--band),
+    0 0 0 var(--focus-ring) var(--color-focus),
+    0 var(--band-height) 0 var(--focus-ring) var(--color-focus);
+}
+
+.screen {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-4) var(--space-4) 0;
+  display: flex;
+  gap: var(--space-4);
+}

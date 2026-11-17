@@ -1,0 +1,73 @@
+/* DESIGN.md의 값과, DESIGN.md가 원본으로 가리키는 디자인 계약 시안의 부품 크기를 옮긴 변수.
+   값을 바꿀 때는 DESIGN.md를 먼저 고친다.
+   밝은 화면 하나만 두므로 prefers-color-scheme에 따라 바꾸는 규칙을 두지 않는다. */
+:root {
+  color-scheme: light only;
+
+  /* 색 */
+  --color-bg: #cfe3f8; /* 바탕 */
+  --color-card: #ffffff; /* 카드, 모달, 알림, 입력 칸 */
+  --color-soft: #f1f6fc; /* 옅은 면: 목록 줄, 옅은 단추, 줄 사이 구분선 */
+  --color-ink: #4a4048; /* 글자 */
+  --color-ink-2: #6e636c; /* 보조 글자: 흰 면과 옅은 면 위에서만 */
+  --color-line: #71869f; /* 경계: 입력 칸, 슬라이더, 선택 동그라미의 테두리 */
+  --color-line-on-bg: #5a6e88; /* 바탕 위 경계: 바탕 위의 아이콘과 테두리 */
+  --color-band: #a9c4e4; /* 띠: 흰 단추의 아래 띠, 알림의 테두리 */
+  --color-green: #5ed37a; /* 초록: 수업 · 확인 */
+  --color-green-band: #3fa95c;
+  --color-green-line: #2e8a49;
+  --color-orange: #f2a33c; /* 주황: 쉬는 시간 */
+  --color-stamp: #a9620a; /* 지난 교시의 발바닥 도장 */
+  --color-off: #7c8899; /* 꺼진 스위치 */
+  --color-red: #c0443f; /* 빨강: 오류 · 지우기. 흰 글자는 이 위에만 쓴다 */
+  --color-red-band: #96332f;
+  --color-focus: #1f4fa8; /* 키보드 초점 테두리 */
+  --color-link: #3f6fb5; /* 글자 링크, 모달의 "편집" */
+  --color-locked: #e3e7ec; /* 잠긴 단추 */
+  --color-locked-ink: #6b7480;
+  --color-backdrop: rgba(58, 74, 96, 0.45); /* 모달 뒤를 덮는 면 */
+
+  /* 시간표 색 여덟. 만든 순서대로 배정하고 아홉 번째부터 처음 색을 다시 쓴다 */
+  --timetable-0: #a9adf5;
+  --timetable-1: #7cc8ee;
+  --timetable-2: #f7a1b3;
+  --timetable-3: #c7a6ee;
+  --timetable-4: #6fd0bd;
+  --timetable-5: #eac65a;
+  --timetable-6: #b5d96a;
+  --timetable-7: #e79ad6;
+
+  /* 글자 */
+  --font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-size-1: 15px; /* 표 머리 */
+  --font-size-2: 17px; /* 단추, 보조 글자 */
+  --font-size-3: 20px; /* 본문, 설정 줄 */
+  --font-size-4: 24px; /* 모달 제목 */
+  --font-size-5: 28px; /* 현황의 한 줄 글 */
+  --font-size-6: 72px; /* 남은 시간 */
+  --digit-width: 0.62em; /* 시각 숫자 한 자리의 칸 */
+  --colon-width: 0.3em;
+
+  /* 모서리 */
+  --radius-input: 10px;
+  --radius-button-sm: 12px; /* 작은 단추. DESIGN.md "부품"의 값이다 */
+  --radius-button: 14px; /* 목록 줄과 단추 */
+  --radius-rail: 16px; /* 왼쪽 세로 줄 단추와 알림 */
+  --radius-card: 20px; /* 카드와 모달 */
+  --band-height: 4px; /* 눌리는 것에만 붙는 아래 띠 */
+
+  /* 여백. 모두 4의 배수다 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px; /* 창 가장자리, 카드 사이 */
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* 크기 */
+  --rail-width: 80px;
+  --rail-button-size: 48px;
+  --button-height: 42px;
+  --button-height-sm: 34px;
+  --focus-ring: 3px;
+}
