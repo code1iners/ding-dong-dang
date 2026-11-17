@@ -12,15 +12,15 @@ export type StateHub = {
 };
 
 /** 상태 구독과 명령 두 통로를 연다. 형태가 맞는 명령만 onCommand로 넘기고 나머지는 거절한다. */
-export function openBridge(initial: AppState, onCommand: (command: Command) => CommandResult | void): StateHub {
+export function openBridge(initial: AppState, onCommand: (command: Command) => CommandResult | void | Promise<CommandResult | void>): StateHub {
   /** 지금 앱 상태. */
   let state = initial;
 
   ipcMain.handle(CHANNEL.getState, () => state);
-  ipcMain.handle(CHANNEL.command, (_event, raw: unknown) => {
+  ipcMain.handle(CHANNEL.command, async (_event, raw: unknown) => {
     const command = parseCommand(raw);
     if (!command) throw new Error(`알 수 없는 명령이에요: ${JSON.stringify(raw)}`);
-    return onCommand(command) ?? { ok: true };
+    return (await onCommand(command)) ?? { ok: true };
   });
 
   return {
@@ -68,9 +68,35 @@ export function parseCommand(raw: unknown): Command | null {
       return typeof value.dirty === 'boolean' ? { type: 'set-editing-dirty', dirty: value.dirty } : null;
     case 'close-window':
       return { type: 'close-window' };
+    case 'set-master-volume':
+      return isVolume(value.volume) ? { type: 'set-master-volume', volume: value.volume } : null;
+    case 'set-sound-volume':
+      return typeof value.id === 'string' && isVolume(value.volume)
+        ? { type: 'set-sound-volume', id: value.id, volume: value.volume }
+        : null;
+    case 'set-bell':
+      return (value.kind === 'start' || value.kind === 'end') && typeof value.id === 'string'
+        ? { type: 'set-bell', kind: value.kind, id: value.id }
+        : null;
+    case 'register-sound':
+      return { type: 'register-sound' };
+    case 'rename-sound':
+      return typeof value.id === 'string' && typeof value.name === 'string' && value.name.trim() !== ''
+        ? { type: 'rename-sound', id: value.id, name: value.name }
+        : null;
+    case 'delete-sound':
+    case 'restore-sound':
+    case 'discard-removed-sound':
+    case 'toggle-preview':
+      return typeof value.id === 'string' ? { type: value.type, id: value.id } : null;
     default:
       return null;
   }
+}
+
+/** 0~100 사이의 유한한 수인지. */
+function isVolume(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100;
 }
 
 /** 요일 키인지. */

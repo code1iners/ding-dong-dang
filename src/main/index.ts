@@ -1,11 +1,23 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
+import { app, BrowserWindow, dialog, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { localDate } from '../shared/bell-decision';
 import { CHANNEL } from '../shared/bridge';
-import type { CommandResult } from '../shared/bridge';
+import type { AppState, CommandResult } from '../shared/bridge';
 import type { Data } from '../shared/data';
+import {
+  pruneSounds,
+  registerSound,
+  removeSound,
+  renameSound,
+  restoreSound,
+  setBell,
+  setMasterVolume,
+  setSoundVolume,
+  type RemovedSound,
+} from '../shared/sound-ops';
 import {
   assignWeekday,
   createTimetable,
@@ -16,11 +28,12 @@ import {
   type RemovedTimetable,
 } from '../shared/timetable-ops';
 import { validatePeriods } from '../shared/timetable-validation';
-import { openBellPlayer } from './bell-player';
+import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
 import { DATA_FORMAT } from './data-format';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
+import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
 import { openStorage } from './storage';
 import { usableBounds } from './window-bounds';
 
@@ -42,6 +55,45 @@ const BOUNDS_SAVE_DELAY_MS = 500;
 
 /** 데이터 폴더의 저장소와 시작할 때 읽은 결과. */
 const { storage, loaded } = openStorage(dataDir, DATA_FORMAT);
+
+/** 저장된 값 가운데 화면 쪽 상태에 그대로 실리는 부분. */
+function viewOf(data: Data): Pick<AppState, 'settings' | 'timetables' | 'weekdays' | 'bellsOffDate' | 'sounds' | 'soundVolumes' | 'startBell' | 'endBell' | 'masterVolume'> {
+  const { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume } = data;
+  return { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume };
+}
+
+/** 등록 음원을 복사해 두는 폴더. */
+const soundsDir = join(dataDir, 'sounds');
+
+/** 등록하는 중인(파일을 복사했지만 아직 목록에 넣지 않은) 요청의 수. 이 사이에는 파일 정리를 미룬다. */
+let registrationsInFlight = 0;
+/** 이번 실행에서 지운 등록 음원. 알림의 "되돌리기"가 id로 찾아 되살린다. 복사해 둔 파일은 되돌릴 수 없게 될 때까지 남는다. */
+const removedSounds = new Map<string, RemovedSound>();
+
+/** `sounds/`에서 목록에도, 되돌릴 수 있는 지운 음원에도 없는 파일을 지운다. 등록 중이면 방금 복사한 파일을 지울 수 있어 미룬다. */
+function sweepUnusedSounds(): void {
+  if (registrationsInFlight > 0) return;
+  /** 지우면 안 되는 파일 이름. */
+  const keep = new Set([
+    ...storage.get().sounds.map((s) => s.file),
+    ...[...removedSounds.values()].map((r) => r.sound.file),
+  ]);
+  void sweepSoundFiles(soundsDir, keep);
+}
+
+/**
+ * 시작할 때 등록 음원의 파일이 없으면 알리지 않고 목록에서 뺀다. 쓰이던 자리는 기본 음원이 된다.
+ * 목록에 없는 파일(되돌릴 수 없게 된 지운 음원 등)은 `sounds/`에서 지운다.
+ */
+function dropMissingSounds(): void {
+  /** 파일이 있는 등록 음원 id. */
+  const present = new Set(storage.get().sounds.filter((s) => existsSync(join(soundsDir, s.file))).map((s) => s.id));
+  /** 파일이 없는 음원을 뺀 값. */
+  const pruned = pruneSounds(storage.get(), present);
+  if (pruned !== storage.get()) storage.update(() => pruned);
+  sweepUnusedSounds();
+}
+dropMissingSounds();
 
 /** 잠자기 막기 부품. Electron의 powerSaveBlocker로 막고 푼다. */
 function powerKeepAwake(): SchedulerParts['keepAwake'] {
@@ -134,6 +186,9 @@ function createMainWindow(
 void app.whenReady().then(() => {
   /** 이번 실행에서 지운 시간표. 알림의 "되돌리기"가 id로 찾아 되살린다. */
   const removedTimetables = new Map<string, RemovedTimetable>();
+  /** 숨긴 창의 종 재생기. 앱 창 다음에 만든다. */
+  let bell: BellPlayer | null = null;
+
   /** 화면에 저장하지 않은 수업 시간 편집이 있는지. */
   let editingDirty = false;
   /** 화면이 닫기를 허락해 `close-window`로 닫는 중인지. */
@@ -144,13 +199,11 @@ void app.whenReady().then(() => {
     {
       appVersion: app.getVersion(),
       storage: { saveFailed: false, freshStart: loaded.startedFresh, saveFailures: 0 },
-      settings: storage.get().settings,
-      timetables: storage.get().timetables,
-      weekdays: storage.get().weekdays,
-      bellsOffDate: storage.get().bellsOffDate,
       bellRinging: false,
+      ...viewOf(storage.get()),
+      previewingSound: null,
     },
-    (command): CommandResult | void => {
+    (command): CommandResult | void | Promise<CommandResult | void> => {
       switch (command.type) {
         case 'set-keep-screen-on':
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
@@ -197,10 +250,95 @@ void app.whenReady().then(() => {
           closeApproved = true;
           mainWindow?.close();
           break;
+        case 'set-master-volume':
+          save((d) => setMasterVolume(d, command.volume));
+          break;
+        case 'set-sound-volume':
+          save((d) => setSoundVolume(d, command.id, command.volume));
+          break;
+        case 'set-bell':
+          save((d) => setBell(d, command.kind, command.id));
+          break;
+        case 'register-sound':
+          return registerFromDialog();
+        case 'rename-sound':
+          save((d) => renameSound(d, command.id, command.name));
+          break;
+        case 'delete-sound':
+          // 지우는 음원을 미리 듣는 중이면 멈춘다
+          if (bell?.previewing() === command.id) bell.stopPreview();
+          save((d) => {
+            const result = removeSound(d, command.id);
+            if (result.removed) removedSounds.set(command.id, result.removed);
+            return result.data;
+          });
+          break;
+        case 'restore-sound': {
+          const removed = removedSounds.get(command.id);
+          if (!removed) break;
+          removedSounds.delete(command.id);
+          save((d) => restoreSound(d, removed));
+          break;
+        }
+        case 'discard-removed-sound': {
+          const removed = removedSounds.get(command.id);
+          if (!removed) break;
+          removedSounds.delete(command.id);
+          sweepUnusedSounds();
+          break;
+        }
+        case 'toggle-preview':
+          if (bell?.previewing() === command.id) bell.stopPreview();
+          else bell?.preview(command.id);
+          break;
       }
     },
   );
 
+
+  /** 파일 고르기 창을 열고, 고른 파일을 확인해 종소리로 등록한다. */
+  async function registerFromDialog(): Promise<CommandResult> {
+    /** 파일 고르기 결과. */
+    const picked = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, {
+          title: '종소리 등록',
+          properties: ['openFile'],
+          filters: [{ name: '소리 파일', extensions: [...SOUND_EXTENSIONS] }],
+        })
+      : { canceled: true, filePaths: [] as string[] };
+    const path = picked.filePaths[0];
+    if (picked.canceled || !path || !bell) return { ok: true };
+    /** 확인하고 복사한 결과. 거절이면 이유가 들어 있다. */
+    registrationsInFlight += 1;
+    try {
+      const result = await registerSoundFile({ path, soundsDir, id: randomUUID(), probe: bell.probe });
+      if (!result.ok) return { ok: false, message: result.message };
+      // 저장에 실패하면 앱이 실패 알림을 띄운다. 목록에는 메모리의 값대로 나온다
+      save((d) => registerSound(d, result.sound));
+      return { ok: true, name: result.sound.name };
+    } finally {
+      registrationsInFlight -= 1;
+    }
+  }
+
+  /** 시작할 때 등록 음원을 숨긴 창에 하나씩 확인시켜, 재생할 수 없는 것은 알리지 않고 목록에서 뺀다. */
+  async function dropUnplayableSounds(): Promise<void> {
+    /** 재생할 수 없다고 확인된 음원 id. 확인하지 못한 것(읽기 실패, 재생기 무응답)은 파일 탓이 아니니 둔다. */
+    const unplayable = new Set<string>();
+    for (const sound of storage.get().sounds) {
+      try {
+        if ((await bell!.probe(await readFile(join(soundsDir, sound.file)))).status === 'unplayable') {
+          unplayable.add(sound.id);
+        }
+      } catch {
+        // 읽지 못한 파일은 건드리지 않는다
+      }
+    }
+    if (unplayable.size === 0) return;
+    // 확인하는 사이에 등록한 음원은 건드리지 않는다
+    save((d) => pruneSounds(d, new Set(d.sounds.filter((s) => !unplayable.has(s.id)).map((s) => s.id))), { quiet: true });
+    sweepUnusedSounds();
+  }
 
   /** 종 스케줄러. 숨긴 재생기 창과 함께 앱 창 다음에 만들어, 그 전의 저장은 판정을 부르지 않는다. */
   let scheduler: Scheduler | null = null;
@@ -209,26 +347,17 @@ void app.whenReady().then(() => {
   function save(change: (data: Data) => Data, options?: { quiet: boolean }): boolean {
     /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
     const saveFailed = !storage.update(change).ok;
-    /** 바뀐 뒤의 데이터. */
-    const { settings, timetables, weekdays, bellsOffDate } = storage.get();
+    /** 바뀐 뒤의 화면 쪽 값. */
+    const view = viewOf(storage.get());
     /** 화면 쪽에 알릴 저장 상태. quiet이면 실패를 세지 않아 화면이 알림을 띄우지 않는다. */
     const notice = hub.get().storage;
     const failures = saveFailed && !options?.quiet ? notice.saveFailures + 1 : notice.saveFailures;
     if (
       notice.saveFailed !== saveFailed ||
       notice.saveFailures !== failures ||
-      hub.get().settings !== settings ||
-      hub.get().timetables !== timetables ||
-      hub.get().weekdays !== weekdays ||
-      hub.get().bellsOffDate !== bellsOffDate
+      (Object.keys(view) as (keyof typeof view)[]).some((key) => hub.get()[key] !== view[key])
     ) {
-      hub.update({
-        storage: { ...notice, saveFailed, saveFailures: failures },
-        settings,
-        timetables,
-        weekdays,
-        bellsOffDate,
-      });
+      hub.update({ storage: { ...notice, saveFailed, saveFailures: failures }, ...view });
     }
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();
@@ -251,13 +380,15 @@ void app.whenReady().then(() => {
   // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다
   openMainWindow();
 
-  /** 숨긴 창의 종 재생기. */
-  const bell = openBellPlayer({
+  bell = openBellPlayer({
     read: storage.get,
     builtinDir: join(app.getAppPath(), 'resources/sounds/builtin'),
-    registeredDir: join(dataDir, 'sounds'),
+    registeredDir: soundsDir,
     onRingingChange: (bellRinging) => hub.update({ bellRinging }),
+    onPreviewChange: (previewingSound) => hub.update({ previewingSound }),
   });
+  void dropUnplayableSounds();
+
 
   /** 돌고 있는 스케줄러. 창이 없어도 메인 프로세스에서 1초마다, 그리고 깨어나면 바로 판정한다. */
   const running = startScheduler({

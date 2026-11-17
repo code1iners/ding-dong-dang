@@ -54,7 +54,11 @@ export function useToasts(): ToastApi {
     [dismiss],
   );
 
-  const dismissUndo = useCallback(() => setToasts((all) => all.filter((t) => t.kind !== 'undo')), []);
+  // 되돌리기 알림이 없으면 같은 목록을 돌려줘서, 슬라이더를 끌 때마다 다시 그리지 않게 한다
+  const dismissUndo = useCallback(
+    () => setToasts((all) => (all.some((t) => t.kind === 'undo') ? all.filter((t) => t.kind !== 'undo') : all)),
+    [],
+  );
 
   // 창이 사라질 때 남은 타이머를 거둔다
   useEffect(function clearTimersOnUnmount() {

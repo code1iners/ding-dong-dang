@@ -61,6 +61,8 @@ const ACTION_ICONS = {
   },
   plus: { width: 3, shape: <path d="M12 5v14M5 12h14" /> },
   bell: { width: 2.4, shape: PATHS.bells },
+  play: { width: 2.4, shape: <path d="M8.5 5.5v13l10-6.5z" /> },
+  stop: { width: 2.4, shape: <rect x="6.5" y="6.5" width="11" height="11" rx="2" /> },
   down: { width: 3, shape: <path d="M6 9.5l6 6 6-6" /> },
 } satisfies Record<string, { width: number; shape: ReactNode }>;
 

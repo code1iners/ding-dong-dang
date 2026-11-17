@@ -857,3 +857,173 @@ button {
   border-radius: 50%;
   background: var(--color-ink);
 }
+
+/* 종 화면: 위에 전체 음량과 등록 단추, 아래 목록. 목록만 카드 안에서 스크롤한다 */
+.card--bells {
+  overflow: hidden;
+}
+
+.bell-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+}
+
+.bell-head .slider {
+  width: 150px;
+}
+
+.bell-head__add {
+  margin-left: auto;
+}
+
+/* 목록 줄의 칸: 미리 듣기, 이름, 음량, 시작종, 끝종, 이름 바꾸기와 지우기 */
+.sound-grid {
+  display: grid;
+  grid-template-columns: 40px 1fr 110px 52px 52px 64px;
+  align-items: center;
+  gap: 10px;
+}
+
+.sound-grid--head {
+  flex: none;
+  padding: 0 10px;
+  font-size: var(--font-size-1);
+  color: var(--color-ink-2);
+  text-align: center;
+}
+
+.sound-list {
+  list-style: none;
+  margin: -4px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sound-row {
+  flex: none;
+  min-height: 44px;
+  padding: 5px 10px;
+  border-radius: var(--radius-button);
+  background: var(--color-soft);
+}
+
+.sound-row__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sound-row__rename {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sound-row__actions {
+  margin-left: 0;
+  justify-content: flex-end;
+}
+
+/* 미리 듣기: 흰 원에 아래 띠. 재생 중에는 초록으로 차고 아이콘이 멈춤 모양으로 바뀐다 */
+.play-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: 0 3px 0 var(--color-band);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.play-button[aria-pressed='true'] {
+  background: var(--color-green);
+  box-shadow: 0 3px 0 var(--color-green-band);
+}
+
+.play-button:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.play-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 3px 0 var(--color-band),
+    0 0 0 var(--focus-ring) var(--color-focus),
+    0 3px 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 시작종 · 끝종 선택 동그라미: 지름 26. 고르면 초록으로 차고 체크가 보인다 */
+.pick {
+  width: 26px;
+  height: 26px;
+  margin: auto;
+  border-radius: 50%;
+  border: 3px solid var(--color-line);
+  background: var(--color-card);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: transparent;
+}
+
+.pick[aria-pressed='true'] {
+  border-color: var(--color-green-line);
+  background: var(--color-green);
+  color: var(--color-ink);
+}
+
+.pick:focus-visible {
+  outline: var(--focus-ring) solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* 슬라이더: 길은 흰색에 경계 테두리, 채운 부분은 초록, 손잡이는 지름 24의 흰 원에 경계 테두리.
+   채운 부분은 한 색만 쓰는 선 하나라 그라데이션으로 보이지 않는다 */
+.slider {
+  --fill: 0%;
+  appearance: none;
+  width: 100px;
+  height: 10px;
+  flex: none;
+  border-radius: 5px;
+  border: 2px solid var(--color-line);
+  background:
+    linear-gradient(var(--color-green), var(--color-green)) 0 0 / var(--fill) 100% no-repeat,
+    var(--color-card);
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-line);
+  background: var(--color-card);
+}
+
+.slider:focus-visible {
+  outline: none;
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+.sound-row .field-error {
+  justify-content: flex-start;
+}
+
+.play-button:disabled,
+.pick:disabled {
+  cursor: not-allowed;
+}

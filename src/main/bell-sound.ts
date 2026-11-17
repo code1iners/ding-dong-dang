@@ -28,8 +28,8 @@ export function defaultBellSound(data: Data, kind: BellKind): BellSound {
   return soundOf(data, kind === 'start' ? DEFAULT_START_BELL : DEFAULT_END_BELL) as BellSound;
 }
 
-/** 음원 id가 가리키는 파일과 그 음원의 크기. 내장 음원을 먼저 찾고 없으면 등록 음원에서 찾는다. 목록에 없으면 null. */
-function soundOf(data: Data, id: string): BellSound | null {
+/** 음원 id가 가리키는 파일과 그 음원의 크기. 내장 음원을 먼저 찾고 없으면 등록 음원에서 찾는다. 목록에 없으면 null. 미리 듣기도 이 값으로 실제 종과 같은 크기를 낸다. */
+export function soundOf(data: Data, id: string): BellSound | null {
   /** 그 id의 내장 음원. */
   const builtin = BUILTIN_SOUNDS.find((s) => s.id === id);
   /** 그 id의 등록 음원. 내장 음원이 있으면 찾지 않는다. */

@@ -2,7 +2,8 @@
 // - 상태 구독: 메인이 가진 앱 상태를 받아 보고, 바뀔 때마다 다시 받는다.
 // - 명령: 렌더러가 메인에 일을 시킨다.
 
-import type { Settings, Timetable, Weekday } from './data';
+import type { BellKind } from './bell-decision';
+import type { RegisteredSound, Settings, Timetable, Weekday } from './data';
 import type { Period } from './timetable-validation';
 
 /** 메인이 렌더러에 보내는 앱 상태. 기능 티켓이 필요한 값을 더한다. */
@@ -21,6 +22,18 @@ export type AppState = {
   bellsOffDate: string | null;
   /** 지금 종이 울리는 중인지. 숨긴 창의 재생이 끝나거나 멈추면 false가 된다. */
   bellRinging: boolean;
+  /** 등록한 종소리. 등록한 순서다. 내장 음원 열두 개는 `builtin-sounds.ts`에 고정돼 있어 여기에 없다. 저장된 값과 같다. */
+  sounds: RegisteredSound[];
+  /** 음원 id → 0~100. 없으면 100이다. 저장된 값과 같다. */
+  soundVolumes: Record<string, number>;
+  /** 시작종으로 고른 음원 id. 저장된 값과 같다. */
+  startBell: string;
+  /** 끝종으로 고른 음원 id. 저장된 값과 같다. */
+  endBell: string;
+  /** 전체 음량 0~100. 저장된 값과 같다. */
+  masterVolume: number;
+  /** 지금 미리 듣는 중인 음원 id. 없으면 null. 종이 울리는 것과는 따로다. */
+  previewingSound: string | null;
 };
 
 /** 저장소가 화면에 알리는 사실. */
@@ -56,12 +69,34 @@ export type Command =
   /** 저장하지 않은 수업 시간 편집이 있는지 알린다. 있으면 메인은 창 닫기를 멈추고 렌더러에 묻는다. */
   | { type: 'set-editing-dirty'; dirty: boolean }
   /** 창을 닫는다. 저장하지 않은 편집을 어떻게 할지 정한 뒤에 보낸다. */
-  | { type: 'close-window' };
+  | { type: 'close-window' }
+  /** 전체 음량(0~100). */
+  | { type: 'set-master-volume'; volume: number }
+  /** 음원별 음량(0~100). 내장 음원도 된다. */
+  | { type: 'set-sound-volume'; id: string; volume: number }
+  /** 시작종이나 끝종으로 쓸 음원을 고른다. */
+  | { type: 'set-bell'; kind: BellKind; id: string }
+  /** 파일 고르기 창을 열어 종소리를 등록한다. 결과의 `message`가 있으면 거절한 이유다. 고르지 않고 닫으면 `name` 없이 ok다. */
+  | { type: 'register-sound' }
+  /** 등록한 종소리의 이름을 바꾼다. 비게 되는 이름은 거절한다. */
+  | { type: 'rename-sound'; id: string; name: string }
+  /** 등록한 종소리를 지운다. 파일은 `restore-sound`로 되돌릴 수 있는 동안 남는다. */
+  | { type: 'delete-sound'; id: string }
+  /** 방금 지운 종소리를 선택과 함께 되돌린다. */
+  | { type: 'restore-sound'; id: string }
+  /** 지운 종소리를 더는 되돌릴 수 없게 됐음을 알린다. 복사해 둔 파일을 지운다. */
+  | { type: 'discard-removed-sound'; id: string }
+  /** 음원을 미리 듣는다. 이미 그 음원을 미리 듣는 중이면 멈춘다. 다른 음원이면 앞의 것을 끊는다. */
+  | { type: 'toggle-preview'; id: string };
 
 /** 명령의 결과. 대부분의 명령은 늘 ok다. */
 export type CommandResult = {
   /** 하려던 일이 끝났는지. 저장 명령은 파일에 쓰지 못하면 false다. */
   ok: boolean;
+  /** 거절하거나 실패한 이유. 사용자에게 그대로 보여 줄 문장이다. */
+  message?: string;
+  /** `register-sound`가 등록한 종소리의 이름. */
+  name?: string;
 };
 
 /** preload가 렌더러의 `window.dingdong`으로 내보내는 통로. */

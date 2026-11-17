@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BellScreen, UNDO_SOUND_PREFIX } from './BellScreen';
 import { Rail } from './Rail';
 import { SCREENS, type ScreenId } from './screens';
 import { SettingsScreen } from './SettingsScreen';
@@ -65,6 +66,25 @@ export function App() {
     [saveFailures, notify],
   );
 
+  /** 지금 떠 있는 "종소리를 지웠어요" 알림의 음원 id를 쉼표로 이은 글. 배열 대신 글로 둬야 알림이 바뀌지 않을 때 아래 효과가 다시 돌지 않는다. */
+  const undoSoundIds = toasts.toasts.filter((t) => t.key.startsWith(UNDO_SOUND_PREFIX)).map((t) => t.key.slice(UNDO_SOUND_PREFIX.length)).join(',');
+  /** 직전에 떠 있던 지운 종소리 알림의 음원 id. */
+  const previousUndoSoundIds = useRef('');
+  // 알림이 사라지면 그 종소리는 더 되돌릴 수 없다. 메인이 복사해 둔 파일을 지우게 알린다
+  useEffect(
+    function discardSoundsNoLongerRestorable() {
+      /** 아직 떠 있는 음원 id. */
+      const still = new Set(undoSoundIds.split(',').filter(Boolean));
+      for (const id of previousUndoSoundIds.current.split(',').filter(Boolean)) {
+        if (!still.has(id)) {
+          window.dingdong.command({ type: 'discard-removed-sound', id }).catch((error: unknown) => console.error(error));
+        }
+      }
+      previousUndoSoundIds.current = undoSoundIds;
+    },
+    [undoSoundIds],
+  );
+
   const freshStart = state?.storage.freshStart;
   // 시작할 때 저장된 시간표를 읽지 못했다면 한 번 알린다. 메인에 알렸음을 말해 창을 다시 열어도 반복하지 않게 한다
   useEffect(
@@ -91,6 +111,7 @@ export function App() {
             onDirtyChange={setEditingDirty}
           />
         )}
+        {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
         {screen === 'settings' && state && <SettingsScreen settings={state.settings} />}
       </main>
       <ToastStack toasts={toasts.toasts} dismiss={toasts.dismiss} />

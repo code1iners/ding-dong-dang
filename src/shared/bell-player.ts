@@ -19,6 +19,17 @@ export type PlayerReport = {
   phase: 'playing' | 'ended' | 'stopped' | 'failed';
 };
 
+/** 메인이 재생기에 보내는 파일 확인 요청. 소리는 내지 않는다. */
+export type ProbeRequest = {
+  /** 요청 번호. 재생기가 결과에 그대로 돌려준다. */
+  id: number;
+  /** 확인할 파일의 내용. */
+  bytes: Uint8Array;
+};
+
+/** 파일 확인 결과. 재생할 수 없으면 ok가 false다. */
+export type ProbeResult = { id: number } & ({ ok: true; seconds: number } | { ok: false });
+
 /** 숨긴 창의 preload가 `window.bellPlayer`로 내보내는 통로. */
 export type BellPlayerApi = {
   /** 재생 요청을 받는다. */
@@ -27,6 +38,10 @@ export type BellPlayerApi = {
   onStop(listener: () => void): void;
   /** 재생 상태를 메인에 알린다. */
   report(report: PlayerReport): void;
+  /** 파일 확인 요청을 받는다. */
+  onProbe(listener: (request: ProbeRequest) => void): void;
+  /** 파일 확인 결과를 메인에 알린다. */
+  reportProbe(result: ProbeResult): void;
 };
 
 /** 재생기 통로가 쓰는 IPC 채널 이름. */
@@ -34,4 +49,6 @@ export const BELL_CHANNEL = {
   play: 'bell:play',
   stop: 'bell:stop',
   report: 'bell:report',
+  probe: 'bell:probe',
+  probeResult: 'bell:probe-result',
 } as const;
