@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>딩동댕 디자인 계약 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#2B2F36;color:#E8EAED;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;padding:16px;min-height:100vh}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.pbar{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;max-width:920px;margin:0 auto 8px;font-size:13px}
+.pbar .grp{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.pbar span{color:#9AA3AF;margin-right:2px}
+.pbar button{padding:6px 10px;border-radius:6px;background:#3A404A}
+.pbar button.on{background:#E8EAED;color:#23272E}
+.note{max-width:920px;margin:10px auto 0;font-size:13px;line-height:1.6;color:#B4BBC6}
+.stage{max-width:920px;margin:0 auto;overflow-x:auto}
+.frame{width:920px;height:580px;border-radius:12px;overflow:hidden}
+
+/* 색은 뜻마다 하나다. 글자 4.5:1, 부품의 경계 3:1을 넘는 값만 쓴다 */
+.A{--bg:#CFE3F8;--card:#fff;--soft:#F1F6FC;--edge:#A9C4E4;
+  --ink:#4A4048;--ink2:#6E636C;        /* 보조 글자는 흰 면과 옅은 면 위에서만. 바탕 위는 --ink */
+  --line:#71869F;--line-bg:#5A6E88;    /* 부품의 경계. 바탕 위에서는 --line-bg */
+  --green:#5ED37A;--green-d:#3FA95C;--green-line:#2E8A49;
+  --orange:#F2A33C;--stamp:#A9620A;--off:#7C8899;
+  --red:#C0443F;--red-d:#96332F;--focus:#1F4FA8;
+  --f1:15px;--f2:17px;--f3:20px;--f4:24px;--f5:28px;--f6:72px;
+  height:100%;display:flex;background:var(--bg);font-family:Jua,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:var(--f3);color:var(--ink);position:relative}
+.ic{width:1em;height:1em;flex:none}
+.rail{width:80px;padding:16px;display:flex;flex-direction:column;gap:12px;flex:none}
+.rb{--band:var(--edge);width:48px;height:48px;border-radius:16px;background:#fff;box-shadow:0 4px 0 var(--band);display:grid;place-items:center;color:var(--line-bg);position:relative}
+.rb.on{--band:var(--green-d);background:var(--green);color:var(--ink)}
+.rb.end{margin-top:auto}
+.rb svg{width:26px;height:26px}
+.main{flex:1;padding:16px 24px 16px 0;display:flex;gap:16px;min-width:0}
+.card{flex:1;background:var(--card);border-radius:20px;padding:20px 24px;display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0}
+.card.scroll{overflow-y:auto}
+h2{font-size:var(--f4);font-weight:400}
+.themes{display:flex;gap:12px}
+.th{width:60px;height:60px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex:none}
+.th svg{width:44px;height:44px}
+.sel{outline:3px solid var(--ink);outline-offset:3px}
+.th.sel{background:#fff}
+.row{display:flex;align-items:center;gap:12px;border-top:2px solid var(--soft);padding-top:12px;min-height:46px;flex:none}
+.row .r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tg{width:46px;height:26px;border-radius:13px;background:var(--green);box-shadow:inset 0 0 0 2px var(--green-line);position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:4px;left:24px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px var(--green-line)}
+.tg.off{background:var(--off);box-shadow:none}.tg.off::after{left:4px;box-shadow:none}
+.sub{color:var(--ink2);font-size:var(--f2)}
+.err{color:var(--red);font-size:var(--f2);display:flex;gap:6px;align-items:center}
+.link{color:#3F6FB5;font-size:var(--f2);text-decoration:underline;text-underline-offset:3px}
+.btn{height:42px;padding:0 18px;border-radius:14px;--band:var(--green-d);background:var(--green);box-shadow:0 4px 0 var(--band);color:var(--ink);font-size:var(--f2);white-space:nowrap;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.ghost{--band:#C3D3E6;background:var(--soft)}
+.btn.red{--band:var(--red-d);background:var(--red);color:#fff}
+.btn.lock{--band:#CDD3DA;background:#E3E7EC;color:#6B7480;cursor:not-allowed}
+.btn.down{transform:translateY(3px);box-shadow:0 1px 0 var(--green-d)}
+.btn.sm{height:34px;padding:0 14px;border-radius:12px}
+/* 초점 테두리는 파랑이고 부품에 바로 붙는다. 아래 띠가 있는 단추는 띠까지 감싼다.
+   선택 테두리(짙은 색)는 3px 띄우므로 둘이 겹치면 파랑 바깥에 짙은 테두리가 온다 */
+.focus{box-shadow:0 0 0 3px var(--focus)}
+.btn.focus,.rb.focus{box-shadow:0 4px 0 var(--band),0 0 0 3px var(--focus),0 4px 0 3px var(--focus)}
+.sl{width:150px;height:10px;border-radius:5px;background:#fff;box-shadow:inset 0 0 0 2px var(--line);position:relative;flex:none}
+.sl i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--green);box-shadow:inset 0 0 0 2px var(--green-line)}
+.sl b{position:absolute;top:-7px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px var(--line);margin-left:-12px}
+.sl.w{width:100px}
+.dim{position:absolute;inset:0;background:rgba(58,74,96,.45);display:grid;place-items:center;z-index:5}
+.modal{width:380px;background:#fff;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.modal p{font-size:var(--f2);color:var(--ink2);line-height:1.45}
+.modal .acts{display:flex;gap:10px;width:100%;margin-top:4px}
+.modal .acts .btn{flex:1;padding:0 8px}
+.dog{width:72px;height:72px}
+/* 알림은 눌리는 것이 아니라서 단추의 아래 띠를 쓰지 않는다 */
+.toast{position:absolute;left:50%;top:20px;transform:translateX(-50%);max-width:560px;background:#fff;border-radius:16px;border:2px solid var(--edge);padding:10px 12px 10px 14px;font-size:var(--f2);line-height:1.4;display:flex;gap:10px;align-items:center;z-index:6}
+.toast .mk{width:24px;height:24px;border-radius:50%;background:var(--green);display:grid;place-items:center;flex:none;font-size:14px}
+.toast.bad .mk{background:var(--red);color:#fff}
+.toast .x{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--ink2);flex:none;font-size:14px}
+.menu{position:absolute;right:24px;bottom:16px;width:230px;background:#F3F3F3;border:1px solid #C9C9C9;border-radius:8px;padding:4px;font:13px system-ui,"Apple SD Gothic Neo",sans-serif;color:#1B1B1B;z-index:6}
+.menu div{padding:7px 10px 7px 30px;border-radius:4px;position:relative}
+.menu div.ck::before{content:"✓";position:absolute;left:10px}
+.menu hr{border:0;border-top:1px solid #D6D6D6;margin:4px 0}
+
+/* 종 */
+.sh{display:grid;grid-template-columns:40px 1fr 110px 52px 52px 64px;align-items:center;gap:10px}
+.sh.hd{font-size:var(--f1);color:var(--ink2);text-align:center;padding:0 10px}
+.slist{display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0;flex:1;padding:4px;margin:-4px}
+.srow{background:var(--soft);border-radius:14px;padding:5px 10px;flex:none;min-height:44px}
+.play{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 0 #C3D3E6;display:grid;place-items:center;font-size:15px}
+.pick{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);background:#fff;margin:auto;display:grid;place-items:center;font-size:13px;color:transparent}
+.pick.on{border-color:var(--green-line);background:var(--green);color:var(--ink)}
+.acts2{display:flex;gap:4px;justify-content:flex-end;color:var(--ink2)}
+.acts2 button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:17px}
+
+/* 현황 */
+.body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-left:-80px;gap:4px}
+.sw{position:absolute;right:20px;top:16px;display:flex;align-items:center;gap:8px;font-size:var(--f2)}
+.disc{width:290px;height:290px}
+.time{font-size:var(--f6);line-height:1;margin-top:6px;display:flex}
+.time b,.tin b{font-weight:400;display:inline-block;width:.62em;text-align:center}
+.time i,.tin i{font-style:normal;display:inline-block;width:.3em;text-align:center}
+.msg{font-size:var(--f5);margin-top:10px}
+.cap{font-size:var(--f3)}
+/* 발바닥 도장은 모양으로 구분한다: 지난 교시는 채움, 지금 교시는 크고 밑점, 남은 교시는 테두리만 */
+.paws{display:flex;gap:10px;margin-top:10px;align-items:flex-end;height:46px}
+.paw{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--line-bg)}
+.paw svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2}
+.paw.done{color:var(--stamp)}.paw.done svg{fill:currentColor}
+.paw.cur{color:var(--ink)}.paw.cur svg{width:36px;height:36px;fill:var(--green)}
+.paw.cur::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink)}
+
+/* 시간표 편집 */
+.gsel{height:44px;min-width:116px;border-radius:14px;border:2px solid var(--line);background:#fff;padding:0 12px;display:flex;align-items:center;gap:8px}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.days{display:flex;gap:6px;margin-left:auto;padding-right:4px}
+.day{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:var(--f2);color:var(--ink)}
+.day.none{border:2px dashed var(--line);color:var(--ink2)}
+.dial{flex:1;min-height:0}
+.trow{background:var(--soft);border-radius:14px;padding:5px 10px;display:flex;align-items:center;gap:10px;flex:none}
+.trow.bad{outline:3px solid var(--red)}
+.num{width:32px;height:32px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:var(--f2);flex:none}
+.tin{width:78px;height:32px;border-radius:10px;border:2px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center}
+.trow .x{margin-left:auto;color:var(--ink2);width:28px;height:28px;display:grid;place-items:center;font-size:14px}
+.foot{margin-top:auto;display:flex;gap:10px;align-items:center;justify-content:flex-end}
+.sheet{width:360px;background:#fff;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.sheet h2{display:flex;align-items:center;margin-bottom:4px}
+.sheet h2 button{margin-left:auto;font-size:var(--f2);color:#3F6FB5;padding:2px 6px}
+/* 다섯 줄 반 높이라 여섯째 줄이 반쯤 보인다 */
+.glist{display:flex;flex-direction:column;gap:8px;max-height:293px;overflow-y:auto;padding:4px;margin:-4px}
+.gopt{height:46px;flex:none;border-radius:14px;background:var(--soft);padding:0 14px;display:flex;align-items:center;gap:10px;text-align:left}
+.gopt.new{background:none;border:2px dashed var(--line);color:var(--ink2);justify-content:center}
+.gopt .acts2{margin-left:auto}
+
+/* 부품 */
+.kit{display:grid;grid-template-columns:150px 1fr;gap:14px 12px;align-items:center;font-size:var(--f2)}
+.kit>span{color:var(--ink2)}
+.kit>div{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.swatch{width:56px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:var(--f1)}
+
+/* 움직임은 OS의 동작 줄이기가 꺼져 있을 때만 */
+@keyframes breath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.96)}}
+@keyframes fade{from{opacity:0}}
+@media (prefers-reduced-motion:no-preference){
+  .A:not(.rm) .alive{transform-box:fill-box;transform-origin:50% 100%;animation:breath 2.6s ease-in-out infinite}
+  .A:not(.rm) .dim,.A:not(.rm) .toast{animation:fade .15s ease-out}
+}
+</style>
+</head>
+<body>
+<div class="pbar"><div class="grp" id="g-sc"></div></div>
+<div class="pbar"><div class="grp" id="g-st"></div></div>
+<div class="pbar"><div class="grp" id="g-rm"></div></div>
+<div class="stage"><div class="frame" id="app"></div></div>
+<p class="note" id="note"></p>
+
+<script>
+const SC={
+  now:['현황',[['class','수업 중'],['break','쉬는 시간'],['before','첫 수업 전'],['after','마지막 수업 뒤'],['none','수업 없는 날'],['empty','처음 실행']]],
+  edit:['시간표',[['base','기본'],['dirty','바꾼 내용 있음'],['err','잘못된 시각'],['leave','저장 안 하고 나갈 때'],['savefail','저장 실패'],['pick','시간표 선택 창 (12개)'],['pickedit','선택 창 편집'],['delask','배정된 시간표 지우기'],['deleted','지운 뒤 되돌리기']]],
+  bell:['종 (A안: 따로 둔 화면)',[['base','기본'],['reject','등록 거절'],['deleted','지운 뒤 되돌리기']]],
+  set:['설정',[['base','기본'],['fail','자동 시작 실패'],['wipe','모든 데이터 지우기'],['withbell','B안: 종소리를 설정에 넣기']]],
+  notice:['알림',[['close','처음 닫을 때'],['broken','읽지 못함'],['updated','업데이트 뒤'],['tray','트레이 메뉴']]],
+  kit:['부품',[['base','단추 · 스위치 · 색 · 글자 크기']]]
+};
+const NOTES={
+  'now.class':'수업 중. 발바닥 도장은 모양으로 구분한다: 지난 교시는 갈색으로 채움, 지금 교시는 크고 밑에 점, 남은 교시는 테두리만. 남은 시간의 숫자는 자리마다 폭이 같아 매초 바뀌어도 흔들리지 않는다.',
+  'now.break':'쉬는 시간. 고리가 주황이고 글이 "시작종까지"로 바뀐다. 지금 교시 표시가 없다.',
+  'now.before':'오늘 첫 수업 전. 고리는 비어 있고 강아지는 졸림, 숫자는 첫 시작종까지 남은 시간이다. 한 시간이 넘으면 "1:12:00"처럼 시간 자리가 붙는다.',
+  'now.after':'오늘 마지막 수업이 끝난 뒤. 숫자 대신 한 줄 글이 나오고 발바닥 도장은 모두 찍혀 있다.',
+  'now.none':'오늘 요일에 배정된 시간표가 없을 때. 발바닥 도장이 없다.',
+  'now.empty':'시간표가 하나도 없을 때(처음 실행). 단추 하나로 시간표 화면으로 보낸다.',
+  'edit.base':'시간표 화면. 요일 동그라미와 시계판의 호는 시간표 색이고 그 위 글자는 모두 짙은 색이다. 시간표 색 여덟은 초록(확인)과 주황(쉬는 시간)을 피해서 골랐다. 색은 보조 단서이고, 요일에 마우스를 올리면 시간표 이름이 뜬다.',
+  'edit.dirty':'시각을 고치면 오른쪽 카드 아래에 "되돌리기"와 "저장"이 나타난다. 바꾼 것이 없으면 두 단추는 없다.',
+  'edit.err':'수업 시간이 겹치거나 끝이 시작보다 이르거나 12시간을 넘을 때. 문제가 있는 줄에 빨간 테두리가 생기고 아래에 느낌표와 이유 한 줄이 나오며 "저장"이 잠긴다.',
+  'edit.leave':'저장하지 않고 다른 화면이나 다른 시간표로 가려 할 때. "계속 편집"으로 돌아갈 수 있고 Esc도 같다. 창을 닫을 때도 같다.',
+  'edit.savefail':'저장 단추에서 저장에 실패했을 때. 편집 화면을 닫지 않고 알림으로 무엇을 하면 되는지 말한다. 실패 알림은 저절로 사라지지 않고 ×로 닫는다.',
+  'edit.pick':'시간표 선택 창. 다섯 줄 반 높이라 여섯째 줄이 반쯤 보여서 아래에 더 있음을 알 수 있다. 선택은 짙은 테두리, 키보드 초점은 파란 테두리다.',
+  'edit.pickedit':'"편집"을 누른 상태. 줄마다 이름 바꾸기와 지우기가 나온다.',
+  'edit.delask':'요일에 배정된 시간표를 지울 때는 대상 이름과 영향받는 요일을 말하는 확인 모달이 뜬다. 기본 초점은 "취소"다.',
+  'edit.deleted':'배정되지 않은 시간표는 바로 지우고 알림에서 되돌릴 수 있다. 되돌리기가 있는 알림은 ×로 닫거나 다른 일을 할 때까지 남는다.',
+  'bell.base':'A안. 왼쪽 세로 줄에 종 단추를 하나 더 두고 화면을 따로 쓴다. 줄마다 미리 듣기, 이름, 음량, 시작종 · 끝종 선택이 있다. 고른 동그라미는 색과 함께 체크 표시가 들어간다. 목록 아래에서 줄이 잘려 보여 더 있음을 알 수 있다.',
+  'bell.reject':'1분이 넘거나 재생할 수 없는 파일을 등록하려 했을 때. 알림으로 이유를 말하고 목록은 바뀌지 않는다.',
+  'bell.deleted':'등록한 종소리를 지우면 바로 지우고 알림에서 되돌릴 수 있다. 시작종 · 끝종으로 쓰이던 자리도 함께 돌아온다.',
+  'set.base':'설정 화면 전체. 항목이 카드 높이를 넘으면 카드 안에서 스크롤한다. 맨 아래 "모든 데이터" 줄의 "지우기"는 다른 줄의 단추와 같은 모양이다.',
+  'set.fail':'macOS에서 자동 시작 등록이 실패했을 때. 스위치는 꺼진 채로 있고 그 줄에 이유와 "자동 시작 등록 방법"(README를 브라우저로 연다)이 나온다.',
+  'set.wipe':'"지우기"를 누르면 뜨는 확인 모달. 무엇이 지워지는지 말하고, 지우는 단추만 빨강이다. 기본 초점은 "취소"다.',
+  'set.withbell':'B안. 종 화면을 따로 두지 않고 설정 카드에 종소리 묶음을 넣는다. 종소리가 열두 개 이상이라 설정이 길어지고 버전 줄까지 한참 내려가야 한다.',
+  'notice.close':'창을 처음 닫아 숨길 때 한 번만. 창을 숨기기 전에 창 안에서 모달로 알리고 "창 닫기"를 누르면 숨는다. 문구는 OS에 맞게 바꾼다(Windows 트레이 / Mac 메뉴 막대).',
+  'notice.broken':'저장된 파일을 읽지 못해 빈 상태로 시작했을 때 한 번. 무엇을 하면 되는지 말하고 단추로 시간표 화면에 보낸다.',
+  'notice.updated':'업데이트 뒤 다시 실행됐을 때. 성공 알림은 4초 뒤 저절로 사라진다.',
+  'notice.tray':'트레이 · 메뉴 막대 메뉴. OS 기본 모양에 글자만 넣는다. "오늘 종"은 현황 화면의 스위치와 같은 방향(체크 = 울림)이다. "종 멈추기"는 종이 울릴 때만 나온다.',
+  'kit.base':'계약에 적을 부품과 값. 초록 · 주황 · 시간표 색 위의 글자는 모두 짙은 색(4.7:1 이상), 빨강 위만 흰색(5.1:1)이다. 스위치 · 슬라이더 · 입력 칸의 경계는 3:1 이상이다. 글자 크기는 여섯 단계다.'
+};
+const q=new URLSearchParams(location.search);
+let sc=SC[q.get('screen')]?q.get('screen'):'now', st=q.get('state')||SC[sc][1][0][0], rm=q.get('rm')==='1';
+
+// 시간표 색 여덟. 초록(149°)과 주황(69°), 빨강(26°)에서 색상각이 20° 넘게 떨어져 있다
+const TC=['#A9ADF5','#7CC8EE','#F7A1B3','#C7A6EE','#6FD0BD','#EAC65A','#B5D96A','#E79AD6'];
+const TN=['평일반','토요반','오전반','오후반','야간반','특강 A','특강 B','자격증반','주말 집중반','방학반','보충반','체험반'];
+const svg=(d,o='')=>`<svg class="ic" viewBox="0 0 24 24" ${o}>${d}</svg>`;
+const st2='fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+const ICON={
+  now:svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',st2),
+  tt:svg('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>',st2),
+  bell:svg('<path d="M12 4a5.5 5.5 0 0 0-5.5 5.5v4L4.5 17h15l-2-3.5v-4A5.5 5.5 0 0 0 12 4zM10 20.5h4"/>',st2),
+  set:svg('<path d="M5 7h9M18 7h1M5 12h2M11 12h8M5 17h7M16 17h3"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="17" r="2"/>',st2),
+  play:svg('<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>'),
+  pen:svg('<path d="M5 19l1-4.5 9.5-9.5 3.5 3.5L9.5 18z"/>',st2),
+  bin:svg('<path d="M5 7h14M9.5 7V4.5h5V7M7 7l1 12.5h8L17 7"/>',st2),
+  x:svg('<path d="M6 6l12 12M18 6L6 18"/>',st2.replace('2.4','3')),
+  ok:svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>',st2.replace('2.4','3.2')),
+  bang:svg('<path d="M12 5v9"/><circle cx="12" cy="18.5" r="1" fill="currentColor"/>',st2.replace('2.4','3.2')),
+  plus:svg('<path d="M12 5v14M5 12h14"/>',st2.replace('2.4','3')),
+  down:svg('<path d="M6 9.5l6 6 6-6"/>',st2.replace('2.4','3')),
+  paw:'<svg viewBox="-1 -1 26 26"><ellipse cx="12" cy="16" rx="6" ry="5"/><circle cx="5" cy="10" r="2.6"/><circle cx="9.5" cy="5.5" r="2.6"/><circle cx="14.5" cy="5.5" r="2.6"/><circle cx="19" cy="10" r="2.6"/></svg>'
+};
+// 강아지는 자리만 잡은 그림이다. 실제로는 고른 강아지 테마의 그림이 들어간다
+const dogG=sleep=>`<g class="${sleep?'':'alive'}"><ellipse cx="18" cy="30" rx="10" ry="16" fill="#C9782B" transform="rotate(18 18 30)"/><ellipse cx="62" cy="30" rx="10" ry="16" fill="#C9782B" transform="rotate(-18 62 30)"/><circle cx="40" cy="42" r="26" fill="#F2A33C"/><ellipse cx="40" cy="52" rx="13" ry="10" fill="#FFF3E0"/>${sleep?'<path d="M26 41q4 3 8 0M46 41q4 3 8 0" fill="none" stroke="#4A4048" stroke-width="2.4" stroke-linecap="round"/>':'<circle cx="30" cy="40" r="3.5" fill="#4A4048"/><circle cx="50" cy="40" r="3.5" fill="#4A4048"/>'}<ellipse cx="40" cy="48" rx="4" ry="3" fill="#4A4048"/>${sleep?'':'<path d="M36 55q4 5 8 0" fill="#E96B6B"/>'}</g>`;
+const dog=(sleep,cls='dog')=>`<svg class="${cls}" viewBox="0 0 80 80" aria-hidden="true">${dogG(sleep)}</svg>`;
+// 숫자를 자리마다 같은 폭의 칸에 넣는다. Jua는 숫자 폭이 달라서(1이 좁다) 그냥 쓰면 매초 흔들린다
+const fx=t=>[...t].map(c=>/\d/.test(c)?`<b>${c}</b>`:`<i>${c}</i>`).join('');
+const rail=on=>{
+  const four=!(sc==='set'&&st==='withbell');
+  const b=(k,t,end)=>`<button class="rb ${on===k?'on':''} ${end?'end':''}" title="${t}" aria-label="${t}">${ICON[k]}</button>`;
+  return `<div class="rail">${b('now','현황')}${b('tt','시간표')}${four?b('bell','종'):''}${b('set','설정',1)}</div>`;
+};
+const slider=(p,cls='')=>`<div class="sl ${cls}"><i style="width:${p}%"></i><b style="left:${p}%"></b></div>`;
+const toast=(t,kind,act)=>`<div class="toast ${kind==='bad'?'bad':''}" role="${kind==='bad'?'alert':'status'}"><span class="mk">${kind==='bad'?ICON.bang:ICON.ok}</span><span>${t}</span>${act?`<button class="btn ghost sm">${act}</button>`:''}${kind?`<button class="x" title="알림 닫기" aria-label="알림 닫기">${ICON.x}</button>`:''}</div>`;
+
+const SOUNDS=[['웨스트민스터 앞',1,0,100],['웨스트민스터 뒤',0,1,100],['딩동댕동 올라감',0,0,100],['딩동댕동 내려감',0,0,100],['두 음 올라감',0,0,80],['두 음 내려감',0,0,80],['다섯 음 올라감',0,0,100],['다섯 음 내려감',0,0,100],['빠르게 올라감',0,0,100],['빠르게 내려감',0,0,100],['화음 올라감',0,0,90],['화음 내려감',0,0,90],['우리 학원 종',0,0,65,1]];
+function soundList(drop){
+  return `<div class="sh hd"><span></span><span></span><span>음량</span><span>시작종</span><span>끝종</span><span></span></div>
+  <div class="slist">${SOUNDS.filter(s=>!(drop&&s[4])).map(([n,a,b,v,mine])=>`<div class="sh srow"><button class="play" title="${n} 미리 듣기">${ICON.play}</button><span>${n}</span>${slider(v,'w')}<button class="pick ${a?'on':''}" title="시작종으로 쓰기">${ICON.ok}</button><button class="pick ${b?'on':''}" title="끝종으로 쓰기">${ICON.ok}</button><div class="acts2">${mine?`<button title="이름 바꾸기">${ICON.pen}</button><button title="${n} 지우기">${ICON.bin}</button>`:''}</div></div>`).join('')}</div>`;
+}
+const themes=`<div class="themes">${[0,1,2,3,4,5,6].map(i=>`<button class="th ${i===3?'sel':''}" title="강아지 ${i+1}">${dog(false,'')}</button>`).join('')}</div>`;
+function ring(frac,color,sleep){
+  const c=2*Math.PI*120;
+  return `<svg class="disc" viewBox="0 0 320 320"><circle cx="160" cy="160" r="152" fill="#fff"/><circle cx="160" cy="160" r="120" fill="none" stroke="#E6EEF8" stroke-width="40"/>${frac?`<circle cx="160" cy="160" r="120" fill="none" stroke="${color}" stroke-width="40" stroke-dasharray="${c*frac} ${c}" transform="rotate(-90 160 160)"/>`:''}<circle cx="160" cy="160" r="100" fill="#fff"/><g transform="translate(80 84) scale(2)">${dogG(sleep)}</g></svg>`;
+}
+const paws=(done,cur)=>`<div class="paws">${[0,1,2,3,4,5].map(i=>`<span class="paw ${i<done?'done':i===cur?'cur':''}" title="${i+1}교시 · ${i<done?'끝남':i===cur?'지금':'남음'}">${ICON.paw}</span>`).join('')}</div>`;
+const sw=`<div class="sw">${ICON.bell}오늘 종<div class="tg"></div></div>`;
+
+const V={
+now(){
+  const m={
+    class:[.62,'var(--green)',0,`<div class="time">${fx('31:11')}</div><div class="cap">끝종까지</div>${paws(2,2)}`],
+    break:[.4,'var(--orange)',0,`<div class="time">${fx('04:00')}</div><div class="cap">시작종까지</div>${paws(2,-1)}`],
+    before:[0,'',1,`<div class="time">${fx('42:00')}</div><div class="cap">시작종까지</div>${paws(0,-1)}`],
+    after:[0,'',1,`<div class="msg">오늘 수업 끝</div>${paws(6,-1)}`],
+    none:[0,'',1,`<div class="msg">오늘은 수업이 없어요</div>`],
+    empty:[0,'',0,`<div class="msg">시간표를 만들어 주세요</div><button class="btn" style="margin-top:10px">시간표 만들기</button>`]
+  }[st];
+  return `${rail('now')}${st==='empty'?'':sw}<div class="body">${ring(m[0],m[1],m[2])}${m[3]}</div>`;
+},
+edit(){
+  const err=st==='err', dirty=['dirty','err','leave','savefail'].includes(st);
+  const rows=[['09:30','10:20'],['10:30','11:20'],[err?'11:10':'11:30','12:20'],['13:30','14:20'],['14:30','15:20'],['15:30',dirty?'16:30':'16:20']];
+  const asg=[0,0,0,0,0,1,null], dn='월화수목금토일';
+  // 12시간 시계판: 9시를 왼쪽에 두고 수업 시간을 호로 그린다
+  const pt=(min,r)=>{const a=(min%720)/720*2*Math.PI;return [160+r*Math.sin(a),160-r*Math.cos(a)]};
+  const arc=([a,b],i)=>{const m=t=>{const[h,mm]=t.split(':');return h*60+ +mm};const[x1,y1]=pt(m(a),128),[x2,y2]=pt(m(b),128),[tx,ty]=pt((m(a)+m(b))/2,128);
+    return `<path d="M${x1} ${y1}A128 128 0 0 1 ${x2} ${y2}" fill="none" stroke="${TC[0]}" stroke-width="36"/><text x="${tx}" y="${ty+6}" text-anchor="middle" font-size="17" fill="#4A4048">${i+1}</text>`};
+  const dial=`<svg class="dial" viewBox="0 0 320 320"><circle cx="160" cy="160" r="128" fill="none" stroke="#F1F6FC" stroke-width="36"/>${rows.map(arc).join('')}${[12,1,2,3,4,5,6,7,8,9,10,11].map((h,i)=>{const[x,y]=pt(i*60,92);return `<text x="${x}" y="${y+6}" text-anchor="middle" font-size="15" fill="#6E636C">${h}</text>`}).join('')}<g transform="translate(120 118)">${dogG(false)}</g></svg>`;
+  const many=['pick','pickedit','delask','deleted'].includes(st), ed=st==='pickedit'||st==='delask';
+  const list=TN.filter((_,i)=>!(st==='deleted'&&i===2)).map((n,i)=>`<button class="gopt ${n==='평일반'?'sel':''} ${st==='pick'&&n==='토요반'?'focus':''}"><i class="dot" style="background:${TC[TN.indexOf(n)%8]}"></i>${n}${ed?`<span class="acts2"><span title="이름 바꾸기">${ICON.pen}</span><span title="${n} 지우기">${ICON.bin}</span></span>`:''}</button>`).join('');
+  return `${rail('tt')}<div class="main">
+    <div class="card" style="flex:1.3;padding:16px"><div style="display:flex;align-items:center;gap:10px"><button class="gsel"><i class="dot" style="background:${TC[0]}"></i>평일반<span style="margin-left:auto;color:var(--ink2);display:grid">${ICON.down}</span></button>
+      <div class="days">${[...dn].map((d,i)=>`<button class="day ${asg[i]===null?'none':''} ${i===0?'sel':''}" style="${asg[i]===null?'':'background:'+TC[asg[i]]}" title="${d}요일 · ${asg[i]===null?'시간표 없음':TN[asg[i]]}">${d}</button>`).join('')}</div></div>${dial}</div>
+    <div class="card" style="padding:16px;gap:8px">
+      ${rows.map(([a,b],i)=>`<div class="trow ${err&&i===2?'bad':''}"><span class="num">${i+1}</span><span class="tin">${fx(a)}</span>~<span class="tin">${fx(b)}</span><button class="x" title="${i+1}교시 지우기">${ICON.x}</button></div>`).join('')}
+      <button class="btn ghost sm" style="align-self:flex-start">${ICON.plus}수업 시간</button>
+      ${err?`<span class="err" style="margin-top:auto">${ICON.bang}3교시가 2교시와 겹쳐요. 시각을 고쳐 주세요.</span>`:''}
+      ${dirty?`<div class="foot" ${err?'style="margin-top:0"':''}><button class="btn ghost">되돌리기</button><button class="btn ${err?'lock':''}">저장</button></div>`:''}
+    </div></div>
+  ${st==='leave'?`<div class="dim"><div class="modal" style="width:440px"><h2>바꾼 내용을 저장할까요?</h2><p>평일반의 시각을 바꿨어요.</p><div class="acts"><button class="btn ghost">계속 편집</button><button class="btn ghost">저장 안 함</button><button class="btn focus">저장</button></div></div></div>`:''}
+  ${st==='savefail'?toast('저장하지 못했어요. 디스크에 빈 공간이 있는지 확인하고<br>다시 저장해 주세요.','bad'):''}
+  ${many?`<div class="dim"><div class="sheet"><h2>${ed?'시간표 편집':'월요일 시간표'}<button>${ed?'완료':'편집'}</button></h2><div class="glist">${list}</div>${ed?'':'<button class="gopt">없음</button>'}<button class="gopt new">${ICON.plus}새 시간표</button></div></div>`:''}
+  ${st==='delask'?`<div class="dim"><div class="modal"><h2>'토요반'을 지울까요?</h2><p>토요일에 쓰는 시간표예요.<br>지우면 토요일에는 종이 울리지 않아요.</p><div class="acts"><button class="btn ghost focus">취소</button><button class="btn red">시간표 지우기</button></div></div></div>`:''}
+  ${st==='deleted'?toast("'오전반'을 지웠어요",'undo','되돌리기'):''}`;
+},
+bell(){
+  return `${rail('bell')}<div class="main"><div class="card">
+    <div style="display:flex;align-items:center;gap:12px"><span>전체 음량</span>${slider(80)}<button class="btn ghost sm" style="margin-left:auto">${ICON.plus}종소리 등록</button></div>
+    ${soundList(st==='deleted')}
+  </div></div>${st==='reject'?toast('1분이 넘는 파일은 등록할 수 없어요.<br>1분 이하로 줄인 파일을 골라 주세요.','bad'):''}${st==='deleted'?toast("'우리 학원 종'을 지웠어요",'undo','되돌리기'):''}`;
+},
+set(){
+  const fail=st==='fail', wb=st==='withbell';
+  const bell=wb?`<div class="row"><span>종소리 전체 음량</span><div class="r">${slider(80)}<button class="btn ghost sm">${ICON.plus}종소리 등록</button></div></div>${soundList().replace('class="slist"','class="slist" style="overflow:visible;flex:none"')}`:'';
+  return `${rail('set')}<div class="main"><div class="card scroll">
+    ${themes}
+    <div class="row"><span>돌아다니는 강아지</span><div class="r"><span class="sub">작게</span>${slider(34)}<span class="sub">크게</span><div class="tg"></div></div></div>
+    ${bell}
+    <div class="row"><span>컴퓨터를 켜면 자동 시작</span><div class="r">${fail?`<span class="err">${ICON.bang}등록하지 못했어요</span><button class="link">자동 시작 등록 방법</button>`:''}<div class="tg ${fail?'off':''}"></div></div></div>
+    <div class="row"><span>닫으면 숨기기</span><div class="r"><div class="tg"></div></div></div>
+    <div class="row"><span>수업 중 화면 켜 두기</span><div class="r"><div class="tg off"></div></div></div>
+    <div class="row"><span>버전</span><div class="r"><span class="sub">1.2.0</span><span class="sub">최신이에요</span></div></div>
+    <div class="row"><span>모든 데이터</span><div class="r"><button class="btn ghost sm">지우기</button></div></div>
+  </div></div>
+  ${st==='wipe'?`<div class="dim"><div class="modal"><h2>모든 데이터를 지울까요?</h2><p>시간표, 등록한 종소리, 설정이 모두 지워지고<br>딩동댕이 종료돼요. 되돌릴 수 없어요.</p><div class="acts"><button class="btn ghost focus">취소</button><button class="btn red">지우고 종료</button></div></div></div>`:''}`;
+},
+notice(){
+  const base=`${rail('now')}${sw}<div class="body">${ring(.62,'var(--green)',0)}<div class="time">${fx('38:00')}</div><div class="cap">끝종까지</div>${paws(2,2)}</div>`;
+  if(st==='close')return base+`<div class="dim"><div class="modal">${dog(false)}<h2>딩동댕은 계속 켜져 있어요</h2><p>창을 닫아도 종은 울려요.<br>종료하려면 화면 아래 시계 옆의 종 아이콘에서<br>"딩동댕 종료"를 누르세요.</p><div class="acts"><button class="btn focus">창 닫기</button></div></div></div>`;
+  if(st==='broken')return base.replace(/<div class="body">[\s\S]*$/,`<div class="body">${ring(0,'',0)}<div class="msg">시간표를 만들어 주세요</div><button class="btn" style="margin-top:10px">시간표 만들기</button></div>`)+toast('저장된 시간표를 읽지 못했어요.<br>시간표를 다시 만들어 주세요.','bad');
+  if(st==='tray')return base+`<div class="menu"><div>딩동댕 열기</div><div>종 멈추기</div><hr><div class="ck">오늘 종</div><div class="ck">돌아다니는 강아지</div><hr><div>딩동댕 종료</div></div>`;
+  return base+toast('1.3.0으로 업데이트했어요');
+},
+kit(){
+  const s=(c,n,ink='#4A4048',o='')=>`<div class="swatch" style="background:${c};color:${ink};${o}">${n}</div>`;
+  return `${rail('set')}<div class="main"><div class="card scroll"><div class="kit">
+    <span>단추</span><div><button class="btn">저장</button><button class="btn down">눌림</button><button class="btn focus">초점</button><button class="btn lock">잠김</button><button class="btn ghost">나중에</button><button class="btn red">지우고 종료</button></div>
+    <span>스위치 · 슬라이더</span><div><div class="tg"></div><div class="tg off"></div>${slider(60)}<button class="pick on" style="margin:0">${ICON.ok}</button><button class="pick" style="margin:0">${ICON.ok}</button><span class="tin">${fx('09:30')}</span></div>
+    <span>선택과 초점</span><div><button class="th sel">${dog(false,'')}</button><button class="th focus">${dog(false,'')}</button><button class="th sel focus">${dog(false,'')}</button><span class="sub">선택 · 초점 · 둘 다</span></div>
+    <span>알림</span><div><div class="toast" style="position:static;transform:none"><span class="mk">${ICON.ok}</span>저장했어요</div><div class="toast bad" style="position:static;transform:none"><span class="mk">${ICON.bang}</span>저장하지 못했어요<button class="x">${ICON.x}</button></div></div>
+    <span>바탕과 글자</span><div>${s('#CFE3F8','바탕')}${s('#fff','카드','#4A4048','box-shadow:inset 0 0 0 2px #F1F6FC')}${s('#F1F6FC','옅은 면')}${s('#4A4048','글자','#fff')}${s('#6E636C','보조','#fff')}${s('#71869F','경계','#fff')}</div>
+    <span>뜻이 있는 색</span><div>${s('#5ED37A','확인')}${s('#F2A33C','쉬는 시간','#4A4048','width:76px')}${s('#A9620A','지난 교시','#fff','width:76px')}${s('#7C8899','꺼짐','#fff')}${s('#C0443F','오류 · 지우기','#fff','width:96px')}${s('#1F4FA8','초점','#fff')}</div>
+    <span>시간표 색 여덟</span><div>${TC.map((c,i)=>s(c,i+1,'#4A4048','width:44px')).join('')}</div>
+    <span>글자 크기</span><div style="align-items:baseline;gap:18px">${[15,17,20,24,28].map(f=>`<span style="font-size:${f}px;color:var(--ink)">${f}</span>`).join('')}<span style="font-size:44px;line-height:1;color:var(--ink)">72</span></div>
+    <span>모서리</span><div>${[10,14,16,20].map(r=>`<div class="swatch" style="background:#F1F6FC;border-radius:${r}px">${r}</div>`).join('')}<div class="swatch" style="background:#F1F6FC;border-radius:50%;width:38px">원</div></div>
+  </div></div></div>`;
+}
+};
+function render(){
+  document.getElementById('app').innerHTML=`<div class="A ${rm?'rm':''}">${V[sc]()}</div>`;
+  const g=(id,label,list,cur,attr)=>document.getElementById(id).innerHTML=`<span>${label}</span>`+list.map(([k,n])=>`<button data-${attr}="${k}" class="${k===cur?'on':''}">${n}</button>`).join('');
+  g('g-sc','화면',Object.entries(SC).map(([k,v])=>[k,v[0]]),sc,'psc');
+  g('g-st','상태',SC[sc][1],st,'pst');
+  g('g-rm','OS의 동작 줄이기',[['0','꺼짐 (강아지가 숨쉰다)'],['1','켜짐 (멈춘 그림)']],rm?'1':'0','prm');
+  document.getElementById('note').textContent=NOTES[sc+'.'+st]||'';
+  history.replaceState(null,'',`?screen=${sc}&state=${st}${rm?'&rm=1':''}`);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.pbar button');if(!b)return;
+  const d=b.dataset;
+  if(d.psc){sc=d.psc;st=SC[sc][1][0][0]}
+  else if(d.pst)st=d.pst;
+  else if(d.prm)rm=d.prm==='1';
+  render();
+});
+render();
+</script>
+</body>
+</html>
