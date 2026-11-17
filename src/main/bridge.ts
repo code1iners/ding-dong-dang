@@ -78,6 +78,12 @@ export function parseCommand(raw: unknown): Command | null {
       return (value.kind === 'start' || value.kind === 'end') && typeof value.id === 'string'
         ? { type: 'set-bell', kind: value.kind, id: value.id }
         : null;
+    case 'set-hide-on-close':
+      return typeof value.on === 'boolean' ? { type: 'set-hide-on-close', on: value.on } : null;
+    case 'confirm-hide':
+      return { type: 'confirm-hide' };
+    case 'dismiss-hide-notice':
+      return { type: 'dismiss-hide-notice' };
     case 'register-sound':
       return { type: 'register-sound' };
     case 'rename-sound':

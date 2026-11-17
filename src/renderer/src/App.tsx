@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Modal } from './Modal';
 import { BellScreen, UNDO_SOUND_PREFIX } from './BellScreen';
 import { Rail } from './Rail';
 import { SCREENS, type ScreenId } from './screens';
@@ -12,6 +13,20 @@ import { useAppState } from './useAppState';
 const SAVE_FAILED_TEXT = '저장하지 못했어요. 디스크에 빈 공간이 있는지 확인하고 다시 저장해 주세요.';
 /** 저장된 파일을 읽지 못해 빈 상태로 시작했을 때의 알림 문장. */
 const FRESH_START_TEXT = '저장된 시간표를 읽지 못해 새로 시작했어요. 시간표를 다시 만들어 주세요.';
+
+/** 처음 닫을 때 안내 문장. 아이콘이 있는 자리를 OS에 맞춘다(DESIGN.md "처음 닫을 때"). */
+const HIDE_NOTICE_TEXT = navigator.userAgent.includes('Mac')
+  ? '창을 닫아도 종은 울려요. 화면 위쪽 메뉴 막대의 아이콘에서 다시 열거나 끝낼 수 있어요.'
+  : '창을 닫아도 종은 울려요. 화면 아래 오른쪽 알림 영역의 아이콘에서 다시 열거나 끝낼 수 있어요.';
+
+/** 처음 닫을 때 안내의 "창 닫기". 메인이 안내를 봤다고 저장하고 창을 숨긴다. */
+function confirmHide(): void {
+  window.dingdong.command({ type: 'confirm-hide' }).catch((error: unknown) => console.error(error));
+}
+/** 안내를 창 닫기 없이 거둔다. */
+function dismissHideNotice(): void {
+  window.dingdong.command({ type: 'dismiss-hide-notice' }).catch((error: unknown) => console.error(error));
+}
 
 /** 왼쪽 세로 줄과 지금 고른 화면으로 된 앱 창의 내용. */
 export function App() {
@@ -114,6 +129,16 @@ export function App() {
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
         {screen === 'settings' && state && <SettingsScreen settings={state.settings} />}
       </main>
+      {state?.closeNotice && (
+        <Modal title="딩동댕은 계속 켜져 있어요" onClose={dismissHideNotice}>
+          <p>{HIDE_NOTICE_TEXT}</p>
+          <div className="modal__actions">
+            <button type="button" className="button" data-autofocus onClick={confirmHide}>
+              창 닫기
+            </button>
+          </div>
+        </Modal>
+      )}
       <ToastStack toasts={toasts.toasts} dismiss={toasts.dismiss} />
     </div>
   );

@@ -70,6 +70,8 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
     // 음원별 음량 50% × 전체 음량 50%
     soundVolumes: { 'westminster-start': 50 },
     masterVolume: 50,
+    // 닫기 버튼으로 숨기도록 처음 닫을 때 안내는 이미 본 것으로 둔다
+    settings: { ...emptyData().settings, hideNoticeShown: true },
   };
   /** 오늘의 요일 키. getDay()는 일요일이 0이다. */
   const today = WEEKDAYS[(now.getDay() + 6) % 7]!;
@@ -99,8 +101,8 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   expect(await playerState(app)).toEqual({ visible: false, audio: null });
   expect(await ringing()).toBe(false);
 
-  // 앱 창을 숨긴다. 창이 없어도 메인 프로세스의 스케줄러가 종을 울려야 한다
-  await (await app.browserWindow(page)).evaluate((w) => w.hide());
+  // 닫기 버튼으로 앱 창을 숨긴다. 창이 없어도 메인 프로세스의 스케줄러가 종을 울려야 한다
+  await (await app.browserWindow(page)).evaluate((w) => w.close());
   expect(await (await app.browserWindow(page)).evaluate((w) => w.isVisible())).toBe(false);
 
   // 종 시각이 오면 숨긴 창에서 시작종(웨스트민스터 시작, 8.6초)이 25% 크기로 재생된다

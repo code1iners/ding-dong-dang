@@ -13,11 +13,12 @@ let app: ElectronApplication | undefined;
 let page: Page;
 
 /** 시간표 "평일반"을 월요일과 수요일에 배정한 저장 파일을 쓴다. 수업 시간은 `periods`다. */
-async function seed(periods: { start: number; end: number }[] = []): Promise<void> {
+async function seed(periods: { start: number; end: number }[] = [], settings: Partial<Data['settings']> = {}): Promise<void> {
   let data = createTimetable(emptyData(), 't0', 'mon');
   data = assignWeekday(data, 'wed', 't0');
   data = setPeriods(data, 't0', periods);
   data.timetables = data.timetables.map((t) => ({ ...t, name: '평일반' }));
+  data.settings = { ...data.settings, ...settings };
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
 }
 
@@ -214,7 +215,8 @@ test('오류가 있으면 모달의 저장도 잠긴다', async () => {
 });
 
 test('저장하지 않고 창을 닫으려 하면 닫히지 않고 모달이 뜬다', async () => {
-  await seed([{ start: at(9, 0), end: at(9, 50) }]);
+  // 닫기 버튼이 앱을 끝내게 해 두어, 편집을 버린 뒤 창이 닫히는 것을 본다(숨기는 길은 residency.spec.ts가 본다)
+  await seed([{ start: at(9, 0), end: at(9, 50) }], { hideOnClose: false });
   await launch();
   await typeTime('1교시 끝 시각', '0955');
   // 화면이 보낸 "편집 중" 알림을 메인이 받은 뒤에 닫는다. 같은 채널은 순서대로 처리되므로 같은 알림을 한 번 더 보내 그 끝을 기다린다

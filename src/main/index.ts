@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, dialog, nativeTheme, powerMonitor, powerSaveBlocker, screen } from 'electron';
+import { app, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, powerMonitor, powerSaveBlocker, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { localDate } from '../shared/bell-decision';
 import { CHANNEL } from '../shared/bridge';
@@ -32,6 +32,7 @@ import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
 import { DATA_FORMAT } from './data-format';
+import { decideClose, trayIconFile, trayMenuTemplate } from './residency';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
 import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
 import { openStorage } from './storage';
@@ -46,6 +47,17 @@ const dataDir =
 // 데이터 폴더는 app ready 전에 바꿔야 Chromium의 저장 위치까지 함께 옮겨 간다
 mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
+
+// 한 번에 하나만 실행한다. 단일 실행 잠금은 데이터 폴더마다 따로 잡힌다.
+// 이미 떠 있으면 저장소를 열기 전에 끝내고, 떠 있는 앱이 second-instance로 창을 연다
+if (!app.requestSingleInstanceLock()) {
+  // app.exit은 곧바로 멈추지 않으므로, 아래의 저장소 열기와 창 만들기까지 가지 않게 프로세스를 바로 끝낸다
+  app.exit(0);
+  process.exit(0);
+}
+/** 두 번째 실행이 왔을 때 부를 함수. 앱 창을 만든 뒤에 채운다. */
+let onSecondInstance: (() => void) | null = null;
+app.on('second-instance', () => onSecondInstance?.());
 
 // 밝은 화면 하나만 둔다. OS가 어두운 모드여도 창과 기본 부품의 색이 바뀌지 않게 한다
 nativeTheme.themeSource = 'light';
@@ -114,6 +126,7 @@ function powerKeepAwake(): SchedulerParts['keepAwake'] {
 function createMainWindow(
   save: (change: (data: Data) => Data, options?: { quiet: boolean }) => boolean,
   holdsClose: () => boolean,
+  onClosing: (event: Electron.Event) => void,
 ): BrowserWindow {
   /** 앱 창. */
   const win = new BrowserWindow({
@@ -162,6 +175,10 @@ function createMainWindow(
     event.preventDefault();
     win.webContents.send(CHANNEL.closeRequested);
   });
+  // 저장하지 않은 편집을 묻는 일이 끝난 닫기는 숨기거나 앱을 끝낸다
+  win.on('close', (event) => {
+    if (!event.defaultPrevented) onClosing(event);
+  });
   win.on('move', saveBoundsLater);
   win.on('resize', saveBoundsLater);
   // 닫기 직전에 마지막 자리를 확실히 남긴다
@@ -202,6 +219,7 @@ void app.whenReady().then(() => {
       bellRinging: false,
       ...viewOf(storage.get()),
       previewingSound: null,
+      closeNotice: false,
     },
     (command): CommandResult | void | Promise<CommandResult | void> => {
       switch (command.type) {
@@ -209,8 +227,19 @@ void app.whenReady().then(() => {
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
           break;
         case 'set-bells-off':
-          // 끄면 오늘 날짜를 끈 날짜로 저장하고, 저장하면서 스케줄러가 바로 판정해 울리던 종을 멈춘다
-          save((d) => ({ ...d, bellsOffDate: command.off ? localDate(Date.now()) : null }));
+          setBellsOff(command.off);
+          break;
+        case 'set-hide-on-close':
+          save((d) => ({ ...d, settings: { ...d.settings, hideOnClose: command.on } }));
+          break;
+        case 'confirm-hide':
+          // 안내가 떠 있을 때만 안내를 봤다고 저장하고 숨긴다
+          if (!hub.get().closeNotice) break;
+          save((d) => ({ ...d, settings: { ...d.settings, hideNoticeShown: true } }));
+          hideMainWindow();
+          break;
+        case 'dismiss-hide-notice':
+          hub.update({ closeNotice: false });
           break;
         case 'create-timetable':
           save((d) => createTimetable(d, randomUUID(), command.assignTo));
@@ -296,6 +325,11 @@ void app.whenReady().then(() => {
   );
 
 
+  /** "오늘 종"을 끄거나 켠다. 끄면 오늘 날짜를 끈 날짜로 저장하고, 저장하면서 스케줄러가 바로 판정해 울리던 종을 멈춘다. */
+  function setBellsOff(off: boolean): void {
+    save((d) => ({ ...d, bellsOffDate: off ? localDate(Date.now()) : null }));
+  }
+
   /** 파일 고르기 창을 열고, 고른 파일을 확인해 종소리로 등록한다. */
   async function registerFromDialog(): Promise<CommandResult> {
     /** 파일 고르기 결과. */
@@ -361,22 +395,101 @@ void app.whenReady().then(() => {
     }
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();
+    refreshTray();
     return !saveFailed;
   }
 
   /** 앱 창. 닫혀 있으면 null. */
   let mainWindow: BrowserWindow | null = null;
+  /** 앱이 끝나는 중인지. 끝나는 중의 창 닫기는 숨기지 않고 그대로 닫는다. */
+  let quitting = false;
+  app.on('before-quit', () => {
+    quitting = true;
+  });
+
   /** 앱 창을 만들고, 닫히면 비운다. */
   const openMainWindow = (): void => {
     editingDirty = false;
     closeApproved = false;
-    mainWindow = createMainWindow(save, () => editingDirty && !closeApproved);
+    mainWindow = createMainWindow(
+      save,
+      // 종료 중에는 저장하지 않은 편집이 있어도 확인 없이 닫는다
+      () => editingDirty && !closeApproved && !quitting,
+      (event) => {
+        /** 닫기 버튼에 대한 처리. */
+        const action = decideClose({ quitting, ...storage.get().settings });
+        if (action === 'allow') return;
+        if (action === 'quit') {
+          quitting = true;
+          app.quit();
+          return;
+        }
+        // 숨기는 길에서는 창을 닫지 않는다. 다음 닫기가 저장하지 않은 편집을 다시 묻게 한다
+        event.preventDefault();
+        closeApproved = false;
+        if (action === 'notice') hub.update({ closeNotice: true });
+        else hideMainWindow();
+      },
+    );
     mainWindow.on('closed', () => {
       mainWindow = null;
-      // 창을 닫아도 머무는 동작은 상주 티켓에서 붙인다. 그 전까지 Windows는 OS 관례대로 끝낸다
-      if (process.platform !== 'darwin') app.quit();
     });
   };
+
+  /** 앱 창을 숨긴다. macOS는 창이 없는 동안 Dock 아이콘도 숨긴다. */
+  function hideMainWindow(): void {
+    hub.update({ closeNotice: false });
+    mainWindow?.hide();
+    if (process.platform === 'darwin') app.dock?.hide();
+  }
+
+  /** 숨겼거나 닫힌 앱 창을 앞으로 가져온다. */
+  function showMainWindow(): void {
+    if (process.platform === 'darwin') void app.dock?.show();
+    if (!mainWindow) {
+      openMainWindow();
+      return;
+    }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+  onSecondInstance = showMainWindow;
+
+  /** 트레이 · 메뉴 막대 아이콘. */
+  let tray: Tray | null = null;
+  /** 지금 아이콘과 메뉴를 만든 상태의 열쇠. 같으면 다시 만들지 않는다. */
+  let trayKey = '';
+  /** 오늘 종이 켜져 있는지. 끈 날짜가 오늘일 때만 꺼진 것이다. */
+  const bellsOn = (): boolean => storage.get().bellsOffDate !== localDate(Date.now());
+  /** 오늘 종이 켜졌는지에 맞는 트레이 아이콘 그림. */
+  const trayImage = (on: boolean) => nativeImage.createFromPath(join(app.getAppPath(), 'resources/icons', trayIconFile(process.platform, on)));
+  /** 종이 울리는지와 오늘 종에 맞춰 트레이 아이콘과 메뉴를 고친다. 날짜가 넘어가는 것도 1초 타이머가 여기서 잡는다. */
+  function refreshTray(): void {
+    if (!tray) return;
+    /** 메뉴에 반영할 상태. */
+    const state = { ringing: hub.get().bellRinging, bellsOn: bellsOn() };
+    /** 이 상태의 열쇠. */
+    const key = `${state.ringing}|${state.bellsOn}`;
+    if (key === trayKey) return;
+    trayKey = key;
+    tray.setImage(trayImage(state.bellsOn));
+    tray.setContextMenu(
+      Menu.buildFromTemplate(
+        trayMenuTemplate(state, {
+          open: showMainWindow,
+          stopBell: () => bell?.stop(),
+          setBellsOn: (on) => {
+            setBellsOff(!on);
+            // 저장에 실패해도 OS가 이미 바꾼 체크 표시를 실제 값에 맞춰 다시 그린다
+            trayKey = '';
+            refreshTray();
+          },
+          quit: () => app.quit(),
+        }),
+      ),
+    );
+  }
   // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다
   openMainWindow();
 
@@ -384,7 +497,10 @@ void app.whenReady().then(() => {
     read: storage.get,
     builtinDir: join(app.getAppPath(), 'resources/sounds/builtin'),
     registeredDir: soundsDir,
-    onRingingChange: (bellRinging) => hub.update({ bellRinging }),
+    onRingingChange: (bellRinging) => {
+      hub.update({ bellRinging });
+      refreshTray();
+    },
     onPreviewChange: (previewingSound) => hub.update({ previewingSound }),
   });
   void dropUnplayableSounds();
@@ -395,7 +511,10 @@ void app.whenReady().then(() => {
     now: () => Date.now(),
     everySecond(tick) {
       /** 1초 타이머. */
-      const timer = setInterval(tick, 1000);
+      const timer = setInterval(() => {
+        tick();
+        refreshTray();
+      }, 1000);
       return () => clearInterval(timer);
     },
     onWake(listener) {
@@ -407,10 +526,22 @@ void app.whenReady().then(() => {
     read: storage.get,
   });
   scheduler = running;
+
+  /** 트레이 아이콘을 만든다. */
+  const createTray = (): void => {
+    tray = new Tray(trayImage(bellsOn()));
+    tray.setToolTip('딩동댕');
+    // Windows는 아이콘을 왼쪽 클릭하면 창을 연다. macOS는 누르면 메뉴가 열린다
+    if (process.platform !== 'darwin') tray.on('click', showMainWindow);
+    refreshTray();
+  };
+  // 앱 창의 화면을 다 불러온 뒤에 만든다. 창을 만드는 도중에 트레이를 만들면 숨긴 재생기 창이 첫 창으로 먼저 잡히는 일이 있다
+  /** 지금 떠 있는 앱 창. 타입 검사기는 위의 대입을 따라가지 못해 null로만 본다. */
+  const firstWindow = mainWindow as BrowserWindow | null;
+  if (firstWindow?.webContents.isLoading()) firstWindow.webContents.once('did-finish-load', createTray);
+  else createTray();
   app.on('will-quit', () => running.stop());
 
   // 창이 없을 때 Dock 아이콘을 누르면 앱 창을 다시 연다. 숨긴 재생기 창은 세지 않는다
-  app.on('activate', () => {
-    if (!mainWindow) openMainWindow();
-  });
+  app.on('activate', showMainWindow);
 });

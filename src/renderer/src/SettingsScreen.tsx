@@ -11,6 +11,16 @@ export function SettingsScreen({ settings }: Props) {
   return (
     <div className="card">
       <div className="setting-row">
+        <span id="setting-hide-on-close">닫으면 숨기기</span>
+        <div className="setting-row__control">
+          <Switch
+            on={settings.hideOnClose}
+            labelledBy="setting-hide-on-close"
+            onChange={(on) => void window.dingdong.command({ type: 'set-hide-on-close', on })}
+          />
+        </div>
+      </div>
+      <div className="setting-row">
         <span id="setting-keep-screen-on">수업 중 화면 켜 두기</span>
         <div className="setting-row__control">
           <Switch

@@ -1,0 +1,147 @@
+import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { emptyData } from '../src/shared/data';
+
+// 창을 닫아도 앱이 남는 동작을 실제 앱으로 본다. 트레이 메뉴의 항목과 순서는 residency.test.ts가 본다.
+/** 이 파일의 테스트들이 나눠 쓰는 임시 데이터 폴더. */
+let dataDir: string;
+/** 띄운 앱. */
+let app: ElectronApplication | undefined;
+
+test.beforeEach(async () => {
+  dataDir = await mkdtemp(join(tmpdir(), 'ding-dong-dang-e2e-'));
+});
+test.afterEach(async () => {
+  await app?.close().catch(() => undefined);
+  app = undefined;
+  await rm(dataDir, { recursive: true, force: true });
+});
+
+/** 임시 데이터 폴더로 앱을 띄운다. */
+async function launch(): Promise<ElectronApplication> {
+  app = await electron.launch({ args: [resolve(__dirname, '..'), `--data-dir=${dataDir}`] });
+  // 화면이 그려져 창이 뜬 뒤에 닫아야 한다. 그 전에 숨기면 곧이어 뜨는 창이 숨김을 덮는다
+  await expect.poll(() => windowVisible(app!)).toBe(true);
+  return app;
+}
+
+/** 앱 창이 눈에 보이는지. 숨긴 종 재생기 창이 아니라 첫 화면이 붙은 창이다. */
+async function windowVisible(launched: ElectronApplication): Promise<boolean> {
+  return (await launched.browserWindow(await launched.firstWindow())).evaluate((w) => w.isVisible());
+}
+
+/** 앱 창의 닫기 버튼을 누른 것과 같게 닫는다. */
+async function pressClose(launched: ElectronApplication): Promise<void> {
+  await (await launched.browserWindow(await launched.firstWindow())).evaluate((w) => w.close());
+}
+
+test('처음 닫을 때만 안내 모달이 뜨고, "창 닫기"를 누르면 창이 숨으며 앱은 살아 있다', async () => {
+  const launched = await launch();
+  const page = await launched.firstWindow();
+
+  await pressClose(launched);
+  /** 처음 닫을 때 안내. */
+  const dialog = page.getByRole('dialog', { name: '딩동댕은 계속 켜져 있어요' });
+  await expect(dialog).toBeVisible();
+  // 안내를 보는 동안 창은 그대로 있다
+  expect(await windowVisible(launched)).toBe(true);
+
+  // Esc는 창을 닫지 않고 안내만 거둔다
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(await windowVisible(launched)).toBe(true);
+  expect(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8').catch(() => '{"settings":{}}')).settings.hideNoticeShown).not.toBe(true);
+
+  await pressClose(launched);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '창 닫기' }).click();
+  await expect.poll(() => windowVisible(launched)).toBe(false);
+  // 앱은 살아 있어 메인 프로세스에 계속 물을 수 있다
+  expect(await launched.evaluate(({ app }) => app.isReady())).toBe(true);
+  if (process.platform === 'darwin') expect(await launched.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
+  await expect
+    .poll(async () => JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')).settings.hideNoticeShown)
+    .toBe(true);
+
+  // 다시 열어 닫으면 안내 없이 바로 숨는다
+  await launched.evaluate(({ app }) => app.emit('activate'));
+  await expect.poll(() => windowVisible(launched)).toBe(true);
+  if (process.platform === 'darwin') expect(await launched.evaluate(({ app }) => app.dock?.isVisible())).toBe(true);
+  await pressClose(launched);
+  await expect.poll(() => windowVisible(launched)).toBe(false);
+  await expect(dialog).toHaveCount(0);
+});
+
+test('이미 안내를 본 뒤에는 닫기 버튼이 바로 숨긴다', async () => {
+  await writeFile(
+    join(dataDir, 'data.json'),
+    JSON.stringify({ ...emptyData(), settings: { ...emptyData().settings, hideNoticeShown: true } }),
+  );
+  const launched = await launch();
+  await pressClose(launched);
+  await expect.poll(() => windowVisible(launched)).toBe(false);
+});
+
+test('설정의 "닫으면 숨기기"를 끄면 닫기 버튼이 앱을 종료한다', async () => {
+  const launched = await launch();
+  const page = await launched.firstWindow();
+  await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '설정' }).click();
+  /** "닫으면 숨기기" 스위치. 기본은 켜짐이다. */
+  const toggle = page.getByRole('switch', { name: '닫으면 숨기기' });
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+  /** 앱 프로세스가 끝났는지 알려 주는 약속. */
+  const exited = new Promise<void>((done) => launched.process().once('exit', () => done()));
+  await pressClose(launched);
+  await exited;
+  expect(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')).settings.hideOnClose).toBe(false);
+});
+
+test('앱이 끝나는 중에는 숨지 않고 숨은 앱도 종료 요청에 끝난다 (Cmd+Q와 "딩동댕 종료"가 부르는 app.quit)', async () => {
+  await writeFile(
+    join(dataDir, 'data.json'),
+    JSON.stringify({ ...emptyData(), settings: { ...emptyData().settings, hideNoticeShown: true } }),
+  );
+  const launched = await launch();
+  await pressClose(launched);
+  await expect.poll(() => windowVisible(launched)).toBe(false);
+
+  const exited = new Promise<void>((done) => launched.process().once('exit', () => done()));
+  await launched.evaluate(({ app }) => app.quit());
+  await exited;
+});
+
+test('두 번째 실행은 곧바로 끝나고 숨어 있던 기존 앱의 창을 연다', async () => {
+  await writeFile(
+    join(dataDir, 'data.json'),
+    JSON.stringify({ ...emptyData(), settings: { ...emptyData().settings, hideNoticeShown: true } }),
+  );
+  const launched = await launch();
+  await pressClose(launched);
+  await expect.poll(() => windowVisible(launched)).toBe(false);
+
+  /** 같은 데이터 폴더로 한 번 더 띄운 프로세스의 종료 코드. */
+  const code = await new Promise<number | null>((done) => {
+    const second = spawn(launched.process().spawnfile, [resolve(__dirname, '..'), `--data-dir=${dataDir}`], { stdio: 'ignore' });
+    second.once('exit', done);
+  });
+  expect(code).toBe(0);
+  await expect.poll(() => windowVisible(launched)).toBe(true);
+  // 앱 창과 숨긴 종 재생기 창뿐이다. 두 번째 실행이 창을 더 만들지 않는다
+  expect(await launched.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(2);
+});
+
+test('저장하지 않은 편집이 있어도 종료 요청은 확인 없이 앱을 끝낸다', async () => {
+  const launched = await launch();
+  const page = await launched.firstWindow();
+  await page.evaluate(() => window.dingdong.command({ type: 'set-editing-dirty', dirty: true }));
+
+  const exited = new Promise<void>((done) => launched.process().once('exit', () => done()));
+  await launched.evaluate(({ app }) => app.quit());
+  await exited;
+});

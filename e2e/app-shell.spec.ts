@@ -102,6 +102,7 @@ test('렌더러는 Node에 닿지 않고 상태 구독, 명령, 창 닫기 요�
     endBell: 'westminster-end',
     masterVolume: 100,
     previewingSound: null,
+    closeNotice: false,
   });
 
   // 모르는 명령은 메인이 거절한다

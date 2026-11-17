@@ -34,6 +34,8 @@ export type AppState = {
   masterVolume: number;
   /** 지금 미리 듣는 중인 음원 id. 없으면 null. 종이 울리는 것과는 따로다. */
   previewingSound: string | null;
+  /** 처음 닫는 중이라 "딩동댕은 계속 켜져 있어요" 안내를 보여야 하는지. 창을 숨기기 전에 한 번 뜬다. */
+  closeNotice: boolean;
 };
 
 /** 저장소가 화면에 알리는 사실. */
@@ -87,7 +89,13 @@ export type Command =
   /** 지운 종소리를 더는 되돌릴 수 없게 됐음을 알린다. 복사해 둔 파일을 지운다. */
   | { type: 'discard-removed-sound'; id: string }
   /** 음원을 미리 듣는다. 이미 그 음원을 미리 듣는 중이면 멈춘다. 다른 음원이면 앞의 것을 끊는다. */
-  | { type: 'toggle-preview'; id: string };
+  | { type: 'toggle-preview'; id: string }
+  /** "닫으면 숨기기"를 켜거나 끈다. 끄면 닫기 버튼이 앱을 종료한다. */
+  | { type: 'set-hide-on-close'; on: boolean }
+  /** 처음 닫을 때 안내의 "창 닫기". 안내를 봤다고 저장하고 창을 숨긴다. */
+  | { type: 'confirm-hide' }
+  /** 처음 닫을 때 안내를 창 닫기 없이 거둔다(Esc). 창은 그대로 남는다. */
+  | { type: 'dismiss-hide-notice' };
 
 /** 명령의 결과. 대부분의 명령은 늘 ok다. */
 export type CommandResult = {
