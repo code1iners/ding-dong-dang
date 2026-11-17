@@ -92,6 +92,8 @@ export type Command =
   | { type: 'discard-removed-sound'; id: string }
   /** 음원을 미리 듣는다. 이미 그 음원을 미리 듣는 중이면 멈춘다. 다른 음원이면 앞의 것을 끊는다. */
   | { type: 'toggle-preview'; id: string }
+  /** 강아지 테마를 바꾼다. 있는 테마 id만 받고, 바로 적용하고 저장한다. */
+  | { type: 'set-dog-theme'; id: string }
   /** "닫으면 숨기기"를 켜거나 끈다. 끄면 닫기 버튼이 앱을 종료한다. */
   | { type: 'set-hide-on-close'; on: boolean }
   /** 처음 닫을 때 안내의 "창 닫기". 안내를 봤다고 저장하고 창을 숨긴다. */

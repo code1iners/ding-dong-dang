@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { CHANNEL, type AppState, type Command, type CommandResult } from '../shared/bridge';
 import { WEEKDAYS, type Weekday } from '../shared/data';
+import { isDogThemeId } from '../shared/dog-themes';
 import type { Period } from '../shared/timetable-validation';
 
 /** 메인 쪽에서 앱 상태를 읽고 바꾸는 손잡이. */
@@ -42,6 +43,8 @@ export function parseCommand(raw: unknown): Command | null {
   switch (value.type) {
     case 'set-keep-screen-on':
       return typeof value.on === 'boolean' ? { type: 'set-keep-screen-on', on: value.on } : null;
+    case 'set-dog-theme':
+      return isDogThemeId(value.id) ? { type: 'set-dog-theme', id: value.id } : null;
     case 'set-bells-off':
       return typeof value.off === 'boolean' ? { type: 'set-bells-off', off: value.off } : null;
     case 'create-timetable':

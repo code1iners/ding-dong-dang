@@ -1,4 +1,5 @@
 import type { Settings } from '../../shared/data';
+import { DogThemePicker } from './DogThemePicker';
 import { ActionIcon } from './icons';
 import { Switch } from './Switch';
 
@@ -15,6 +16,7 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
   const autoStartFailed = settings.autoStart && !autoStartRegistered;
   return (
     <div className="card">
+      <DogThemePicker themeId={settings.dogTheme} />
       <div className="setting-row">
         <span id="setting-auto-start">컴퓨터를 켜면 자동 시작</span>
         <div className="setting-row__control">

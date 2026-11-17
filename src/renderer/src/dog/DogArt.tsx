@@ -7,9 +7,9 @@ import { themeById } from './themes';
 /** OS의 동작 줄이기를 묻는 미디어 쿼리. */
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
-/** OS의 동작 줄이기가 켜져 있는지. 앱이 떠 있는 동안 바꿔도 따라간다. */
+/** OS의 동작 줄이기가 켜져 있는지. 앱이 떠 있는 동안 바꿔도 따라간다. 화면이 없는 서버 렌더(단위 시험)에서는 꺼진 것으로 본다. */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => matchMedia(REDUCED_MOTION).matches);
+  const [reduced, setReduced] = useState(() => typeof matchMedia === 'function' && matchMedia(REDUCED_MOTION).matches);
   useEffect(function followReducedMotion() {
     /** 동작 줄이기 미디어 쿼리. */
     const query = matchMedia(REDUCED_MOTION);

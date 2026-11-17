@@ -244,6 +244,9 @@ void app.whenReady().then(() => {
         case 'set-keep-screen-on':
           save((d) => ({ ...d, settings: { ...d.settings, keepScreenOn: command.on } }));
           break;
+        case 'set-dog-theme':
+          save((d) => ({ ...d, settings: { ...d.settings, dogTheme: command.id } }));
+          break;
         case 'set-bells-off':
           setBellsOff(command.off);
           break;

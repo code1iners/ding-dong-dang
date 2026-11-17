@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96">
+  <!-- 직접 그린 그림. 옆모습으로 서 있는 주황 강아지이고 네 다리가 따로 있어 걷는다 -->
+  <path d="M31 55C21 53 14 45 14 34C14 30 19 30 20 35C21 43 26 47 34 48Z" fill="#E58A2E"/>
+  <rect x="44" y="62" width="9" height="30" rx="4.5" fill="#D9822B"/>
+  <rect x="63" y="62" width="9" height="30" rx="4.5" fill="#D9822B"/>
+  <ellipse cx="56" cy="58" rx="31" ry="17" fill="#F5A04A"/>
+  <ellipse cx="78" cy="64" rx="9" ry="10" fill="#FFE9C9"/>
+  <rect x="33" y="62" width="9" height="30" rx="4.5" fill="#F5A04A"/>
+  <rect x="73" y="62" width="9" height="30" rx="4.5" fill="#F5A04A"/>
+  <path d="M92 25C98 17 107 21 105 34C100 35 95 32 92 25Z" fill="#C9772A"/>
+  <circle cx="90" cy="40" r="17" fill="#F5A04A"/>
+  <path d="M102 52H110V57A4 4 0 0 1 102 57Z" fill="#F58BA0"/>
+  <ellipse cx="102" cy="46" rx="10" ry="7.5" fill="#FFE9C9"/>
+  <ellipse cx="110" cy="42" rx="3.2" ry="2.6" fill="#4A4048"/>
+  <path d="M98 50Q103 54 108 50" fill="none" stroke="#4A4048" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="96" cy="36" r="2.8" fill="#4A4048"/>
+  <circle cx="97" cy="35" r="0.9" fill="#FFFFFF"/>
+  <path d="M79 28C70 28 66 40 70 51C77 51 83 43 83 32Z" fill="#C9772A"/>
+</svg>

@@ -3,7 +3,7 @@
 
 import type { DogAction } from '../../shared/status-view';
 import { drawableElements, mountDog } from './dog/rig';
-import { DOG_THEMES } from './dog/themes';
+import { DOG_THEMES, floorTheme } from './dog/themes';
 
 /** 그릴 동작. */
 const ACTIONS: DogAction[] = ['idle', 'happy', 'sleepy', 'move', 'drag', 'fall'];
@@ -14,10 +14,16 @@ const CELL = Number(new URLSearchParams(location.search).get('cell')) || 96;
 
 document.body.style.cssText = 'margin:0;padding:12px;background:#CFE3F8;font:12px sans-serif;color:#4A4048';
 
-for (const theme of DOG_THEMES) {
+/** 견본에 올릴 그림: 테마마다 고리 안 그림, 그리고 전신 그림이 따로 있으면 화면 바닥용 그림. */
+const SHEETS = DOG_THEMES.flatMap((theme) => [
+  { id: theme.id, theme },
+  ...(theme.floor ? [{ id: `${theme.id}-floor`, theme: floorTheme(theme) }] : []),
+]);
+
+for (const { id, theme } of SHEETS) {
   /** 테마 이름 줄. */
   const title = document.createElement('h2');
-  title.textContent = theme.id;
+  title.textContent = id;
   title.style.cssText = 'font-size:14px;margin:8px 0 4px';
   document.body.append(title);
   for (const action of ACTIONS) {
@@ -34,7 +40,7 @@ for (const theme of DOG_THEMES) {
       /** 한 시각의 자세를 그리는 칸. */
       const cell = document.createElement('div');
       cell.className = 'cell';
-      cell.dataset.theme = theme.id;
+      cell.dataset.theme = id;
       cell.dataset.action = action;
       cell.dataset.t = String(t);
       cell.style.cssText = `width:${CELL}px;height:${CELL}px;background:#fff;border-radius:8px;padding:16px`;
