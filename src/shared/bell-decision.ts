@@ -114,6 +114,21 @@ function bellToRing(input: BellDecisionInput): BellKind | null {
   return latest.kind;
 }
 
+/**
+ * 오늘 이후(내일부터 days일) 날짜의 시간표에서 가장 이른 종의 시각. 없으면 null.
+ * 마지막 수업 뒤에도 자정 너머의 첫 종을 찾아야 하는 업데이트 잠금이 쓴다.
+ */
+export function firstBellOnLaterDays(input: BellDecisionInput, days = 7): number | null {
+  const d = new Date(input.now);
+  for (let offset = 1; offset <= days; offset += 1) {
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset).getTime();
+    if (localDate(dayStart) === input.bellsOffDate) continue;
+    const first = bellsOf(periodsOn(timetableOn(input, dayStart), dayStart))[0];
+    if (first) return first.at;
+  }
+  return null;
+}
+
 /** 지금 시각의 현황. 오늘 시간표의 수업 시간 사이에서 지금이 어디인지 가려낸다. */
 function statusAt(input: BellDecisionInput): BellStatus {
   const { now } = input;

@@ -92,6 +92,28 @@ describe('지금 시각의 업데이트 잠금', () => {
   it('오늘 종을 껐으면 다음 종이 없어 잠그지 않는다', () => {
     expect(updateTimingAt({ ...schedule, bellsOffDate: '2026-11-16' }, false, bellAt - min(1))).toEqual({ locked: false, nextBellAt: null });
   });
+
+  it('오늘 남은 종이 없어도 자정 너머 다음 날 첫 종이 2분 안이면 잠근다', () => {
+    // 2026-11-17은 화요일, 수요일 00:00에 시작하는 새벽반
+    const overnight = {
+      timetables: [{ id: 'd', name: '새벽반', color: 0, periods: [{ start: 0, end: 50 }] }],
+      weekdays: { mon: null, tue: null, wed: 'd', thu: null, fri: null, sat: null, sun: null },
+      bellsOffDate: null,
+    };
+    const midnight = new Date(2026, 10, 18, 0, 0).getTime();
+    expect(updateTimingAt(overnight, false, midnight - min(2) + 1)).toEqual({ locked: true, nextBellAt: null });
+    expect(updateTimingAt(overnight, false, midnight - min(2))).toEqual({ locked: false, nextBellAt: null });
+  });
+
+  it('오늘 종을 꺼도 자정 너머 다음 날 종은 울리니 잠근다', () => {
+    const overnight = {
+      timetables: [{ id: 'd', name: '새벽반', color: 0, periods: [{ start: 0, end: 50 }] }],
+      weekdays: { mon: null, tue: null, wed: 'd', thu: null, fri: null, sat: null, sun: null },
+      bellsOffDate: '2026-11-17',
+    };
+    const midnight = new Date(2026, 10, 18, 0, 0).getTime();
+    expect(updateTimingAt(overnight, false, midnight - min(1)).locked).toBe(true);
+  });
 });
 
 describe('준비된 새 버전', () => {

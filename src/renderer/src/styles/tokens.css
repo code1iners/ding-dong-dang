@@ -55,6 +55,7 @@
   --radius-button: 14px; /* 목록 줄과 단추 */
   --radius-rail: 16px; /* 왼쪽 세로 줄 단추와 알림 */
   --radius-card: 20px; /* 카드와 모달 */
+  --radius-pill: 999px; /* 끝이 둥근 알약(스위치, 슬라이더 길) */
   --band-height: 4px; /* 눌리는 것에만 붙는 아래 띠 */
 
   /* 여백. 모두 4의 배수다 */

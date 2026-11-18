@@ -1,5 +1,5 @@
 // 앱 내 업데이트의 화면 쪽 값. 메인이 상태를 만들고, 설정 화면이 버전 줄 · 주황 점 · 확인 모달을 그린다.
-import { decideBell, type BellDecision, type BellDecisionInput } from './bell-decision';
+import { decideBell, firstBellOnLaterDays, type BellDecision, type BellDecisionInput } from './bell-decision';
 
 /** 앱 내 업데이트의 상태. */
 export type UpdateStatus =
@@ -96,8 +96,11 @@ export function updateTimingAt(
   now: number,
 ): UpdateTiming {
   /** 다음 종의 시각. */
-  const nextBellAt = upcomingBellAt(decideBell({ ...schedule, lastChecked: null, now }));
-  return { locked: updateLocked({ nextBellAt, ringing, now }), nextBellAt };
+  const input = { ...schedule, lastChecked: null, now };
+  const nextBellAt = upcomingBellAt(decideBell(input));
+  // 오늘 남은 종이 없거나 오늘 종을 껐어도 자정 너머 다음 날의 첫 종은 울리니, 잠금만 그 종까지 본다
+  const lockBellAt = nextBellAt ?? firstBellOnLaterDays(input);
+  return { locked: updateLocked({ nextBellAt: lockBellAt, ringing, now }), nextBellAt };
 }
 
 /** 준비된(또는 설치를 맡긴) 새 버전. 주황 점, "업데이트" 단추, 확인 모달이 이 버전이 있을 때만 나온다. */
