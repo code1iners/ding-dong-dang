@@ -37,8 +37,13 @@ export type DogWindowApi = {
   onView(listener: (view: DogView) => void): void;
   /** 그림을 잰 결과와 동작 줄이기 설정을 알린다. 테마 · 키 · 동작 줄이기가 바뀔 때마다 다시 알린다. */
   reportFigure(report: DogFigureReport): void;
-  /** 강아지를 누르기 시작함, 손을 뗌, 누름이 취소됨을 알린다. 손을 떼면 메인이 누른 것으로 친다. */
+  /**
+   * 강아지를 누르기 시작함, 강아지 위에서 손을 뗌, 강아지 밖에서 손을 뗐거나 누름이 취소됨을 알린다.
+   * 끌기인지 누르기인지는 메인이 커서 위치로 정한다.
+   */
   press(phase: PressPhase): void;
+  /** 메인이 누른 것으로 쳤을 때 하트를 띄우라고 알린다. 끌어 옮긴 뒤 손을 떼면 오지 않는다. */
+  onHearts(listener: () => void): void;
 };
 
 /** 강아지 창 통로가 쓰는 IPC 채널 이름. */
@@ -46,4 +51,5 @@ export const DOG_CHANNEL = {
   view: 'dog:view',
   figure: 'dog:figure',
   press: 'dog:press',
+  hearts: 'dog:hearts',
 } as const;

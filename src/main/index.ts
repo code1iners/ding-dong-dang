@@ -253,6 +253,9 @@ void app.whenReady().then(() => {
         case 'set-roaming-dog':
           setRoamingDog(command.on);
           break;
+        case 'set-dog-height':
+          save((d) => ({ ...d, settings: { ...d.settings, dogHeight: command.height } }));
+          break;
         case 'set-bells-off':
           setBellsOff(command.off);
           break;

@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { CHANNEL, type AppState, type Command, type CommandResult } from '../shared/bridge';
 import { WEEKDAYS, type Weekday } from '../shared/data';
 import { isDogThemeId } from '../shared/dog-themes';
+import { DOG_HEIGHT_RANGE } from '../shared/roaming-dog';
 import type { Period } from '../shared/timetable-validation';
 
 /** 메인 쪽에서 앱 상태를 읽고 바꾸는 손잡이. */
@@ -45,6 +46,8 @@ export function parseCommand(raw: unknown): Command | null {
       return typeof value.on === 'boolean' ? { type: 'set-keep-screen-on', on: value.on } : null;
     case 'set-roaming-dog':
       return typeof value.on === 'boolean' ? { type: 'set-roaming-dog', on: value.on } : null;
+    case 'set-dog-height':
+      return isDogHeight(value.height) ? { type: 'set-dog-height', height: value.height } : null;
     case 'set-dog-theme':
       return isDogThemeId(value.id) ? { type: 'set-dog-theme', id: value.id } : null;
     case 'set-bells-off':
@@ -109,6 +112,11 @@ export function parseCommand(raw: unknown): Command | null {
     default:
       return null;
   }
+}
+
+/** 크기 슬라이더가 낼 수 있는 강아지 키(64~160의 정수)인지. */
+function isDogHeight(v: unknown): v is number {
+  return Number.isInteger(v) && (v as number) >= DOG_HEIGHT_RANGE.min && (v as number) <= DOG_HEIGHT_RANGE.max;
 }
 
 /** 0~100 사이의 유한한 수인지. */

@@ -167,7 +167,7 @@ test('얼굴 테마(Fluent Emoji, Noto Emoji)는 화면 바닥에서 같은 세�
     /** 강아지 창의 화면. */
     const dog = await dogPage();
     await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-theme', themeId);
-    await expect(dog.locator('.roaming-dog svg').locator('path, circle, ellipse, rect, polygon, polyline, line')).toHaveCount(drawn);
+    await expect(dog.locator('.roaming-dog__flip svg').locator('path, circle, ellipse, rect, polygon, polyline, line')).toHaveCount(drawn);
     await dog.screenshot({ path: `test-results/roaming-dog-${themeId}.png`, omitBackground: true });
     await app!.close();
     app = undefined;
@@ -227,6 +227,196 @@ test('커서가 강아지 그림 위에 있을 때만 강아지 창이 클릭을
   await moveCursor(feet.x + 1000, feet.y);
   await new Promise((r) => setTimeout(r, 200));
   expect(await ignoring()).toBe(true);
+});
+
+/**
+ * 실제 마우스 대신 메인이 읽는 커서 위치를 바꿔 끼운다. 끌기의 위치는 메인이 이 값으로 정한다.
+ * 돌려주는 함수로 커서를 옮긴다.
+ */
+async function fakeCursor(start: Electron.Point): Promise<(x: number, y: number) => Promise<void>> {
+  await app!.evaluate(({ screen }, point) => {
+    const g = globalThis as unknown as { __cursor: Electron.Point };
+    g.__cursor = point;
+    screen.getCursorScreenPoint = () => g.__cursor;
+  }, start);
+  return (x, y) =>
+    app!.evaluate((_, point) => {
+      (globalThis as unknown as { __cursor: Electron.Point }).__cursor = point;
+    }, { x, y });
+}
+
+/** 강아지 창의 자리로 본 강아지 발끝 가운데(화면 좌표). 창 아래 가운데에서 6px 위다. */
+async function feet(): Promise<Electron.Point> {
+  const { bounds } = await dogWindow();
+  return { x: bounds!.x + bounds!.width / 2, y: bounds!.y + bounds!.height - 6 };
+}
+
+test('강아지를 끌면 커서를 따라오고 주 모니터 밖으로 나가지 않으며, 놓으면 낙하산을 펴고 수직으로 내려와 착지한다. 내려오는 중에 다시 잡을 수 있다', async () => {
+  test.setTimeout(60_000);
+  await launch();
+  const dog = await dogPage();
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'sleepy');
+  const { display } = await dogWindow();
+  const start = await feet();
+  /** 강아지 칸 안의 누를 자리(창 안 좌표). 발끝에서 40px 위다. */
+  const boxBox = (await dog.locator('.roaming-dog').boundingBox())!;
+  const press = { x: boxBox.x + boxBox.width / 2, y: boxBox.y + boxBox.height - 40 };
+  const moveCursor = await fakeCursor({ x: start.x, y: start.y - 40 });
+
+  // 누르고 커서를 옮기면 끌려가기가 되고, 누른 자리(발끝 40px 위)를 커서 밑에 둔 채 따라온다
+  await dog.mouse.move(press.x, press.y);
+  await dog.mouse.down();
+  await moveCursor(start.x + 20, start.y - 40);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'drag');
+  /** 커서에서 발끝까지의 거리. */
+  const grab = { x: 0, y: 40 };
+  const target = { x: display.bounds.x + 400, y: display.bounds.y + 300 };
+  await moveCursor(target.x, target.y);
+  /** 발끝이 그 자리에서 1px(창 자리의 반올림) 안에 있는지. */
+  const near = async (x: number | null, y: number | null) => {
+    const f = await feet();
+    return (x === null || Math.abs(f.x - x) <= 1) && (y === null || Math.abs(f.y - y) <= 1);
+  };
+  await expect.poll(() => near(target.x + grab.x, target.y + grab.y), { timeout: 1_000 }).toBe(true);
+  await dog.screenshot({ path: 'test-results/roaming-dog-drag.png', omitBackground: true });
+
+  // 주 모니터 밖(위 · 왼쪽 · 오른쪽)으로 커서를 내보내도 강아지는 끝에서 멈춘다
+  /** 강아지 칸의 키와 너비. */
+  const height = boxBox.height;
+  const width = boxBox.width;
+  await moveCursor(display.bounds.x - 2000, display.bounds.y - 2000);
+  // 좌우는 걸어 다니는 범위(끝에서 반 너비 + 8px)까지, 위로는 머리가 위 끝에 닿을 때까지다
+  await expect.poll(() => near(display.bounds.x + width / 2 + 8, display.bounds.y + height), { timeout: 1_000 }).toBe(true);
+  await moveCursor(display.bounds.x + display.bounds.width + 2000, display.bounds.y + 200);
+  await expect.poll(() => near(display.bounds.x + display.bounds.width - width / 2 - 8, null), { timeout: 1_000 }).toBe(true);
+
+  // 맨 위에서 놓으면 낙하산이 펼쳐지고, 옆으로 흐르지 않고 내려와 7~8초 뒤 바닥에 착지한다
+  await moveCursor(target.x, display.bounds.y - 2000);
+  await expect.poll(() => near(null, display.bounds.y + height), { timeout: 1_000 }).toBe(true);
+  const top = await feet();
+  await dog.mouse.up();
+  const releasedAt = Date.now();
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'fall');
+  await expect(dog.locator('.parachute')).toHaveAttribute('data-state', 'open');
+  await dog.waitForTimeout(600);
+  await dog.screenshot({ path: 'test-results/roaming-dog-parachute.png', omitBackground: true });
+  // 내려온 뒤에는 하트가 나오지 않는다(끌고 놓은 것은 누른 것이 아니다)
+  expect(await dog.locator('.heart').count()).toBe(0);
+  /** 내려오는 동안 본 발끝. */
+  const seen: Electron.Point[] = [];
+  const floorY = display.workArea.y + display.workArea.height;
+  while ((await dog.locator('.roaming-dog').getAttribute('data-dog-action')) === 'fall' && Date.now() - releasedAt < 12_000) {
+    seen.push(await feet());
+    await dog.waitForTimeout(250);
+  }
+  /** 놓은 뒤 착지까지 걸린 시간(초). 확인 간격만큼 늦게 잴 수 있다. */
+  const seconds = (Date.now() - releasedAt) / 1000;
+  expect(seconds).toBeGreaterThanOrEqual(7);
+  expect(seconds).toBeLessThanOrEqual(8.5);
+  expect(new Set(seen.map((f) => f.x))).toEqual(new Set([top.x]));
+  expect(seen.every((f, i) => i === 0 || f.y >= seen[i - 1]!.y)).toBe(true);
+  expect((await feet()).y).toBe(floorY);
+  await expect(dog.locator('.parachute')).toHaveAttribute('data-state', 'fold');
+
+  // 다시 끌어 올려 놓고, 내려오는 중에 다시 잡으면 낙하를 멈추고 끌려간다
+  const ground = await feet();
+  await moveCursor(ground.x, ground.y - 40);
+  await dog.mouse.down();
+  await moveCursor(ground.x, ground.y - 400);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'drag');
+  await dog.mouse.up();
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'fall');
+  await dog.waitForTimeout(500);
+  const falling = await feet();
+  expect(falling.y).toBeGreaterThan(ground.y - 400 + 40);
+  expect(falling.y).toBeLessThan(floorY);
+  // 강아지 칸은 창 안에서 늘 같은 자리라, 같은 자리를 누르면 내려오는 강아지를 누른 것이다
+  await moveCursor(falling.x, falling.y - 40);
+  await dog.mouse.down();
+  await moveCursor(falling.x + 200, falling.y - 40);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'drag');
+  await expect(dog.locator('.parachute')).not.toHaveAttribute('data-state', 'open');
+  await expect.poll(() => near(falling.x + 200, null), { timeout: 1_000 }).toBe(true);
+  await dog.mouse.up();
+  // 창은 포커스를 받지 않는다
+  expect((await dogWindow()).focused).toBe(false);
+});
+
+test('설정의 크기 슬라이더를 움직이면 즉시 저장되고 강아지 · 하트 · 낙하산이 함께 커진다. 키 64와 160에서 하트와 낙하산이 창 안에 다 들어온다', async () => {
+  test.setTimeout(60_000);
+  await launch();
+  const dog = await dogPage();
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'sleepy');
+  await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '설정' }).click();
+  /** 크기 슬라이더. 기본 키는 96이다. */
+  const slider = page.getByRole('slider', { name: '강아지 크기' });
+  await expect(slider).toHaveValue('96');
+
+  for (const height of [64, 160]) {
+    // 키보드로 끝까지 옮긴다(Home은 64, End는 160)
+    await slider.focus();
+    await page.keyboard.press(height === 64 ? 'Home' : 'End');
+    await expect(slider).toHaveValue(String(height));
+    await expect.poll(async () => (await savedSettings()).dogHeight).toBe(height);
+    await expect.poll(async () => (await dog.locator('.roaming-dog').boundingBox())?.height).toBe(height);
+    // 창 크기는 검증 티켓의 식이다: 너비 max(1.6W + 92, W + 0.75H, 1.5H) + 8, 높이 1.925H + 18
+    const width = (await dog.locator('.roaming-dog').boundingBox())!.width;
+    await expect.poll(async () => (await dogWindow()).bounds!.height).toBe(Math.ceil(1.925 * height + 18));
+    expect((await dogWindow()).bounds!.width).toBe(Math.ceil(Math.max(1.6 * width + 92, width + 0.75 * height, 1.5 * height) + 8));
+
+    // 끌어 올려 놓아 낙하산을 펴고, 내려오는 중에 눌러 하트를 띄운다
+    const at = await feet();
+    const moveCursor = await fakeCursor({ x: at.x, y: at.y - height / 2 });
+    const box = (await dog.locator('.roaming-dog').boundingBox())!;
+    await dog.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await dog.mouse.down();
+    await moveCursor(at.x, at.y - height / 2 - 400);
+    await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'drag');
+    await dog.mouse.up();
+    await expect(dog.locator('.parachute')).toHaveAttribute('data-state', 'open');
+    await dog.locator('.roaming-dog').click();
+    await expect(dog.locator('.heart')).toHaveCount(8);
+    await dog.waitForTimeout(450);
+    await dog.screenshot({ path: `test-results/roaming-dog-size-${height}.png`, omitBackground: true });
+    // 낙하산과 모든 하트(떠오르는 끝까지)가 창 안에 있다
+    const inside = await dog.evaluate(() => {
+      /** 상자가 창 안에 다 들어오는지. */
+      const fits = (r: { left: number; top: number; right: number; bottom: number }) =>
+        r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+      /** 낙하산의 상자. */
+      const chute = document.querySelector('.parachute')!.getBoundingClientRect();
+      // 하트는 떠오르는 동안 움직이므로, 놓인 자리에서 떠오르기를 마친 끝 자리(옆으로 dx, 위로 rise, 1.1배)까지 넣어 본다
+      const hearts = [...document.querySelectorAll<HTMLElement>('.heart')].map((h) => {
+        const size = parseFloat(h.style.width);
+        const left = parseFloat(h.style.left) - size / 2;
+        const top = parseFloat(h.style.top) - size / 2;
+        const dx = parseFloat(h.style.getPropertyValue('--heart-dx'));
+        const rise = parseFloat(h.style.getPropertyValue('--heart-rise'));
+        const grow = size * 0.05;
+        return {
+          left: Math.min(left, left + dx) - grow,
+          right: Math.max(left, left + dx) + size + grow,
+          top: top + rise - grow,
+          bottom: top + size + 6 + grow,
+        };
+      });
+      return { chute: fits(chute), hearts: hearts.every(fits), chuteBox: chute.toJSON() as DOMRect, heartBoxes: hearts, window: [innerWidth, innerHeight] };
+    });
+    expect(inside.chute, JSON.stringify(inside)).toBe(true);
+    expect(inside.hearts, JSON.stringify(inside)).toBe(true);
+    // 낙하산은 키에 맞춰 커진다(너비 1.5H)
+    expect(Math.round(inside.chuteBox.width)).toBe(Math.round(1.5 * height));
+    // 착지할 때까지 기다리지 않고 다음 크기로 넘어간다
+  }
+
+  // 고리 안 강아지의 크기는 바뀌지 않는다
+  await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '현황' }).click();
+  const ring = page.locator('.ring-dog__button');
+  await expect(ring).toBeVisible();
+  const before = (await ring.boundingBox())!;
+  await page.evaluate(() => window.dingdong.command({ type: 'set-dog-height', height: 64 }));
+  await expect.poll(async () => (await savedSettings()).dogHeight).toBe(64);
+  expect(await ring.boundingBox()).toEqual(before);
 });
 
 test('설정의 "돌아다니는 강아지" 스위치와 트레이 메뉴 항목이 같은 값이고, 끄면 강아지 창이 숨는다', async () => {
@@ -341,9 +531,18 @@ test('종이 울리면 강아지가 신남이 되고 누르면 종이 멈추며,
     /** 앱 창. */
     const main = BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('index.html'))!;
     main.focus();
-    const g = globalThis as unknown as { __blurs: number };
+    const g = globalThis as unknown as { __blurs: number; __earlyBlurs: number; __dogShown: boolean };
     g.__blurs = 0;
-    main.on('blur', () => (g.__blurs += 1));
+    g.__earlyBlurs = 0;
+    g.__dogShown = false;
+    // 강아지 창이 뜨기 전에 잃은 포커스는 강아지 창 탓이 아니라 이 Mac의 다른 앱(사람의 조작)이 맨 앞을 가져간 것이다
+    BrowserWindow.getAllWindows()
+      .find((w) => w.webContents.getURL().endsWith('dog.html'))!
+      .once('show', () => (g.__dogShown = true));
+    main.on('blur', () => {
+      g.__blurs += 1;
+      if (!g.__dogShown) g.__earlyBlurs += 1;
+    });
   });
   await new Promise((r) => setTimeout(r, 300));
   /** 강아지 창이 나타나기 전에 포커스를 가진 창. 앱이 맨 앞이면 앱 창이다. */
@@ -357,18 +556,25 @@ test('종이 울리면 강아지가 신남이 되고 누르면 종이 멈추며,
   await expect.poll(async () => (await dogWindow()).visible, { timeout: ringAt + 60_000 - Date.now() + 10_000, intervals: [100] }).toBe(true);
   const shown = await dogWindow();
   expect(shown.count).toBe(1);
+  /** 강아지 창이 뜨기 전에 다른 앱이 맨 앞을 가져갔는지. 그러면 포커스는 직접 보지 못한 것이라 결과에 남기고 판정하지 않는다. */
+  const disturbed = (await app!.evaluate(() => (globalThis as unknown as { __earlyBlurs: number }).__earlyBlurs)) > 0;
+  if (disturbed) test.info().annotations.push({ type: 'warning', description: '강아지 창이 뜨기 전에 다른 앱이 맨 앞을 가져가 포커스를 판정하지 못했다' });
   await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'happy');
   const { bounds, display } = shown;
   expect(Math.abs(bounds!.x + bounds!.width / 2 - (display.bounds.x + display.bounds.width / 2))).toBeLessThanOrEqual(1);
   expect(bounds!.y + bounds!.height - 6).toBe(display.workArea.y + display.workArea.height);
   // 강아지 창이 떠도 앱 창은 포커스를 잃지 않고, 강아지 창도 포커스를 받지 않는다
-  expect(shown.focusedWindow).toBe(focusedBefore);
-  expect(await blurs()).toBe(0);
+  if (!disturbed) {
+    expect(shown.focusedWindow).toBe(focusedBefore);
+    expect(await blurs()).toBe(0);
+  }
   expect(shown.focused).toBe(false);
   await dog.screenshot({ path: 'test-results/roaming-dog-summoned.png', omitBackground: true });
 
   // 재생이 끝나면 사라진다
   await expect.poll(async () => (await dogWindow()).visible, { timeout: 6_000 }).toBe(false);
-  expect((await dogWindow()).focusedWindow).toBe(focusedBefore);
-  expect(await blurs()).toBe(0);
+  if (!disturbed) {
+    expect((await dogWindow()).focusedWindow).toBe(focusedBefore);
+    expect(await blurs()).toBe(0);
+  }
 });

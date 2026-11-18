@@ -18,11 +18,50 @@ body {
   cursor: pointer;
 }
 
-/* 걷는 쪽으로 그림을 돌리는 묶음. 발끝 가운데를 축으로 돌린다 */
+/* 걷는 쪽으로 그림을 돌리는 묶음. 발끝 가운데를 축으로 돌리고, 끌리거나 내려올 때는 매달린 등(위 가운데)을 축으로 기울인다 */
 .roaming-dog__flip {
   width: 100%;
   height: 100%;
   transform-origin: 50% 100%;
+}
+
+.roaming-dog[data-dog-action='drag'] .roaming-dog__flip,
+.roaming-dog[data-dog-action='fall'] .roaming-dog__flip {
+  transform-origin: 50% 0;
+}
+
+.roaming-dog[data-dog-action='drag'] {
+  cursor: grabbing;
+}
+
+/* 낙하산. 강아지 등 뒤에서 아래 끝을 축으로 펼쳐지고, 착지하면 납작하게 접히며 사라진다(시안 09번). 크기와 높이는 스크립트가 정한다 */
+.parachute {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  overflow: visible;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  transform: scale(0);
+  opacity: 0;
+}
+
+.parachute[data-state='open'] {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 0.35s ease-out, opacity 0.2s;
+}
+
+.parachute[data-state='fold'] {
+  transform: scale(1, 0.2);
+  opacity: 0;
+  transition: transform 0.4s ease-in, opacity 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parachute[data-state] {
+    transition: none;
+  }
 }
 
 .roaming-dog .dog-art__svg {

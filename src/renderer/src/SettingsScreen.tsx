@@ -1,6 +1,8 @@
 import type { Settings } from '../../shared/data';
+import { DOG_HEIGHT_RANGE } from '../../shared/roaming-dog';
 import { DogThemePicker } from './DogThemePicker';
 import { ActionIcon } from './icons';
+import { Slider } from './Slider';
 import { Switch } from './Switch';
 
 type Props = {
@@ -20,6 +22,21 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
       <div className="setting-row">
         <span id="setting-roaming-dog">돌아다니는 강아지</span>
         <div className="setting-row__control">
+          {/* 크기는 움직이는 즉시 저장되고 화면 바닥의 강아지 · 하트 · 낙하산에 바로 반영된다. 고리 안 강아지는 그대로다 */}
+          <span className="setting-row__hint" aria-hidden="true">
+            작게
+          </span>
+          <Slider
+            label="강아지 크기"
+            min={DOG_HEIGHT_RANGE.min}
+            max={DOG_HEIGHT_RANGE.max}
+            value={settings.dogHeight}
+            valueText={(height) => `키 ${height}`}
+            onChange={(height) => void window.dingdong.command({ type: 'set-dog-height', height })}
+          />
+          <span className="setting-row__hint" aria-hidden="true">
+            크게
+          </span>
           <Switch
             on={settings.roamingDog}
             labelledBy="setting-roaming-dog"

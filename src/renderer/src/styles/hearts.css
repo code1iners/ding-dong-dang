@@ -37,7 +37,7 @@
   }
   100% {
     opacity: 0;
-    transform: translate(var(--heart-dx), -46px) scale(1.1);
+    transform: translate(var(--heart-dx), var(--heart-rise, -46px)) scale(1.1);
   }
 }
 

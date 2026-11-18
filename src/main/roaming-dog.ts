@@ -5,9 +5,11 @@ import type { Data } from '../shared/data';
 import { DOG_CHANNEL, type DogFigureReport, type DogView } from '../shared/dog-window';
 import {
   dogWindowBounds,
+  holdDog,
   isOverDog,
+  moveHeldDog,
   placeDog,
-  pressDog,
+  releaseDog,
   stepDog,
   summonDog,
   type DogScene,
@@ -17,7 +19,7 @@ import { framesPerSecond } from '../shared/status-view';
 
 // 돌아다니는 강아지 창. 강아지보다 조금 큰 투명 창 하나를 옮겨서 강아지를 움직인다.
 // 창 옵션 · 크기 식 · 클릭 통과 방식은 돌아다니는 강아지 창을 Mac에서 검증하기(28번)의 "창 만드는 법"이고,
-// 측정용 앱 prototypes/dog-window-probe/가 선례다. 끌기와 크기 슬라이더는 이 창에 뒤에 더한다.
+// 측정용 앱 prototypes/dog-window-probe/가 선례다. 끄는 동안의 위치는 강아지 창의 포인터 좌표가 아니라 메인이 읽은 커서 위치로 정한다.
 
 /** 커서가 강아지 위에 있는지 확인하는 간격(ms). 강아지 위에서만 창이 클릭을 받는다. */
 const HIT_TEST_MS = 33;
@@ -28,7 +30,7 @@ type Options = {
   read(): Data;
   /** 지금 종이 울리는 중인지. */
   ringing(): boolean;
-  /** 울리는 종을 멈춘다. 강아지를 누르면 부른다. */
+  /** 울리는 종을 멈춘다. 강아지를 누르거나 끌기 시작하면 부른다. */
   stopBell(): void;
 };
 
@@ -38,17 +40,15 @@ export type RoamingDogWindow = {
   refresh(): void;
 };
 
-/** 주 모니터의 바닥. 좌우 끝은 모니터 전체, 바닥은 작업 표시줄 · Dock을 뺀 작업 영역의 아래쪽이다. */
-type Floor = { left: number; right: number; floorY: number };
-
-/** 지금 주 모니터의 바닥. */
-function primaryFloor(): Floor {
+/** 지금 주 모니터의 바닥. 좌우 · 위 끝은 모니터 전체, 바닥은 작업 표시줄 · Dock을 뺀 작업 영역의 아래쪽이다(28번). */
+function primaryFloor(): DogScene['floor'] {
   /** 주 모니터. */
   const display = screen.getPrimaryDisplay();
   return {
     left: display.bounds.x,
     right: display.bounds.x + display.bounds.width,
-    floorY: display.workArea.y + display.workArea.height,
+    top: display.bounds.y,
+    bottom: display.workArea.y + display.workArea.height,
   };
 }
 
@@ -58,7 +58,7 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
   const firstHeight = options.read().settings.dogHeight;
   /** 강아지 창. 포커스를 받지 않고, 다른 앱 창 · Dock · 전체 화면 앱 위에 뜬다. */
   const win = new BrowserWindow({
-    ...dogWindowBounds({ x: 0, floorY: 0, width: firstHeight, height: firstHeight }),
+    ...dogWindowBounds({ x: 0, feetY: 0, width: firstHeight, height: firstHeight }),
     show: false,
     frame: false,
     transparent: true,
@@ -100,8 +100,6 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
   const power = { locked: false, asleep: false };
   /** 지금 그리기를 멈췄는지. */
   let paused = false;
-  /** 강아지를 누르고 있는지. 누르는 동안은 커서가 벗어나도 클릭을 받는다. */
-  let pressing = false;
   /** 지금 창이 클릭을 통과시키는지. */
   let ignoring = true;
   /** 주 모니터의 바닥. 모니터 구성이 바뀔 때만 다시 읽는다. */
@@ -146,6 +144,7 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
       width: figure.width,
       height: data.settings.dogHeight,
       gait: figure.gait,
+      summoned: !data.settings.roamingDog,
     };
   }
 
@@ -168,7 +167,7 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
 
   /** 강아지 발끝이 놓인 화면 자리. */
   function placement(data: Data) {
-    return { x: dog!.x, floorY: floor.floorY, width: figure!.width, height: data.settings.dogHeight };
+    return { x: dog!.x, feetY: dog!.y, width: figure!.width, height: data.settings.dogHeight };
   }
 
   /** 창을 강아지 자리로 옮긴다. */
@@ -185,8 +184,8 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
   /** 커서가 강아지 위에 있거나 누르는 중일 때만 클릭을 받는다. forward 옵션 없이 메인이 직접 확인한다(28번). */
   function hitTest(): void {
     if (win.isDestroyed() || !dog || !figure) return;
-    /** 클릭을 통과시킬지. */
-    const ignore = !(pressing || isOverDog(screen.getCursorScreenPoint(), placement(options.read())));
+    /** 클릭을 통과시킬지. 누르고 있거나 끄는 동안은 커서가 강아지에서 벗어나도 클릭을 받는다. */
+    const ignore = !(dog.hold || isOverDog(screen.getCursorScreenPoint(), placement(options.read())));
     if (ignore === ignoring) return;
     ignoring = ignore;
     win.setIgnoreMouseEvents(ignore);
@@ -201,10 +200,18 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
     }
   }
 
-  /** 창을 숨기고 클릭을 다시 통과시킨다. */
+  /** 손을 놓는다. 끌던 중이면 그 자리에서 내려오기 시작해, 다시 보일 때 낙하를 끝내고 착지한다. */
+  function letGo(): void {
+    if (!dog?.hold) return;
+    /** 놓을 때의 장면. 그림을 재기 전이면 없고, 그때는 손만 놓는다. */
+    const scene = sceneAt(Date.now(), options.read());
+    dog = scene ? releaseDog(dog, scene, Date.now(), false).dog : { ...dog, hold: null };
+  }
+
+  /** 창을 숨기고 클릭을 다시 통과시킨다. 누르거나 끌던 손은 놓은 것으로 한다(숨은 창에는 손을 떼는 신호가 오지 않는다). */
   function hide(): void {
     setHitTesting(false);
-    pressing = false;
+    letGo();
     if (!ignoring) {
       ignoring = true;
       win.setIgnoreMouseEvents(true);
@@ -235,13 +242,23 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
     dog ??= placeDog(scene, now, Math.random);
     if (!data.settings.roamingDog && !summoned) dog = summonDog(dog, scene);
     summoned = !data.settings.roamingDog;
-    // 멈춘 동안은 시각만 넘겨, 풀린 뒤 그동안 걸은 것처럼 옮겨 가지 않게 한다
-    dog = paused ? { ...dog, at: now } : stepDog(dog, scene, now, Math.random);
+    /** 끌기가 이번에 시작돼 울리는 종을 멈춰야 하는지. */
+    let stopBell = false;
+    if (paused) {
+      // 멈춘 동안은 시각만 넘겨, 풀린 뒤 그동안 걸은 것처럼 옮겨 가지 않게 한다
+      dog = { ...dog, at: now };
+    } else {
+      // 누르고 있으면 커서를 따라 끌기를 시작하거나 옮긴다. 위치는 메인이 읽은 커서로 정한다(28번)
+      if (dog.hold) ({ dog, stopBell } = moveHeldDog(dog, scene, screen.getCursorScreenPoint(), now));
+      dog = stepDog(dog, scene, now, Math.random);
+    }
     place(data);
     sendView(data);
     if (!win.isVisible()) win.showInactive();
     setHitTesting(!paused);
-    if (!paused) tickTimer = setTimeout(update, 1000 / framesPerSecond(dog.action));
+    // 누르고 있는 동안은 끌기를 바로 알아채도록 끄는 동작과 같은 횟수로 판정한다
+    if (!paused) tickTimer = setTimeout(update, 1000 / framesPerSecond(dog.hold ? 'drag' : dog.action));
+    if (stopBell) options.stopBell();
   }
 
   ipcMain.on(DOG_CHANNEL.figure, (event, raw: unknown) => {
@@ -263,11 +280,27 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
   });
   ipcMain.on(DOG_CHANNEL.press, (event, phase: unknown) => {
     if (event.sender !== win.webContents || (phase !== 'down' && phase !== 'up' && phase !== 'cancel')) return;
-    pressing = phase === 'down';
-    if (phase !== 'up' || !dog) return;
-    // 손을 떼면 누른 것이다. 2초쯤 신남이 되고, 종이 울리는 중이면 멈춘다
-    dog = pressDog(dog, Date.now());
-    if (options.ringing()) options.stopBell();
+    if (!dog || !win.isVisible()) return;
+    if (phase === 'down') {
+      dog = holdDog(dog, screen.getCursorScreenPoint());
+      update();
+      return;
+    }
+    /** 이번 판정의 시각. */
+    const now = Date.now();
+    /** 손을 뗄 때의 장면. 그림을 재기 전이면 없다. */
+    const scene = sceneAt(now, options.read());
+    if (!scene) {
+      // 클릭을 계속 받지 않도록 손은 놓는다
+      letGo();
+      return;
+    }
+    // 끌던 중이면 놓아 낙하산으로 내려오고, 끌지 않았으면 누른 것이다(2초쯤 신남, 하트, 울리는 종 멈춤)
+    /** 손을 뗀 결과. */
+    const released = releaseDog(dog, scene, now, phase === 'up');
+    dog = released.dog;
+    if (released.petted) win.webContents.send(DOG_CHANNEL.hearts);
+    if (released.stopBell) options.stopBell();
     update();
   });
 

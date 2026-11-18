@@ -58,4 +58,19 @@ describe('설정 화면의 돌아다니는 강아지 줄', () => {
     expect(roamingRow(true)).toContain('aria-labelledby="setting-roaming-dog"');
     expect(roamingRow(false)).toContain('aria-checked="false"');
   });
+
+  it('같은 줄에 "작게"와 "크게" 사이의 크기 슬라이더(키 64~160)가 저장된 키를 보여 준다', () => {
+    const row = rowOf(
+      renderToStaticMarkup(<SettingsScreen settings={{ ...emptyData().settings, dogHeight: 112 }} autoStartRegistered />),
+      'setting-roaming-dog',
+    );
+    expect(row).toMatch(/작게.*type="range".*크게/);
+    expect(row).toContain('aria-label="강아지 크기"');
+    expect(row).toContain('min="64"');
+    expect(row).toContain('max="160"');
+    expect(row).toContain('value="112"');
+    expect(row).toContain('aria-valuetext="키 112"');
+    // 채운 부분은 범위 안의 비율이다: (112 − 64) ÷ 96 = 50%
+    expect(row).toContain('--fill:50%');
+  });
 });
