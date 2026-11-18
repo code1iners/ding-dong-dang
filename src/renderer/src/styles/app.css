@@ -534,10 +534,13 @@ button {
 }
 
 /* 시간표 화면 */
+/* 창이 좁아 한 줄에 다 못 들어가면 요일 동그라미가 아래 줄로 내려가, 시간표 이름이 "…"로 잘리지 않게 한다 */
 .timetable-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px 10px;
 }
 
 .timetable-select {
@@ -568,7 +571,6 @@ button {
 .days {
   display: flex;
   gap: 6px;
-  margin-left: auto;
   padding-right: var(--space-1);
 }
 

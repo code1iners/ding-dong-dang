@@ -149,7 +149,7 @@ export function BellScreen({ state, toasts }: Props) {
               <button
                 type="button"
                 className="play-button"
-                title={previewing ? '미리 듣기 멈추기' : '미리 듣기'}
+                title={`${row.name} ${previewing ? '미리 듣기 멈추기' : '미리 듣기'}`}
                 aria-label={`${row.name} ${previewing ? '미리 듣기 멈추기' : '미리 듣기'}`}
                 aria-pressed={previewing}
                 onClick={() => void send({ type: 'toggle-preview', id: row.id })}
@@ -205,7 +205,7 @@ export function BellScreen({ state, toasts }: Props) {
                     key={kind}
                     type="button"
                     className="pick"
-                    title={`${word}으로 쓰기`}
+                    title={`${row.name} ${word}으로 쓰기`}
                     aria-label={`${row.name} ${word}으로 쓰기`}
                     aria-pressed={chosen}
                     onClick={() => {
@@ -222,7 +222,7 @@ export function BellScreen({ state, toasts }: Props) {
                   <button
                     type="button"
                     className="icon-button"
-                    title="이름 저장"
+                    title={`'${row.name}' 이름 저장`}
                     aria-label={`'${row.name}' 이름 저장`}
                     disabled={draft.trim() === ''}
                     onClick={() => commitRename(row.id)}
@@ -235,7 +235,7 @@ export function BellScreen({ state, toasts }: Props) {
                     type="button"
                     className="icon-button"
                     data-rename-for={row.id}
-                    title="이름 바꾸기"
+                    title={`'${row.name}' 이름 바꾸기`}
                     aria-label={`'${row.name}' 이름 바꾸기`}
                     onClick={() => {
                       setRenamingId(row.id);
@@ -249,7 +249,7 @@ export function BellScreen({ state, toasts }: Props) {
                   <button
                     type="button"
                     className="icon-button"
-                    title="지우기"
+                    title={`'${row.name}' 지우기`}
                     aria-label={`'${row.name}' 지우기`}
                     onClick={() => remove(row)}
                   >

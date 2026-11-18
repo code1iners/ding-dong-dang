@@ -199,7 +199,7 @@ export function TimetablePicker({ day, timetables, weekdays, toasts, onClose }: 
                       <button
                         type="button"
                         className="icon-button"
-                        title="이름 저장"
+                        title={`'${t.name}' 이름 저장`}
                         aria-label={`'${t.name}' 이름 저장`}
                         disabled={draft.trim() === ''}
                         onClick={() => commitRename(t.id)}
@@ -211,7 +211,7 @@ export function TimetablePicker({ day, timetables, weekdays, toasts, onClose }: 
                         type="button"
                         className="icon-button"
                         data-rename-for={t.id}
-                        title="이름 바꾸기"
+                        title={`'${t.name}' 이름 바꾸기`}
                         aria-label={`'${t.name}' 이름 바꾸기`}
                         onClick={() => startRename(t)}
                       >
@@ -221,7 +221,7 @@ export function TimetablePicker({ day, timetables, weekdays, toasts, onClose }: 
                     <button
                       type="button"
                       className="icon-button"
-                      title="지우기"
+                      title={`'${t.name}' 지우기`}
                       aria-label={`'${t.name}' 지우기`}
                       onClick={() => remove(t)}
                     >
