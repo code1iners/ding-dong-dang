@@ -101,7 +101,10 @@ export function parseCommand(raw: unknown): Command | null {
     case 'stop-bell':
       return { type: 'stop-bell' };
     case 'wipe-all-data':
-      return { type: 'wipe-all-data' };
+    case 'check-update':
+    case 'install-update':
+    case 'ack-just-updated':
+      return { type: value.type };
     case 'rename-sound':
       return typeof value.id === 'string' && typeof value.name === 'string' && value.name.trim() !== ''
         ? { type: 'rename-sound', id: value.id, name: value.name }

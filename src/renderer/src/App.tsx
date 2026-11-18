@@ -9,6 +9,9 @@ import { StatusScreen } from './StatusScreen';
 import { TimetableScreen, type LeaveGuard } from './TimetableScreen';
 import { ToastStack, useToasts } from './Toasts';
 import { useAppState } from './useAppState';
+import { useUpdateTiming } from './useUpdateTiming';
+import type { AppState } from '../../shared/bridge';
+import { justUpdatedText, readyVersion } from '../../shared/update';
 
 /** 저장에 실패했을 때의 알림 문장. 무엇이 안 됐는지와 무엇을 하면 되는지를 함께 말한다(DESIGN.md "글"). */
 const SAVE_FAILED_TEXT = '저장하지 못했어요. 디스크에 빈 공간이 있는지 확인하고 다시 저장해 주세요.';
@@ -19,6 +22,24 @@ const FRESH_START_TEXT = '저장된 시간표를 읽지 못해 새로 시작했�
 const HIDE_NOTICE_TEXT = navigator.userAgent.includes('Mac')
   ? '창을 닫아도 종은 울려요. 화면 위쪽 메뉴 막대의 아이콘에서 다시 열거나 끝낼 수 있어요.'
   : '창을 닫아도 종은 울려요. 화면 아래 오른쪽 알림 영역의 아이콘에서 다시 열거나 끝낼 수 있어요.';
+
+/** 앱 안에서 업데이트를 설치하지 못했을 때의 알림 문장. */
+const INSTALL_FAILED_TEXT = '업데이트하지 못했어요. 사이트에서 새 버전을 내려받아 설치해 주세요.';
+
+/** 설정 화면. 업데이트 잠금을 매초 다시 정하는 일은 설정 화면이 떠 있을 때만 한다. */
+function Settings({ state }: { state: AppState }) {
+  /** 지금 "업데이트"를 잠가야 하는지와 다음 종까지 남은 시간. */
+  const updateTiming = useUpdateTiming(state);
+  return (
+    <SettingsScreen
+      settings={state.settings}
+      autoStartRegistered={state.autoStartRegistered}
+      appVersion={state.appVersion}
+      update={state.update}
+      updateTiming={updateTiming}
+    />
+  );
+}
 
 /** 처음 닫을 때 안내의 "창 닫기". 메인이 안내를 봤다고 저장하고 창을 숨긴다. */
 function confirmHide(): void {
@@ -112,9 +133,41 @@ export function App() {
     [freshStart, notify],
   );
 
+  /** 앱 내 업데이트로 다시 켜진 첫 실행이면 그 버전. */
+  const justUpdated = state?.update.justUpdated;
+  // 앱 내 업데이트로 다시 켜졌으면 한 번 알린다. 메인에 알렸음을 말해 창을 다시 열어도 반복하지 않게 한다
+  useEffect(
+    function announceJustUpdated() {
+      if (!justUpdated) return;
+      notify({ key: 'just-updated', kind: 'success', text: justUpdatedText(justUpdated) });
+      window.dingdong.command({ type: 'ack-just-updated' }).catch((error: unknown) => console.error(error));
+    },
+    [justUpdated, notify],
+  );
+
+  /** 지금까지 알린 설치 실패 횟수. 처음 상태를 받았을 때의 값으로 시작해, 그 뒤에 늘어난 것만 알린다. */
+  const notifiedInstallFailures = useRef<number | null>(null);
+  /** 메인이 센 설치 실패 횟수. */
+  const installFailures = state?.update.installFailures;
+  // 앱 안에서 설치하지 못하면 알린다
+  useEffect(
+    function announceInstallFailure() {
+      if (installFailures === undefined) return;
+      if (notifiedInstallFailures.current !== null && installFailures > notifiedInstallFailures.current) {
+        notify({ key: 'install-failed', kind: 'failure', text: INSTALL_FAILED_TEXT });
+      }
+      notifiedInstallFailures.current = installFailures;
+    },
+    [installFailures, notify],
+  );
+
   return (
     <div className="app">
-      <Rail current={screen} onSelect={(next) => next !== screen && leave(() => setScreen(next))} />
+      <Rail
+        current={screen}
+        onSelect={(next) => next !== screen && leave(() => setScreen(next))}
+        updateReady={state ? readyVersion(state.update.status) !== null : false}
+      />
       {/* 화면 제목은 보이지 않게 두고(DESIGN.md "글"), 화면 읽기용 이름만 붙인다. 비어 있는 화면은 화면 티켓에서 채운다 */}
       <main className="screen" aria-label={name}>
         {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
@@ -129,7 +182,7 @@ export function App() {
           />
         )}
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
-        {screen === 'settings' && state && <SettingsScreen settings={state.settings} autoStartRegistered={state.autoStartRegistered} />}
+        {screen === 'settings' && state && <Settings state={state} />}
       </main>
       {state?.closeNotice && (
         <Modal

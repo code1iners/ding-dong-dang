@@ -5,6 +5,7 @@
 import type { BellKind } from './bell-decision';
 import type { RegisteredSound, Settings, Timetable, Weekday } from './data';
 import type { Period } from './timetable-validation';
+import type { UpdateState } from './update';
 
 /** 메인이 렌더러에 보내는 앱 상태. 기능 티켓이 필요한 값을 더한다. */
 export type AppState = {
@@ -38,6 +39,14 @@ export type AppState = {
   closeNotice: boolean;
   /** OS에 물은 자동 시작 등록 상태. 설정의 "컴퓨터를 켜면 자동 시작" 값이 아니라 실제로 로그인 때 뜨도록 등록돼 있는지다. */
   autoStartRegistered: boolean;
+  /** 앱 내 업데이트. 설정 화면의 버전 줄, 왼쪽 설정 단추의 주황 점, 확인 모달이 이 값을 따른다. */
+  update: UpdateView;
+};
+
+/** 화면에 보내는 앱 내 업데이트 값. */
+export type UpdateView = UpdateState & {
+  /** 이번 실행이 앱 내 업데이트로 다시 켜진 첫 실행이면 그 버전. 화면이 "<버전>으로 업데이트했어요"를 한 번 알린 뒤 null이 된다. */
+  justUpdated: string | null;
 };
 
 /** 저장소가 화면에 알리는 사실. */
@@ -111,7 +120,13 @@ export type Command =
   /** 울리는 종을 멈춘다. 강아지를 눌렀을 때 보낸다. 울리지 않으면 아무 일도 없다. */
   | { type: 'stop-bell' }
   /** 설정의 "모든 데이터 지우기". 스펙의 지우기 범위를 지우고 앱을 종료한다. 화면이 확인을 받은 뒤에 보낸다. */
-  | { type: 'wipe-all-data' };
+  | { type: 'wipe-all-data' }
+  /** 버전 줄의 "다시 확인". 바로 새 버전을 확인한다. */
+  | { type: 'check-update' }
+  /** 확인 모달의 "업데이트". 준비된 새 버전을 설치하고 다시 켠다. 잠금 조건이면 메인도 거절해 결과의 `ok`가 false다. */
+  | { type: 'install-update' }
+  /** "<버전>으로 업데이트했어요" 알림을 보여 줬음을 알린다. 창을 다시 열어도 반복하지 않게 한다. */
+  | { type: 'ack-just-updated' };
 
 /** 명령의 결과. 대부분의 명령은 늘 ok다. */
 export type CommandResult = {

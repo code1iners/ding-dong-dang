@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, powerMonitor, powerSaveBlocker, screen, shell, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { autoUpdater } from 'electron-updater';
 import { localDate } from '../shared/bell-decision';
 import { CHANNEL } from '../shared/bridge';
 import type { AppState, CommandResult } from '../shared/bridge';
@@ -29,6 +30,7 @@ import {
   type RemovedTimetable,
 } from '../shared/timetable-ops';
 import { validatePeriods } from '../shared/timetable-validation';
+import { updateTimingAt } from '../shared/update';
 import { APP_ID } from './app-identity';
 import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, launchedByAutoStart, reconcileAutoStart } from './auto-start';
 import { openBellPlayer, type BellPlayer } from './bell-player';
@@ -36,11 +38,15 @@ import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
 import { removeAfterExitCommand, wipePaths, wipeTargets } from './data-wipe';
 import { DATA_FORMAT } from './data-format';
+import { InAppUpdate } from './in-app-update';
 import { decideClose, trayIconFile, trayMenuTemplate } from './residency';
 import { openRoamingDog, type RoamingDogWindow } from './roaming-dog';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
 import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
 import { BACKUP_FILE, DATA_FILE, openStorage, SOUNDS_DIR } from './storage';
+import { recordUpdateAttempt, takeJustUpdated } from './update-attempt';
+import { electronUpdateFeed } from './update-feed';
+import { UPDATE_PUBLIC_KEYS } from './update-public-keys';
 import { usableBounds } from './window-bounds';
 
 /** 실행 인자 `--data-dir`로 바꾼 데이터 폴더. 자동 검증 실행이면 있다. */
@@ -79,6 +85,14 @@ const firstRun = !existsSync(join(dataDir, DATA_FILE)) && !existsSync(join(dataD
 
 /** 데이터 폴더의 저장소와 시작할 때 읽은 결과. */
 const { storage, loaded } = openStorage(dataDir, DATA_FORMAT);
+
+/**
+ * 앱 내 업데이트를 확인하는 실행인지. 설치한 앱을 그냥 띄웠을 때만 확인한다.
+ * `--data-dir`로 띄운 자동 검증 실행과 패키징하지 않은 개발 실행은 실제 릴리스에 닿지 않는다.
+ */
+const updatesEnabled = customDataDir === null && app.isPackaged;
+/** 이번 실행이 앱 내 업데이트로 다시 켜진 첫 실행이면 그 버전. 업데이트 뒤의 재실행은 자동 시작이어도 창을 연다. */
+const justUpdated = takeJustUpdated(dataDir, app.getVersion());
 
 /** 저장된 값 가운데 화면 쪽 상태에 그대로 실리는 부분. */
 function viewOf(data: Data): Pick<AppState, 'settings' | 'timetables' | 'weekdays' | 'bellsOffDate' | 'sounds' | 'soundVolumes' | 'startBell' | 'endBell' | 'masterVolume'> {
@@ -233,6 +247,9 @@ void app.whenReady().then(() => {
   /** 돌아다니는 강아지 창. 트레이와 함께 앱 창의 화면을 불러온 뒤에 만든다. */
   let roamingDog: RoamingDogWindow | null = null;
 
+  /** 앱 내 업데이트. 확인하는 실행에서만 있다. 재생기와 스케줄러 다음에 만든다. */
+  let inAppUpdate: InAppUpdate | null = null;
+
   /** 화면에 저장하지 않은 수업 시간 편집이 있는지. */
   let editingDirty = false;
   /** 화면이 닫기를 허락해 `close-window`로 닫는 중인지. */
@@ -248,6 +265,7 @@ void app.whenReady().then(() => {
       previewingSound: null,
       closeNotice: false,
       autoStartRegistered: autoStartRegistered(),
+      update: { status: { kind: updatesEnabled ? 'idle' : 'off' }, installFailures: 0, justUpdated },
     },
     (command): CommandResult | void | Promise<CommandResult | void> => {
       switch (command.type) {
@@ -372,6 +390,16 @@ void app.whenReady().then(() => {
           // 명령의 답을 화면에 보낸 뒤에 지우고 끝낸다
           setImmediate(wipeAllDataAndQuit);
           break;
+        case 'check-update':
+          void inAppUpdate?.checkNow();
+          break;
+        case 'install-update':
+          // 화면이 이미 잠그지만, 종이 곧 울리거나 울리는 중이면 여기서도 설치하지 않는다
+          if (updateLockedNow()) return { ok: false };
+          return { ok: inAppUpdate?.install() ?? false };
+        case 'ack-just-updated':
+          hub.update({ update: { ...hub.get().update, justUpdated: null } });
+          break;
         case 'toggle-preview':
           if (bell?.previewing() === command.id) bell.stopPreview();
           else bell?.preview(command.id);
@@ -390,6 +418,11 @@ void app.whenReady().then(() => {
   // 처음 실행이면 등록한다. 앱 창의 첫 상태가 등록 결과를 담도록 창을 만들기 전에 맞춘다
   reconcileAutoStart(process.platform, storage.get().settings.autoStart, firstRun, loginItem);
   refreshAutoStart();
+
+  /** 지금 "업데이트"를 잠가야 하는지. 화면과 같은 판정을 메인의 시각과 재생기 상태로 본다. */
+  function updateLockedNow(): boolean {
+    return updateTimingAt(storage.get(), bell?.isRinging() ?? false, Date.now()).locked;
+  }
 
   /** "오늘 종"을 끄거나 켠다. 끄면 오늘 날짜를 끈 날짜로 저장하고, 저장하면서 스케줄러가 바로 판정해 울리던 종을 멈춘다. */
   function setBellsOff(off: boolean): void {
@@ -457,6 +490,7 @@ void app.whenReady().then(() => {
    */
   function wipeAllDataAndQuit(): void {
     wiping = true;
+    inAppUpdate?.stop();
     scheduler?.stop();
     bell?.stop();
     try {
@@ -609,7 +643,7 @@ void app.whenReady().then(() => {
   }
   // 앱 창을 먼저 만든다. 숨긴 재생기 창보다 먼저 떠야 첫 창이 앱 창이다.
   // 자동 시작으로 떴으면 창 없이 트레이 · 메뉴 막대에만 머문다
-  if (startedByAutoStart) {
+  if (startedByAutoStart && !justUpdated) {
     if (process.platform === 'darwin') app.dock?.hide();
   } else {
     openMainWindow();
@@ -673,6 +707,43 @@ void app.whenReady().then(() => {
   if (firstWindow?.webContents.isLoading()) firstWindow.webContents.once('did-finish-load', createTrayAndDog);
   else createTrayAndDog();
   app.on('will-quit', () => running.stop());
+
+  if (updatesEnabled) {
+    /** 앱 내 업데이트. */
+    const appUpdate = new InAppUpdate({
+      feed: electronUpdateFeed(autoUpdater),
+      clock: {
+        now: () => Date.now(),
+        after(ms, run) {
+          /** 예약한 타이머. */
+          const timer = setTimeout(run, ms);
+          return () => clearTimeout(timer);
+        },
+      },
+      currentVersion: app.getVersion(),
+      publicKeys: UPDATE_PUBLIC_KEYS,
+      beforeInstall(version) {
+        recordUpdateAttempt(dataDir, { from: app.getVersion(), to: version });
+        // 설치하며 창을 모두 닫는다. "닫으면 숨기기"와 저장하지 않은 편집 확인이 닫기를 막지 않게 한다
+        quitting = true;
+      },
+    });
+    appUpdate.onChange((state) => {
+      /** 바뀌기 전의 화면 쪽 값. */
+      const previous = hub.get().update;
+      // 앱 안에서 설치하지 못하면 앱은 살아 있다. 닫기를 평소대로 돌리고 창을 띄워 알린다
+      if (state.installFailures > previous.installFailures) {
+        quitting = false;
+        showMainWindow();
+      }
+      hub.update({ update: { ...previous, ...state } });
+    });
+    inAppUpdate = appUpdate;
+    // 잠든 동안 밀린 확인을 깨어나면 바로 한다
+    powerMonitor.on('resume', () => void appUpdate.checkIfDue());
+    app.on('will-quit', () => appUpdate.stop());
+    appUpdate.start();
+  }
 
   // 창이 없을 때 Dock 아이콘을 누르면 앱 창을 다시 연다. 숨긴 재생기 창은 세지 않는다
   app.on('activate', showMainWindow);

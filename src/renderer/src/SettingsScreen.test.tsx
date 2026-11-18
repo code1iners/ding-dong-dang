@@ -1,7 +1,27 @@
+import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import type { UpdateStatus } from '../../shared/update';
 import { emptyData } from '../../shared/data';
+import { Rail } from './Rail';
 import { SettingsScreen } from './SettingsScreen';
+
+/** 잠기지 않은 업데이트 시점. */
+const UNLOCKED = { locked: false, nextBellAt: null, now: 0 };
+
+/** 설정 화면을 그린다. 주지 않은 값은 처음 상태다. */
+function render(props: Partial<ComponentProps<typeof SettingsScreen>> = {}): string {
+  return renderToStaticMarkup(
+    <SettingsScreen
+      settings={emptyData().settings}
+      autoStartRegistered
+      appVersion="1.2.0"
+      update={{ status: { kind: 'idle' }, installFailures: 0, justUpdated: null }}
+      updateTiming={UNLOCKED}
+      {...props}
+    />,
+  );
+}
 
 /** 설정 화면에서 그 이름표 id가 든 줄만 뽑아 본다. */
 function rowOf(html: string, labelId: string): string {
@@ -10,9 +30,7 @@ function rowOf(html: string, labelId: string): string {
 
 /** 자동 시작 줄만 뽑아 본다. */
 function autoStartRow(autoStart: boolean, registered: boolean): string {
-  const html = renderToStaticMarkup(
-    <SettingsScreen settings={{ ...emptyData().settings, autoStart }} autoStartRegistered={registered} />,
-  );
+  const html = render({ settings: { ...emptyData().settings, autoStart }, autoStartRegistered: registered });
   return rowOf(html, 'setting-auto-start');
 }
 
@@ -50,7 +68,7 @@ describe('설정 화면의 자동 시작 줄: 세 모습', () => {
 describe('설정 화면의 돌아다니는 강아지 줄', () => {
   /** 돌아다니는 강아지 줄만 뽑아 본다. */
   const roamingRow = (roamingDog: boolean) =>
-    rowOf(renderToStaticMarkup(<SettingsScreen settings={{ ...emptyData().settings, roamingDog }} autoStartRegistered />), 'setting-roaming-dog');
+    rowOf(render({ settings: { ...emptyData().settings, roamingDog } }), 'setting-roaming-dog');
 
   it('스위치가 저장된 값을 따르고 이름으로 읽힌다', () => {
     expect(roamingRow(true)).toContain('돌아다니는 강아지');
@@ -61,7 +79,7 @@ describe('설정 화면의 돌아다니는 강아지 줄', () => {
 
   it('같은 줄에 "작게"와 "크게" 사이의 크기 슬라이더(키 64~160)가 저장된 키를 보여 준다', () => {
     const row = rowOf(
-      renderToStaticMarkup(<SettingsScreen settings={{ ...emptyData().settings, dogHeight: 112 }} autoStartRegistered />),
+      render({ settings: { ...emptyData().settings, dogHeight: 112 } }),
       'setting-roaming-dog',
     );
     expect(row).toMatch(/작게.*type="range".*크게/);
@@ -77,7 +95,7 @@ describe('설정 화면의 돌아다니는 강아지 줄', () => {
 
 describe('설정 화면의 모든 데이터 줄', () => {
   /** 설정 화면 전체. */
-  const html = renderToStaticMarkup(<SettingsScreen settings={emptyData().settings} autoStartRegistered />);
+  const html = render();
 
   it('맨 아래 줄이고, 지우기 단추가 대상을 담은 이름으로 읽힌다', () => {
     /** 줄을 나눈 마지막 조각. */
@@ -90,5 +108,81 @@ describe('설정 화면의 모든 데이터 줄', () => {
 
   it('누르기 전에는 확인 모달이 없다', () => {
     expect(html).not.toContain('모든 데이터를 지울까요?');
+  });
+});
+
+describe('설정 화면의 버전 줄', () => {
+  /** 이 상태일 때의 버전 줄. */
+  const versionRow = (status: UpdateStatus, locked = false) =>
+    rowOf(render({ update: { status, installFailures: 0, justUpdated: null }, updateTiming: { ...UNLOCKED, locked } }), 'setting-version');
+
+  it('"모든 데이터" 바로 위에 있다', () => {
+    /** 줄 이름의 차례. */
+    const labels = [...render().matchAll(/id="(setting-[a-z-]+)"/g)].map((m) => m[1]);
+    expect(labels.slice(-2)).toEqual(['setting-version', 'setting-wipe']);
+  });
+
+  it('새 버전이 없으면 지금 버전과 "최신이에요"만 있고 단추가 없다', () => {
+    const row = versionRow({ kind: 'up-to-date' });
+    expect(row).toContain('1.2.0');
+    expect(row).toContain('최신이에요');
+    expect(row).not.toContain('<button');
+  });
+
+  it('확인에 실패하면 "새 버전을 확인할 수 없어요"와 "다시 확인"이 나온다', () => {
+    const row = versionRow({ kind: 'check-failed' });
+    expect(row).toContain('1.2.0');
+    expect(row).toContain('새 버전을 확인할 수 없어요');
+    expect(row).toContain('>다시 확인</button>');
+    expect(row).not.toContain('최신이에요');
+  });
+
+  it('새 버전이 준비되면 새 버전 번호와 "업데이트" 단추가 나온다', () => {
+    const row = versionRow({ kind: 'ready', version: '1.3.0' });
+    expect(row).toContain('새 버전 1.3.0');
+    expect(row).toMatch(/<button[^>]*>업데이트<\/button>/);
+    expect(row).not.toMatch(/<button[^>]*disabled/);
+  });
+
+  it('잠기면 "업데이트"가 잠기고 "종이 울린 뒤에 할 수 있어요"가 단추의 설명으로 나온다', () => {
+    const row = versionRow({ kind: 'ready', version: '1.3.0' }, true);
+    expect(row).toContain('종이 울린 뒤에 할 수 있어요');
+    expect(row).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="setting-update-locked"[^>]*>업데이트<\/button>/);
+  });
+
+  it('설치를 맡긴 뒤에는 "업데이트"가 잠기고 "다시 켜는 중이에요"가 단추의 설명으로 나온다', () => {
+    const row = versionRow({ kind: 'installing', version: '1.3.0' });
+    expect(row).toContain('다시 켜는 중이에요');
+    expect(row).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="setting-update-locked"[^>]*>업데이트<\/button>/);
+  });
+
+  it('확인하지 않는 실행, 확인 중, 내려받는 중, 검증 실패 뒤에는 지금 버전만 보인다', () => {
+    for (const status of [{ kind: 'off' }, { kind: 'idle' }, { kind: 'checking' }, { kind: 'downloading', version: '1.3.0' }] as const) {
+      const row = versionRow(status);
+      expect(row).toContain('1.2.0');
+      expect(row).not.toContain('최신이에요');
+      expect(row).not.toContain('1.3.0');
+      expect(row).not.toContain('<button');
+    }
+  });
+});
+
+describe('왼쪽 설정 단추의 주황 점', () => {
+  /** 세로 줄의 설정 단추. */
+  const settingsButton = (updateReady: boolean) =>
+    renderToStaticMarkup(<Rail current="status" onSelect={() => undefined} updateReady={updateReady} />)
+      .split('<button')
+      .find((b) => b.includes('설정')) ?? '';
+
+  it('새 버전이 준비되면 점이 붙고 이름에도 알린다', () => {
+    const button = settingsButton(true);
+    expect(button).toContain('rail-button__dot');
+    expect(button).toContain('aria-label="설정, 새 버전이 있어요"');
+  });
+
+  it('준비되지 않았으면 점이 없다', () => {
+    const button = settingsButton(false);
+    expect(button).not.toContain('rail-button__dot');
+    expect(button).toContain('aria-label="설정"');
   });
 });

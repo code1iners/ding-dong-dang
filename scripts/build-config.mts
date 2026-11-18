@@ -50,6 +50,9 @@ export function buildConfig(): Configuration {
       include: 'build/installer.nsh',
       artifactName: 'DingDongDang-Setup.${ext}',
     },
+    // 앱 내 업데이트가 확인하는 공개 릴리스. electron-builder가 이 값으로 앱에 app-update.yml을 넣고 latest*.yml을 만든다.
+    // 서명하지 않고 배포하므로 Windows 설치 파일의 서명을 확인하는 win.publisherName은 넣지 않는다
+    publish: { provider: 'github', owner: 'code1iners', repo: 'ding-dong-dang', releaseType: 'release' },
     // 기본 NSIS 툴셋의 makensis는 x86_64 전용이라 Rosetta 없는 Apple Silicon에서 멈춘다. 베타 툴셋(makensis 3.12)은 그대로 돈다
     toolsets: { nsis: '1.2.1' },
   };

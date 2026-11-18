@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { UpdateView } from '../../shared/bridge';
 import type { Settings } from '../../shared/data';
 import { DOG_HEIGHT_RANGE } from '../../shared/roaming-dog';
 import { DogThemePicker } from './DogThemePicker';
@@ -6,20 +7,33 @@ import { ActionIcon } from './icons';
 import { Modal } from './Modal';
 import { Slider } from './Slider';
 import { Switch } from './Switch';
+import { readyVersion } from '../../shared/update';
+import { UpdateConfirmModal, UpdateRow } from './UpdateRow';
+import type { UpdateClock } from './useUpdateTiming';
 
 type Props = {
   /** 메인에서 받은 지금 설정 값. */
   settings: Settings;
   /** OS에 물은 자동 시작 등록 상태. 스위치와 실패 표시는 설정 값이 아니라 이 값을 따른다. */
   autoStartRegistered: boolean;
+  /** 앱 버전. */
+  appVersion: string;
+  /** 앱 내 업데이트의 화면 쪽 값. */
+  update: UpdateView;
+  /** 지금 "업데이트"를 잠가야 하는지와 다음 종까지 남은 시간. */
+  updateTiming: UpdateClock;
 };
 
-/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이며, 버전 줄은 앱 내 업데이트 티켓에서 더한다. */
-export function SettingsScreen({ settings, autoStartRegistered }: Props) {
+/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이고, 맨 아래 "모든 데이터" 바로 위에 버전 줄이 있다. */
+export function SettingsScreen({ settings, autoStartRegistered, appVersion, update, updateTiming }: Props) {
   /** 켜 달라고 했는데 OS에 등록되지 않은 상태. 스위치는 꺼진 채로 두고 그 줄에 이유와 방법을 보여 준다. */
   const autoStartFailed = settings.autoStart && !autoStartRegistered;
   /** "모든 데이터 지우기" 확인 모달이 떠 있는지. */
   const [confirmingWipe, setConfirmingWipe] = useState(false);
+  /** 업데이트 확인 모달이 떠 있는지. */
+  const [confirmingUpdate, setConfirmingUpdate] = useState(false);
+  /** 확인 모달에 보일 새 버전. 준비된 버전이 없어지면 모달도 닫힌다. */
+  const version = readyVersion(update.status);
   return (
     <div className="card">
       <DogThemePicker themeId={settings.dogTheme} />
@@ -94,7 +108,8 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
           />
         </div>
       </div>
-      {/* 맨 아래 줄. 버전 줄은 이 줄 바로 위에 들어간다 */}
+      <UpdateRow appVersion={appVersion} update={update} locked={updateTiming.locked} onUpdate={() => setConfirmingUpdate(true)} />
+      {/* 맨 아래 줄 */}
       <div className="setting-row">
         <span id="setting-wipe">모든 데이터</span>
         <div className="setting-row__control">
@@ -103,6 +118,15 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
           </button>
         </div>
       </div>
+      {confirmingUpdate && version && (
+        <UpdateConfirmModal
+          appVersion={appVersion}
+          version={version}
+          timing={updateTiming}
+          dogTheme={settings.dogTheme}
+          onClose={() => setConfirmingUpdate(false)}
+        />
+      )}
       {confirmingWipe && (
         <Modal title="모든 데이터를 지울까요?" onClose={() => setConfirmingWipe(false)}>
           <p>

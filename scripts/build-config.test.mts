@@ -37,6 +37,11 @@ describe('설치 파일 빌드 설정', () => {
     });
   });
 
+  it('앱 내 업데이트는 code1iners/ding-dong-dang의 공개 릴리스를 github 제공자로 보고, publisherName은 넣지 않는다', () => {
+    expect(config.publish).toEqual({ provider: 'github', owner: 'code1iners', repo: 'ding-dong-dang', releaseType: 'release' });
+    expect(config.win).not.toHaveProperty('publisherName');
+  });
+
   it('macOS의 CFBundleName은 Helper 앱 파일 이름과 같은 NFD다(어긋나면 앱이 뜨자마자 죽는다)', () => {
     /** 덮어쓴 CFBundleName. */
     const name = config.mac?.extendInfo?.['CFBundleName'];

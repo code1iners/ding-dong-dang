@@ -55,6 +55,7 @@ button {
 
 .rail-button {
   --band: var(--color-band);
+  position: relative;
   width: var(--rail-button-size);
   height: var(--rail-button-size);
   border-radius: var(--radius-rail);
@@ -100,6 +101,20 @@ button {
 .rail-button[aria-current='page'] {
   outline: var(--focus-ring) solid var(--color-ink);
   outline-offset: 3px;
+}
+
+/* 새 버전이 준비되면 설정 단추 오른쪽 위에 붙는 주황 점. 둘레를 바탕색으로 떼어 단추에서 도드라지게 하고(시안),
+   주황만으로는 바탕 · 흰 단추 · 초록 단추와 3:1이 안 되므로 글자 색 테두리를 더한다 */
+.rail-button__dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  border: 2px solid var(--color-ink);
+  box-shadow: 0 0 0 2px var(--color-bg);
 }
 
 .screen {
@@ -189,6 +204,17 @@ button {
 /* 설정 줄의 슬라이더는 종 화면의 전체 음량과 같은 길이다(디자인 계약 시안) */
 .setting-row .slider {
   width: 150px;
+}
+
+/* 버전 줄의 지금 버전, "최신이에요" 같은 덜 중요한 글자 */
+.setting-row__note {
+  color: var(--color-ink-2);
+  font-size: var(--font-size-2);
+}
+
+/* 준비된 새 버전 번호. 시안의 주황 글자는 흰 면에서 4.5:1이 안 되어 글자 색으로 쓴다 */
+.setting-row__new {
+  font-size: var(--font-size-2);
 }
 
 /* 실패 표시: 빨간 글자에 느낌표를 붙여 색만으로 알리지 않는다 */
@@ -1146,4 +1172,39 @@ button {
 .play-button:disabled,
 .pick:disabled {
   cursor: not-allowed;
+}
+
+/* 화면 읽기 프로그램만 읽는 글 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 업데이트 확인 모달의 버전 변화: 지금 버전 → 새 버전 */
+.update-versions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-3);
+}
+
+.update-versions .icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-ink-2);
+}
+
+.update-versions__chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-button-sm);
+  background: var(--color-soft);
+}
+
+/* 새 버전은 초록 면에 글자 색. 초록 위의 글자는 글자 색이다 */
+.update-versions__chip--to {
+  background: var(--color-green);
 }
