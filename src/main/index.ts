@@ -223,7 +223,8 @@ function createMainWindow(
   // 닫기 직전에 마지막 자리를 확실히 남긴다
   win.on('close', saveBounds);
 
-  win.once('ready-to-show', () => win.show());
+  // 자동 검증 실행은 창을 띄워도 사용자의 앞 창을 가로채지 않는다
+  win.once('ready-to-show', () => (customDataDir ? win.showInactive() : win.show()));
 
   // 앱 화면 밖으로 나가는 이동과 새 창은 막는다
   win.webContents.on('will-navigate', (event) => event.preventDefault());
@@ -240,6 +241,8 @@ function createMainWindow(
 }
 
 void app.whenReady().then(() => {
+  // 자동 검증 실행은 macOS Dock 아이콘을 숨겨 앱이 활성화되며 포커스를 가져가지 않게 한다
+  if (customDataDir && process.platform === 'darwin') app.dock?.hide();
   /** 이번 실행에서 지운 시간표. 알림의 "되돌리기"가 id로 찾아 되살린다. */
   const removedTimetables = new Map<string, RemovedTimetable>();
   /** 숨긴 창의 종 재생기. 앱 창 다음에 만든다. */
@@ -589,14 +592,18 @@ void app.whenReady().then(() => {
   /** 숨겼거나 닫힌 앱 창을 앞으로 가져온다. */
   function showMainWindow(): void {
     refreshAutoStart();
-    if (process.platform === 'darwin') void app.dock?.show();
+    if (process.platform === 'darwin' && !customDataDir) void app.dock?.show();
     if (!mainWindow) {
       openMainWindow();
       return;
     }
     if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
+    if (customDataDir) {
+      mainWindow.showInactive();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   }
   onSecondInstance = showMainWindow;
 

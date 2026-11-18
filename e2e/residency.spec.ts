@@ -71,7 +71,8 @@ test('처음 닫을 때만 안내 모달이 뜨고, "창 닫기"를 누르면 �
   // 다시 열어 닫으면 안내 없이 바로 숨는다
   await launched.evaluate(({ app }) => app.emit('activate'));
   await expect.poll(() => windowVisible(launched)).toBe(true);
-  if (process.platform === 'darwin') expect(await launched.evaluate(({ app }) => app.dock?.isVisible())).toBe(true);
+  // 자동 검증 실행은 포커스를 뺏지 않으려 Dock을 다시 보이지 않는다(실사용의 Dock 복귀는 이 검증 밖)
+  if (process.platform === 'darwin') expect(await launched.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
   await pressClose(launched);
   await expect.poll(() => windowVisible(launched)).toBe(false);
   await expect(dialog).toHaveCount(0);
