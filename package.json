@@ -17,6 +17,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "electron-vite build && playwright test",
+    "test:e2e:headless": "electron-vite build && DDD_HEADLESS=1 playwright test",
     "check": "npm run typecheck && npm run lint && npm test && npm run test:e2e",
     "release": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release.mts",
     "update:keygen": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/update-keygen.mts"

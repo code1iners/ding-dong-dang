@@ -128,6 +128,7 @@ Electron, React, TypeScript로 만들었어요. Node.js와 npm이 필요해요.
 npm install        # 의존성 설치
 npm run dev        # 개발 실행
 npm run check      # 타입 검사, 린트, 단위 시험, e2e 시험
+npm run test:e2e:headless  # e2e 시험을 화면에 창을 띄우지 않고 실행 (창 포커스 시험 1건 제외)
 npm run dist       # Windows 설치 파일과 Mac dmg · zip 만들기 (게시하지 않음)
 npm run release    # 빌드, 자동 검사, 업데이트 안내 파일 서명, GitHub Releases 게시
 ```

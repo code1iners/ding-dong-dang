@@ -36,6 +36,7 @@ import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, l
 import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
+import { isHeadlessRun } from './headless';
 import { removeAfterExitCommand, wipePaths, wipeTargets } from './data-wipe';
 import { DATA_FORMAT } from './data-format';
 import { InAppUpdate } from './in-app-update';
@@ -238,6 +239,14 @@ function createMainWindow(
     void win.loadFile(join(__dirname, '../renderer/index.html'));
   }
   return win;
+}
+
+// 헤드리스 검증 실행은 창을 만들되 투명도 0에 마우스 입력을 무시하게 해, 화면에는 보이지 않고 창 상태는 진짜로 남긴다
+if (isHeadlessRun(process.env, customDataDir)) {
+  app.on('browser-window-created', (_event, win) => {
+    win.setOpacity(0);
+    win.setIgnoreMouseEvents(true);
+  });
 }
 
 void app.whenReady().then(() => {
