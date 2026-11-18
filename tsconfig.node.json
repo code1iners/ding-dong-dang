@@ -12,6 +12,7 @@
     "src/shared/**/*",
     "scripts/**/*",
     "electron.vite.config.ts",
+    "electron-builder.ts",
     "vitest.config.mts"
   ]
 }

@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -28,27 +29,33 @@ import {
   type RemovedTimetable,
 } from '../shared/timetable-ops';
 import { validatePeriods } from '../shared/timetable-validation';
+import { APP_ID } from './app-identity';
 import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, launchedByAutoStart, reconcileAutoStart } from './auto-start';
 import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
+import { removeAfterExitCommand, wipePaths, wipeTargets } from './data-wipe';
 import { DATA_FORMAT } from './data-format';
 import { decideClose, trayIconFile, trayMenuTemplate } from './residency';
 import { openRoamingDog, type RoamingDogWindow } from './roaming-dog';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
 import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
-import { BACKUP_FILE, DATA_FILE, openStorage } from './storage';
+import { BACKUP_FILE, DATA_FILE, openStorage, SOUNDS_DIR } from './storage';
 import { usableBounds } from './window-bounds';
 
+/** 실행 인자 `--data-dir`로 바꾼 데이터 폴더. 자동 검증 실행이면 있다. */
+const customDataDir = dataDirFromArgv(process.argv, process.cwd());
 /**
  * 데이터 폴더. 실행 인자로 바꾸지 않았으면 OS가 앱에 주는 폴더 아래의 영문 `ding-dong-dang`이다.
  * Electron의 기본값은 표시 이름("딩동댕")을 폴더 이름으로 쓰므로 직접 정한다.
  */
-const dataDir =
-  dataDirFromArgv(process.argv, process.cwd()) ?? join(app.getPath('appData'), DEFAULT_DATA_DIR_NAME);
+const dataDir = customDataDir ?? join(app.getPath('appData'), DEFAULT_DATA_DIR_NAME);
 // 데이터 폴더는 app ready 전에 바꿔야 Chromium의 저장 위치까지 함께 옮겨 간다
 mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
+// Windows의 바로가기(electron-builder가 appId를 넣는다)와 자동 시작 등록 값의 이름을 앱 식별자로 맞춘다.
+// 제거 매크로가 이 이름으로 등록을 지운다
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 // 한 번에 하나만 실행한다. 단일 실행 잠금은 데이터 폴더마다 따로 잡힌다.
 // 이미 떠 있으면 저장소를 열기 전에 끝내고, 떠 있는 앱이 second-instance로 창을 연다
@@ -84,7 +91,7 @@ function viewOf(data: Data): Pick<AppState, 'settings' | 'timetables' | 'weekday
  * 사용자의 실제 로그인 항목을 건드리지 않도록 OS에 닿지 않는 부품을 쓴다.
  */
 const loginItem =
-  dataDirFromArgv(process.argv, process.cwd()) === null && app.isPackaged
+  customDataDir === null && app.isPackaged
     ? electronLoginItem(app, process.platform)
     : inertLoginItem(storage.get().settings.autoStart);
 /** 이번 실행이 자동 시작으로 뜬 것인지. 직접 실행했을 때만 창을 연다. OS가 알려 주는 시작 정보라 앱 창을 만들기 전에 읽는다. */
@@ -93,7 +100,7 @@ const startedByAutoStart = launchedByAutoStart(process.platform, process.argv, l
 const autoStartRegistered = (): boolean => isRegistered(process.platform, loginItem.get());
 
 /** 등록 음원을 복사해 두는 폴더. */
-const soundsDir = join(dataDir, 'sounds');
+const soundsDir = join(dataDir, SOUNDS_DIR);
 
 /** 등록하는 중인(파일을 복사했지만 아직 목록에 넣지 않은) 요청의 수. 이 사이에는 파일 정리를 미룬다. */
 let registrationsInFlight = 0;
@@ -361,6 +368,10 @@ void app.whenReady().then(() => {
         case 'stop-bell':
           bell?.stop();
           break;
+        case 'wipe-all-data':
+          // 명령의 답을 화면에 보낸 뒤에 지우고 끝낸다
+          setImmediate(wipeAllDataAndQuit);
+          break;
         case 'toggle-preview':
           if (bell?.previewing() === command.id) bell.stopPreview();
           else bell?.preview(command.id);
@@ -437,8 +448,42 @@ void app.whenReady().then(() => {
   /** 종 스케줄러. 숨긴 재생기 창과 함께 앱 창 다음에 만들어, 그 전의 저장은 판정을 부르지 않는다. */
   let scheduler: Scheduler | null = null;
 
+  /** "모든 데이터 지우기"로 지우는 중인지. 그 뒤로는 아무것도 파일에 쓰지 않는다. 창을 닫으며 자리를 저장하는 것도 막는다. */
+  let wiping = false;
+
+  /**
+   * 스펙의 지우기 범위(저장 파일과 예비본, 치워 둔 파일, 등록 음원, 내려받아 둔 업데이트, 앱 내부 기록, 자동 시작 등록)를 지우고 앱을 끝낸다.
+   * 창을 먼저 모두 닫아 Chromium이 데이터 폴더의 파일을 놓게 한 뒤 지운다. 확인을 묻지 않고 끝낸다.
+   */
+  function wipeAllDataAndQuit(): void {
+    wiping = true;
+    scheduler?.stop();
+    bell?.stop();
+    try {
+      loginItem.set(false);
+    } catch {
+      // 등록을 지우지 못해도 데이터는 지운다
+    }
+    tray?.destroy();
+    for (const win of BrowserWindow.getAllWindows()) win.destroy();
+    /** 지울 경로. */
+    const targets = wipeTargets({
+      platform: process.platform,
+      dataDir,
+      home: app.getPath('home'),
+      localAppData: process.env['LOCALAPPDATA'],
+      usesCustomDataDir: customDataDir !== null,
+    });
+    wipePaths(targets);
+    // Chromium이 끝나면서 다시 쓰거나(두 OS) 쥐고 있어 못 지운(Windows) 기록은 앱이 끝난 뒤 따로 띄운 셸이 지운다
+    const after = removeAfterExitCommand(process.platform, process.pid, targets);
+    spawn(after.file, after.args, { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+    app.exit(0);
+  }
+
   /** 저장된 값을 바꾸고 파일에 쓴 뒤, 화면 쪽 상태와 스케줄러에 알린다. */
   function save(change: (data: Data) => Data, options?: { quiet: boolean }): boolean {
+    if (wiping) return false;
     /** 파일에 쓰지 못했는지. 바꾼 내용은 메모리에 남는다. */
     const saveFailed = !storage.update(change).ok;
     /** 바뀐 뒤의 화면 쪽 값. */

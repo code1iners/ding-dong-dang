@@ -38,7 +38,9 @@ export const BACKUP_FILE = 'data.backup.json';
 /** 읽지 못해 치워 둔 파일 이름. 가장 최근 것 하나만 남긴다. */
 export const CORRUPT_FILE = 'data.corrupt.json';
 /** 쓰는 도중의 임시 파일 이름. */
-const TEMP_FILE = 'data.tmp.json';
+export const TEMP_FILE = 'data.tmp.json';
+/** 등록 음원 파일을 복사해 두는 폴더 이름. */
+export const SOUNDS_DIR = 'sounds';
 
 /** 파일을 읽어 형태에 맞는 값으로 돌려준다. 없거나 깨졌거나 버전이 높으면 null이다. */
 function readData<T extends { version: number }>(path: string, format: Format<T>): T | null {

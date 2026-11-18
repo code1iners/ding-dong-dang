@@ -109,7 +109,9 @@ export type Command =
   /** 자동 시작 등록에 실패했을 때의 "자동 시작 등록 방법"을 브라우저로 연다. 주소는 메인이 정한다. */
   | { type: 'open-auto-start-help' }
   /** 울리는 종을 멈춘다. 강아지를 눌렀을 때 보낸다. 울리지 않으면 아무 일도 없다. */
-  | { type: 'stop-bell' };
+  | { type: 'stop-bell' }
+  /** 설정의 "모든 데이터 지우기". 스펙의 지우기 범위를 지우고 앱을 종료한다. 화면이 확인을 받은 뒤에 보낸다. */
+  | { type: 'wipe-all-data' };
 
 /** 명령의 결과. 대부분의 명령은 늘 ok다. */
 export type CommandResult = {

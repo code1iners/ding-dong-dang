@@ -100,6 +100,8 @@ export function parseCommand(raw: unknown): Command | null {
       return { type: 'register-sound' };
     case 'stop-bell':
       return { type: 'stop-bell' };
+    case 'wipe-all-data':
+      return { type: 'wipe-all-data' };
     case 'rename-sound':
       return typeof value.id === 'string' && typeof value.name === 'string' && value.name.trim() !== ''
         ? { type: 'rename-sound', id: value.id, name: value.name }

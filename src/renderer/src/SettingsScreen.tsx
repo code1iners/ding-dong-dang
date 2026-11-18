@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import type { Settings } from '../../shared/data';
 import { DOG_HEIGHT_RANGE } from '../../shared/roaming-dog';
 import { DogThemePicker } from './DogThemePicker';
 import { ActionIcon } from './icons';
+import { Modal } from './Modal';
 import { Slider } from './Slider';
 import { Switch } from './Switch';
 
@@ -12,10 +14,12 @@ type Props = {
   autoStartRegistered: boolean;
 };
 
-/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이며, 나머지 줄은 해당 기능 티켓에서 더한다. */
+/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이며, 버전 줄은 앱 내 업데이트 티켓에서 더한다. */
 export function SettingsScreen({ settings, autoStartRegistered }: Props) {
   /** 켜 달라고 했는데 OS에 등록되지 않은 상태. 스위치는 꺼진 채로 두고 그 줄에 이유와 방법을 보여 준다. */
   const autoStartFailed = settings.autoStart && !autoStartRegistered;
+  /** "모든 데이터 지우기" 확인 모달이 떠 있는지. */
+  const [confirmingWipe, setConfirmingWipe] = useState(false);
   return (
     <div className="card">
       <DogThemePicker themeId={settings.dogTheme} />
@@ -90,6 +94,33 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
           />
         </div>
       </div>
+      {/* 맨 아래 줄. 버전 줄은 이 줄 바로 위에 들어간다 */}
+      <div className="setting-row">
+        <span id="setting-wipe">모든 데이터</span>
+        <div className="setting-row__control">
+          <button type="button" className="button button--ghost button--sm" aria-label="모든 데이터 지우기" onClick={() => setConfirmingWipe(true)}>
+            지우기
+          </button>
+        </div>
+      </div>
+      {confirmingWipe && (
+        <Modal title="모든 데이터를 지울까요?" onClose={() => setConfirmingWipe(false)}>
+          <p>
+            시간표, 등록한 종소리, 설정이 모두 지워지고
+            <br />
+            딩동댕이 종료돼요. 되돌릴 수 없어요.
+          </p>
+          <div className="modal__actions">
+            {/* 되돌릴 수 없는 일이라 처음 초점은 "취소"다 */}
+            <button type="button" className="button button--ghost" data-autofocus onClick={() => setConfirmingWipe(false)}>
+              취소
+            </button>
+            <button type="button" className="button button--red" onClick={() => void window.dingdong.command({ type: 'wipe-all-data' })}>
+              지우고 종료
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

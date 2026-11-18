@@ -74,3 +74,21 @@ describe('설정 화면의 돌아다니는 강아지 줄', () => {
     expect(row).toContain('--fill:50%');
   });
 });
+
+describe('설정 화면의 모든 데이터 줄', () => {
+  /** 설정 화면 전체. */
+  const html = renderToStaticMarkup(<SettingsScreen settings={emptyData().settings} autoStartRegistered />);
+
+  it('맨 아래 줄이고, 지우기 단추가 대상을 담은 이름으로 읽힌다', () => {
+    /** 줄을 나눈 마지막 조각. */
+    const last = html.split('<div class="setting-row">').at(-1) ?? '';
+    expect(last).toContain('id="setting-wipe"');
+    expect(last).toContain('모든 데이터');
+    expect(last).toContain('>지우기</button>');
+    expect(last).toContain('aria-label="모든 데이터 지우기"');
+  });
+
+  it('누르기 전에는 확인 모달이 없다', () => {
+    expect(html).not.toContain('모든 데이터를 지울까요?');
+  });
+});
