@@ -1,9 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { APP_ID, UPDATER_CACHE_DIR } from '../src/main/app-identity.ts';
 import { DEFAULT_DATA_DIR_NAME } from '../src/main/data-dir.ts';
 import { buildConfig } from './build-config.mts';
+import { checkMacSignature } from './mac-signature.mts';
+import { makeAdHocBundle } from './test-mac-bundle.mts';
 
 /** 저장소 뿌리. */
 const ROOT = join(import.meta.dirname, '..');
@@ -55,6 +58,22 @@ describe('설치 파일 빌드 설정', () => {
       { target: 'zip', arch: ['arm64'] },
     ]);
     expect(config.mac?.identity).toBe('-');
+  });
+
+  it.skipIf(process.platform !== 'darwin')('ad-hoc 서명 뒤 최상위 번들만 앱 식별자의 지정 요구 조건으로 다시 서명한다(mac.requirements는 쓰지 않는다)', async () => {
+    expect(config.mac).not.toHaveProperty('requirements');
+    /** 시험 번들을 둘 폴더. */
+    const dir = mkdtempSync(join(tmpdir(), 'ddd-after-sign-'));
+    try {
+      makeAdHocBundle(dir, APP_ID, '딩동댕');
+      /** electron-builder가 넘기는 값. */
+      const context = { electronPlatformName: 'darwin', appOutDir: dir, packager: { appInfo: { productFilename: '딩동댕' } } };
+      expect(typeof config.afterSign).toBe('function');
+      await (config.afterSign as (c: typeof context) => Promise<void>)(context);
+      await expect(checkMacSignature(join(dir, '딩동댕.app'), APP_ID)).resolves.toBe('designated => identifier "app.squadify.dingdongdang"');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('앱 아이콘은 아이콘 티켓의 산출물이다', () => {

@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import type { Configuration } from 'electron-builder';
 import { APP_ID } from '../src/main/app-identity.ts';
+import { createAfterSign } from './mac-signature.mts';
 
 /** electron-builder 출력 폴더. */
 export const OUTPUT_DIR = 'dist';
@@ -34,6 +35,9 @@ export function buildConfig(): Configuration {
       // 산출물 이름에 버전과 공백을 넣지 않아 `releases/latest/download/<파일 이름>` 고정 주소를 쓴다
       artifactName: 'DingDongDang-mac.${ext}',
     },
+    // 번들 전체를 ad-hoc 서명한 뒤, dmg와 zip을 만들기 전에 최상위 번들만 지정 요구 조건을 넣어 다시 서명한다(ADR 0001).
+    // 그래서 dmg · zip과 latest-mac.yml의 해시가 다시 서명한 번들로 처음부터 만들어진다
+    afterSign: createAfterSign(APP_ID),
     dmg: { artifactName: 'DingDongDang.${ext}' },
     win: {
       icon: 'resources/icons/app-icon.ico',
