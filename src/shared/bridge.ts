@@ -54,6 +54,8 @@ export type StorageNotice = {
 export type Command =
   /** "수업 중 화면 켜 두기"를 켜거나 끈다. */
   | { type: 'set-keep-screen-on'; on: boolean }
+  /** "돌아다니는 강아지"를 켜거나 끈다. 끄면 강아지 창이 숨고, 종이 울리는 동안에만 나타난다. */
+  | { type: 'set-roaming-dog'; on: boolean }
   /** "오늘 종" 스위치. `off`면 오늘 날짜를 끈 날짜로 저장해 울리던 종도 멈추고, 아니면 끈 날짜를 푼다. */
   | { type: 'set-bells-off'; off: boolean }
   /** 새 시간표를 만든다. `assignTo`를 주면 그 요일에 바로 배정한다. */

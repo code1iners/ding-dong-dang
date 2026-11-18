@@ -26,6 +26,8 @@ export type TrayActions = {
   stopBell(): void;
   /** "오늘 종"을 켜거나 끈다. 켜면 true. */
   setBellsOn(on: boolean): void;
+  /** "돌아다니는 강아지"를 켜거나 끈다. 켜면 true. */
+  setRoamingDog(on: boolean): void;
   /** 앱을 끝낸다. */
   quit(): void;
 };
@@ -36,6 +38,8 @@ export type TrayState = {
   ringing: boolean;
   /** 오늘 종이 켜져 있는지. */
   bellsOn: boolean;
+  /** 설정의 "돌아다니는 강아지"가 켜져 있는지. */
+  roamingDog: boolean;
 };
 
 /** DESIGN.md의 순서대로 메뉴 항목을 만든다. "종 멈추기"는 울릴 때만 있다. */
@@ -44,6 +48,7 @@ export function trayMenuTemplate(state: TrayState, actions: TrayActions): MenuIt
     { label: '딩동댕 열기', click: actions.open },
     ...(state.ringing ? [{ label: '종 멈추기', click: actions.stopBell }] : []),
     { label: '오늘 종', type: 'checkbox', checked: state.bellsOn, click: (item) => actions.setBellsOn(item.checked) },
+    { label: '돌아다니는 강아지', type: 'checkbox', checked: state.roamingDog, click: (item) => actions.setRoamingDog(item.checked) },
     { type: 'separator' },
     { label: '딩동댕 종료', click: actions.quit },
   ];

@@ -1,0 +1,52 @@
+/* 앱 창의 고리 안 강아지와 돌아다니는 강아지 창이 같이 쓴다. */
+
+/* 하트: 강아지 둘레에서 떠올라 1초 안에 사라진다. 동작 줄이기 때는 제자리에서 보였다 사라진다 */
+.hearts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.heart {
+  position: absolute;
+  margin: -14px 0 0 -14px;
+  color: var(--color-heart);
+  opacity: 0;
+  animation: heart-rise 0.8s ease-out forwards;
+}
+
+.heart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.hearts--still .heart {
+  animation-name: heart-blink;
+}
+
+@keyframes heart-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 6px) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--heart-dx), -46px) scale(1.1);
+  }
+}
+
+@keyframes heart-blink {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

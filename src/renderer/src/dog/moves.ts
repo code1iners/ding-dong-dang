@@ -106,11 +106,3 @@ export function moveOf(action: DogAction, gait: 'walk' | 'hop'): Move {
       return fall;
   }
 }
-
-/**
- * 동작을 그리는 횟수(초당). 평소 · 졸림은 느리게 움직여 초당 4번, 그 밖은 24번이다(스펙 "돌아다니는 강아지").
- * 화면 주사율에 맞춘 그리기를 쓰지 않아 CPU를 아낀다.
- */
-export function framesPerSecond(action: DogAction): number {
-  return action === 'idle' || action === 'sleepy' ? 4 : 24;
-}

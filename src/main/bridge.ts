@@ -43,6 +43,8 @@ export function parseCommand(raw: unknown): Command | null {
   switch (value.type) {
     case 'set-keep-screen-on':
       return typeof value.on === 'boolean' ? { type: 'set-keep-screen-on', on: value.on } : null;
+    case 'set-roaming-dog':
+      return typeof value.on === 'boolean' ? { type: 'set-roaming-dog', on: value.on } : null;
     case 'set-dog-theme':
       return isDogThemeId(value.id) ? { type: 'set-dog-theme', id: value.id } : null;
     case 'set-bells-off':

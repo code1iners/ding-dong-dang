@@ -82,7 +82,9 @@ test('자동 시작으로 뜨면 앱 창 없이 떠 있고, 다시 열면 창이
   await new Promise((r) => setTimeout(r, 1500));
   const before = await windows(launched);
   expect(before.some((w) => w.url.endsWith('index.html'))).toBe(false);
-  expect(before.some((w) => w.visible)).toBe(false);
+  // 돌아다니는 강아지 창은 앱 창과 무관하게 화면 바닥에 뜬다. 그 밖에는 보이는 창이 없다
+  expect(before.some((w) => w.url.endsWith('dog.html') && w.visible)).toBe(true);
+  expect(before.some((w) => !w.url.endsWith('dog.html') && w.visible)).toBe(false);
   expect(await launched.evaluate(({ app }) => app.isReady())).toBe(true);
   if (process.platform === 'darwin') expect(await launched.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
 

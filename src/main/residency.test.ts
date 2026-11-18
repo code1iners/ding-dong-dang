@@ -17,18 +17,24 @@ describe('decideClose', () => {
 });
 
 describe('trayMenuTemplate', () => {
-  const actions: TrayActions = { open: vi.fn(), stopBell: vi.fn(), setBellsOn: vi.fn(), quit: vi.fn() };
-  const labels = (ringing: boolean) => trayMenuTemplate({ ringing, bellsOn: true }, actions).map((i) => i.label ?? i.type);
+  const actions: TrayActions = { open: vi.fn(), stopBell: vi.fn(), setBellsOn: vi.fn(), setRoamingDog: vi.fn(), quit: vi.fn() };
+  const labels = (ringing: boolean) => trayMenuTemplate({ ringing, bellsOn: true, roamingDog: true }, actions).map((i) => i.label ?? i.type);
 
   it('DESIGN.md의 순서이고 "종 멈추기"는 울릴 때만 있다', () => {
-    expect(labels(false)).toEqual(['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료']);
-    expect(labels(true)).toEqual(['딩동댕 열기', '종 멈추기', '오늘 종', 'separator', '딩동댕 종료']);
+    expect(labels(false)).toEqual(['딩동댕 열기', '오늘 종', '돌아다니는 강아지', 'separator', '딩동댕 종료']);
+    expect(labels(true)).toEqual(['딩동댕 열기', '종 멈추기', '오늘 종', '돌아다니는 강아지', 'separator', '딩동댕 종료']);
   });
   it('"오늘 종"은 켜져 있을 때 체크이고 누른 뒤의 체크 값을 동작에 넘긴다', () => {
-    const item = trayMenuTemplate({ ringing: false, bellsOn: false }, actions).find((i) => i.label === '오늘 종')!;
+    const item = trayMenuTemplate({ ringing: false, bellsOn: false, roamingDog: true }, actions).find((i) => i.label === '오늘 종')!;
     expect(item).toMatchObject({ type: 'checkbox', checked: false });
     (item.click as (i: { checked: boolean }) => void)({ checked: true });
     expect(actions.setBellsOn).toHaveBeenCalledWith(true);
+  });
+  it('"돌아다니는 강아지"는 설정 값대로 체크이고 누른 뒤의 체크 값을 동작에 넘긴다', () => {
+    const item = trayMenuTemplate({ ringing: false, bellsOn: true, roamingDog: false }, actions).find((i) => i.label === '돌아다니는 강아지')!;
+    expect(item).toMatchObject({ type: 'checkbox', checked: false });
+    (item.click as (i: { checked: boolean }) => void)({ checked: true });
+    expect(actions.setRoamingDog).toHaveBeenCalledWith(true);
   });
 });
 

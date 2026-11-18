@@ -134,8 +134,8 @@ test('두 번째 실행은 곧바로 끝나고 숨어 있던 기존 앱의 창�
   });
   expect(code).toBe(0);
   await expect.poll(() => windowVisible(launched)).toBe(true);
-  // 앱 창과 숨긴 종 재생기 창뿐이다. 두 번째 실행이 창을 더 만들지 않는다
-  expect(await launched.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(2);
+  // 앱 창, 숨긴 종 재생기 창, 돌아다니는 강아지 창뿐이다. 두 번째 실행이 창을 더 만들지 않는다
+  expect(await launched.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(3);
 });
 
 test('저장하지 않은 편집이 있어도 종료 요청은 확인 없이 앱을 끝낸다', async () => {
@@ -187,7 +187,7 @@ test('트레이 메뉴의 "오늘 종"은 현황의 스위치와 같은 값이�
 
   // 현황에서 끄면 트레이가 다시 만들어져 체크가 풀리고 아이콘이 꺼짐으로 바뀐다
   await statusSwitch.click();
-  await expect.poll(trayNow).toEqual({ labels: ['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료'], checked: false, icon: 'off' });
+  await expect.poll(trayNow).toEqual({ labels: ['딩동댕 열기', '오늘 종', '돌아다니는 강아지', 'separator', '딩동댕 종료'], checked: false, icon: 'off' });
 
   // 트레이 메뉴에서 켜면 현황의 스위치도 켜지고 아이콘이 돌아온다
   await launched.evaluate(() => {

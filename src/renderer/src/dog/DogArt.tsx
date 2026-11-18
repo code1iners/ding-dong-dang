@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DogAction } from '../../../shared/status-view';
-import { framesPerSecond } from './moves';
+import { framesPerSecond, type DogAction } from '../../../shared/status-view';
 import { mountDog, type DogRig } from './rig';
 import { themeById } from './themes';
 

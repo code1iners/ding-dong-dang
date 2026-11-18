@@ -11,13 +11,13 @@ import fluentFaceArt from './art/fluent-face.svg?raw';
 import notoDogArt from './art/noto-dog.svg?raw';
 import notoFaceArt from './art/noto-face.svg?raw';
 import orangeSittingArt from './art/orange-sitting.svg?raw';
+import type { Facing, Gait } from '../../../shared/roaming-dog';
 
 /**
  * 움직임을 붙이는 부위 이름. 동작 표(`moves.ts`)가 이 이름으로 부위를 움직인다. 테마에 없는 부위는 움직이지 않는다. */
 export type PartName = 'body' | 'head' | 'tail' | 'earL' | 'earR' | 'eyes' | 'tongue' | 'legA' | 'legB' | 'legC' | 'legD';
 
-/** 이동하는 방법. 걷기(다리를 번갈아 움직임)와 통통 튀기. */
-export type Gait = 'walk' | 'hop';
+export type { Gait } from '../../../shared/roaming-dog';
 
 /** 부위 하나. */
 export type DogPart = {
@@ -45,6 +45,11 @@ export type DogFigure = {
   parts: DogPart[];
   /** 그리지 않는 요소 번호. 강아지가 아닌 그림자 · 풀밭이다. */
   hidden: number[];
+  /**
+   * 옆모습 그림이 바라보는 쪽. 1이 오른쪽이다. 돌아다니는 강아지가 걷는 쪽으로 그림을 돌릴 때 쓴다.
+   * 정면 그림은 없다(돌리지 않는다). 값은 돌아다니는 강아지 시안(09번)의 face다.
+   */
+  faces?: Facing;
 };
 
 /** 강아지 테마 하나. 그림은 고리 안 등 창 안에서 쓰고, `floor`가 있으면 화면 바닥은 그 그림을 쓴다. */
@@ -100,6 +105,7 @@ const bucktooth: DogTheme = {
     { name: 'legD', elements: [11, 10], joint: [0.5, 0] },
   ],
   hidden: [4],
+  faces: 1,
   gait: 'walk',
 };
 
@@ -126,6 +132,8 @@ const codeOrange: DogTheme = {
     { name: 'legD', elements: [2], joint: [0.5, 0] },
   ],
   hidden: [],
+  // 머리가 오른쪽에 있다
+  faces: 1,
   gait: 'walk',
 };
 
@@ -159,6 +167,7 @@ const fluentFace: DogTheme = {
       { name: 'legB', elements: [2], joint: [0.5, 0] },
     ],
     hidden: [],
+    faces: -1,
   },
 };
 

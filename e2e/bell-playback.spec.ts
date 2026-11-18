@@ -134,7 +134,7 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
     .poll(() =>
       app!.evaluate(() => (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy.menu.items.map((i) => i.label || i.type)),
     )
-    .toEqual(['딩동댕 열기', '종 멈추기', '오늘 종', 'separator', '딩동댕 종료']);
+    .toEqual(['딩동댕 열기', '종 멈추기', '오늘 종', '돌아다니는 강아지', 'separator', '딩동댕 종료']);
   await app.evaluate(() => {
     const spy = (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy;
     spy.menu.items.find((i) => i.label === '종 멈추기')!.click();
@@ -144,7 +144,7 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
     .poll(() =>
       app!.evaluate(() => (globalThis as unknown as { __traySpy: { menu: Electron.Menu } }).__traySpy.menu.items.map((i) => i.label || i.type)),
     )
-    .toEqual(['딩동댕 열기', '오늘 종', 'separator', '딩동댕 종료']);
+    .toEqual(['딩동댕 열기', '오늘 종', '돌아다니는 강아지', 'separator', '딩동댕 종료']);
 
   // 트레이의 "딩동댕 열기"로 앱 창을 다시 연다. 현황 화면의 고리 안 강아지는 평소다
   await app.evaluate(() => {

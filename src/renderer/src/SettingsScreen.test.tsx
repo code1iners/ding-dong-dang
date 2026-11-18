@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { emptyData } from '../../shared/data';
 import { SettingsScreen } from './SettingsScreen';
 
+/** 설정 화면에서 그 이름표 id가 든 줄만 뽑아 본다. */
+function rowOf(html: string, labelId: string): string {
+  return html.split('<div class="setting-row">').find((row) => row.includes(`id="${labelId}"`)) ?? '';
+}
+
 /** 자동 시작 줄만 뽑아 본다. */
 function autoStartRow(autoStart: boolean, registered: boolean): string {
   const html = renderToStaticMarkup(
     <SettingsScreen settings={{ ...emptyData().settings, autoStart }} autoStartRegistered={registered} />,
   );
-  return html.split('<div class="setting-row">')[1] ?? '';
+  return rowOf(html, 'setting-auto-start');
 }
 
 describe('설정 화면의 자동 시작 줄: 세 모습', () => {
@@ -39,5 +44,18 @@ describe('설정 화면의 자동 시작 줄: 세 모습', () => {
     const row = autoStartRow(false, true);
     expect(row).toContain('aria-checked="true"');
     expect(row).not.toContain('등록하지 못했어요');
+  });
+});
+
+describe('설정 화면의 돌아다니는 강아지 줄', () => {
+  /** 돌아다니는 강아지 줄만 뽑아 본다. */
+  const roamingRow = (roamingDog: boolean) =>
+    rowOf(renderToStaticMarkup(<SettingsScreen settings={{ ...emptyData().settings, roamingDog }} autoStartRegistered />), 'setting-roaming-dog');
+
+  it('스위치가 저장된 값을 따르고 이름으로 읽힌다', () => {
+    expect(roamingRow(true)).toContain('돌아다니는 강아지');
+    expect(roamingRow(true)).toContain('aria-checked="true"');
+    expect(roamingRow(true)).toContain('aria-labelledby="setting-roaming-dog"');
+    expect(roamingRow(false)).toContain('aria-checked="false"');
   });
 });

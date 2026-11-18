@@ -48,3 +48,11 @@ export function ringDogAction(kind: StatusKind, { ringing, petted }: { ringing: 
   if (ringing || petted) return 'happy';
   return SLEEPY_KINDS.has(kind) ? 'sleepy' : 'idle';
 }
+
+/**
+ * 동작을 그리는 횟수(초당). 평소 · 졸림은 느리게 움직여 초당 4번, 그 밖은 24번이다(스펙 "돌아다니는 강아지").
+ * 화면 주사율에 맞춘 그리기를 쓰지 않아 CPU를 아낀다. 창 안의 강아지와 돌아다니는 강아지가 같이 쓴다.
+ */
+export function framesPerSecond(action: DogAction): number {
+  return action === 'idle' || action === 'sleepy' ? 4 : 24;
+}

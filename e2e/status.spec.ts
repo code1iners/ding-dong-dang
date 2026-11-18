@@ -103,8 +103,9 @@ test('창을 열면 현황 화면이고 수업 중에는 초록 고리, 남은 �
   await expect(page.getByRole('timer')).toHaveAttribute('aria-label', /^끝종까지 (30:00|29:5\d)$/);
   await expect(page.getByText('끝종까지', { exact: true })).toBeVisible();
   await expect(page.locator('.ring circle[stroke="var(--color-green)"]')).toHaveCount(1);
-  // 지금 구간(10:00~10:50)에서 10:20이면 50분 중 30분, 3/5가 남았다
-  await expect(page.locator('.ring')).toHaveAttribute('data-fraction', '0.6000');
+  // 지금 구간(10:00~10:50)에서 10:20이면 50분 중 30분, 3/5가 남았다.
+  // 화면이 시계를 옮긴 뒤 처음 그리는 순간이 몇 초 늦을 수 있어, 남은 시간처럼 10:20:00~10:20:03까지를 받는다
+  await expect(page.locator('.ring')).toHaveAttribute('data-fraction', /^0\.(6000|599\d)$/);
   expect(await paws()).toEqual(['1교시 · 끝남', '2교시 · 지금', '3교시 · 남음']);
   await expect(page.getByRole('switch', { name: '오늘 종' })).toHaveAttribute('aria-checked', 'true');
 });

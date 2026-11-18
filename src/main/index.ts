@@ -34,6 +34,7 @@ import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
 import { DATA_FORMAT } from './data-format';
 import { decideClose, trayIconFile, trayMenuTemplate } from './residency';
+import { openRoamingDog, type RoamingDogWindow } from './roaming-dog';
 import { startScheduler, type Scheduler, type SchedulerParts } from './scheduler';
 import { registerSoundFile, SOUND_EXTENSIONS, sweepSoundFiles } from './sound-files';
 import { BACKUP_FILE, DATA_FILE, openStorage } from './storage';
@@ -222,6 +223,8 @@ void app.whenReady().then(() => {
   const removedTimetables = new Map<string, RemovedTimetable>();
   /** 숨긴 창의 종 재생기. 앱 창 다음에 만든다. */
   let bell: BellPlayer | null = null;
+  /** 돌아다니는 강아지 창. 트레이와 함께 앱 창의 화면을 불러온 뒤에 만든다. */
+  let roamingDog: RoamingDogWindow | null = null;
 
   /** 화면에 저장하지 않은 수업 시간 편집이 있는지. */
   let editingDirty = false;
@@ -246,6 +249,9 @@ void app.whenReady().then(() => {
           break;
         case 'set-dog-theme':
           save((d) => ({ ...d, settings: { ...d.settings, dogTheme: command.id } }));
+          break;
+        case 'set-roaming-dog':
+          setRoamingDog(command.on);
           break;
         case 'set-bells-off':
           setBellsOff(command.off);
@@ -376,6 +382,11 @@ void app.whenReady().then(() => {
     save((d) => ({ ...d, bellsOffDate: off ? localDate(Date.now()) : null }));
   }
 
+  /** "돌아다니는 강아지"를 켜거나 끈다. 설정 화면의 스위치와 트레이 메뉴가 같이 쓴다. */
+  function setRoamingDog(on: boolean): void {
+    save((d) => ({ ...d, settings: { ...d.settings, roamingDog: on } }));
+  }
+
   /** 파일 고르기 창을 열고, 고른 파일을 확인해 종소리로 등록한다. */
   async function registerFromDialog(): Promise<CommandResult> {
     /** 파일 고르기 결과. */
@@ -442,6 +453,8 @@ void app.whenReady().then(() => {
     // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
     scheduler?.check();
     refreshTray();
+    // 설정 · 시간표 · 오늘만 끄기가 바뀌면 강아지의 보이기와 동작도 바로 맞춘다
+    roamingDog?.refresh();
     return !saveFailed;
   }
 
@@ -513,13 +526,24 @@ void app.whenReady().then(() => {
   const bellsOn = (): boolean => storage.get().bellsOffDate !== localDate(Date.now());
   /** 오늘 종이 켜졌는지에 맞는 트레이 아이콘 그림. */
   const trayImage = (on: boolean) => nativeImage.createFromPath(join(app.getAppPath(), 'resources/icons', trayIconFile(process.platform, on)));
+  /**
+   * 트레이 메뉴의 체크 항목이 부를 동작. 동작한 뒤 메뉴를 다시 그린다.
+   * 저장에 실패해도 OS가 이미 바꾼 체크 표시를 실제 값에 맞춰 되돌리기 위해서다.
+   */
+  function redrawTrayAfter(change: (on: boolean) => void): (on: boolean) => void {
+    return (on) => {
+      change(on);
+      trayKey = '';
+      refreshTray();
+    };
+  }
   /** 종이 울리는지와 오늘 종에 맞춰 트레이 아이콘과 메뉴를 고친다. 날짜가 넘어가는 것도 1초 타이머가 여기서 잡는다. */
   function refreshTray(): void {
     if (!tray) return;
     /** 메뉴에 반영할 상태. */
-    const state = { ringing: hub.get().bellRinging, bellsOn: bellsOn() };
+    const state = { ringing: hub.get().bellRinging, bellsOn: bellsOn(), roamingDog: storage.get().settings.roamingDog };
     /** 이 상태의 열쇠. */
-    const key = `${state.ringing}|${state.bellsOn}`;
+    const key = `${state.ringing}|${state.bellsOn}|${state.roamingDog}`;
     if (key === trayKey) return;
     trayKey = key;
     tray.setImage(trayImage(state.bellsOn));
@@ -528,12 +552,8 @@ void app.whenReady().then(() => {
         trayMenuTemplate(state, {
           open: showMainWindow,
           stopBell: () => bell?.stop(),
-          setBellsOn: (on) => {
-            setBellsOff(!on);
-            // 저장에 실패해도 OS가 이미 바꾼 체크 표시를 실제 값에 맞춰 다시 그린다
-            trayKey = '';
-            refreshTray();
-          },
+          setBellsOn: redrawTrayAfter((on) => setBellsOff(!on)),
+          setRoamingDog: redrawTrayAfter(setRoamingDog),
           quit: () => app.quit(),
         }),
       ),
@@ -554,6 +574,7 @@ void app.whenReady().then(() => {
     onRingingChange: (bellRinging) => {
       hub.update({ bellRinging });
       refreshTray();
+      roamingDog?.refresh();
     },
     onPreviewChange: (previewingSound) => hub.update({ previewingSound }),
   });
@@ -589,11 +610,20 @@ void app.whenReady().then(() => {
     if (process.platform !== 'darwin') tray.on('click', showMainWindow);
     refreshTray();
   };
+  /** 트레이와 돌아다니는 강아지 창을 만든다. */
+  const createTrayAndDog = (): void => {
+    createTray();
+    roamingDog = openRoamingDog({
+      read: storage.get,
+      ringing: () => bell?.isRinging() ?? false,
+      stopBell: () => bell?.stop(),
+    });
+  };
   // 앱 창의 화면을 다 불러온 뒤에 만든다. 창을 만드는 도중에 트레이를 만들면 숨긴 재생기 창이 첫 창으로 먼저 잡히는 일이 있다
   /** 지금 떠 있는 앱 창. 타입 검사기는 위의 대입을 따라가지 못해 null로만 본다. */
   const firstWindow = mainWindow as BrowserWindow | null;
-  if (firstWindow?.webContents.isLoading()) firstWindow.webContents.once('did-finish-load', createTray);
-  else createTray();
+  if (firstWindow?.webContents.isLoading()) firstWindow.webContents.once('did-finish-load', createTrayAndDog);
+  else createTrayAndDog();
   app.on('will-quit', () => running.stop());
 
   // 창이 없을 때 Dock 아이콘을 누르면 앱 창을 다시 연다. 숨긴 재생기 창은 세지 않는다

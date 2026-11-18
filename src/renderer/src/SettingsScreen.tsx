@@ -18,6 +18,16 @@ export function SettingsScreen({ settings, autoStartRegistered }: Props) {
     <div className="card">
       <DogThemePicker themeId={settings.dogTheme} />
       <div className="setting-row">
+        <span id="setting-roaming-dog">돌아다니는 강아지</span>
+        <div className="setting-row__control">
+          <Switch
+            on={settings.roamingDog}
+            labelledBy="setting-roaming-dog"
+            onChange={(on) => void window.dingdong.command({ type: 'set-roaming-dog', on })}
+          />
+        </div>
+      </div>
+      <div className="setting-row">
         <span id="setting-auto-start">컴퓨터를 켜면 자동 시작</span>
         <div className="setting-row__control">
           {autoStartFailed && (
