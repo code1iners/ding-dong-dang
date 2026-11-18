@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "electron-vite build && playwright test",
-    "test:e2e:headless": "electron-vite build && DDD_HEADLESS=1 playwright test",
+    "test:e2e:headless": "electron-vite build && cross-env DDD_HEADLESS=1 playwright test",
     "check": "npm run typecheck && npm run lint && npm test && npm run test:e2e",
     "release": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release.mts",
     "update:keygen": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/update-keygen.mts"
@@ -30,6 +30,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "cross-env": "^10.1.0",
     "electron": "~45.3.3",
     "electron-builder": "~26.18.0",
     "electron-vite": "^6.0.0",

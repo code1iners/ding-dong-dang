@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
+import { isHeadlessEnv } from '../src/main/headless';
 import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
 
 // 돌아다니는 강아지 창을 실제 앱으로 본다. 행동의 세부(걷기 · 쉬기 길이, 화면 끝)는 shared/roaming-dog.test.ts가 본다.
@@ -494,7 +495,7 @@ test('화면이 잠기거나 PC가 잠들면 그리기를 멈추고, 풀리면 �
 
 test('종이 울리면 강아지가 신남이 되고 누르면 종이 멈추며, 설정을 끈 채 종이 울리면 바닥 가운데에 나타났다 재생이 끝나면 사라진다. 앱 창은 포커스를 잃지 않는다', async () => {
   // 투명하게 띄운 헤드리스 실행에서는 앱 창이 포커스를 받지 못해 포커스 단언이 성립하지 않는다
-  test.skip(process.env.DDD_HEADLESS === '1', '헤드리스 실행에서는 포커스를 검증할 수 없다');
+  test.skip(isHeadlessEnv(process.env), '헤드리스 실행에서는 포커스를 검증할 수 없다');
   test.setTimeout(200_000);
   // 자정을 넘기는 수업 시간은 저장할 수 없어, 하루의 마지막 몇 분이면 자정이 지나기를 기다린다
   while (minuteOfDay(new Date()) >= 24 * 60 - 4) await new Promise((r) => setTimeout(r, 5_000));
