@@ -2,8 +2,8 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { emptyData, type Data } from '../src/shared/data';
-import { assignWeekday, createTimetable, setPeriods } from '../src/shared/timetable-ops';
+import type { Data } from '../src/shared/data';
+import { dataWith, timetablesOf } from './timetable-fixture';
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -14,10 +14,7 @@ let page: Page;
 
 /** 시간표 "평일반"을 월요일과 수요일에 배정한 저장 파일을 쓴다. 수업 시간은 `periods`다. */
 async function seed(periods: { start: number; end: number }[] = [], settings: Partial<Data['settings']> = {}): Promise<void> {
-  let data = createTimetable(emptyData(), 't0', 'mon');
-  data = assignWeekday(data, 'wed', 't0');
-  data = setPeriods(data, 't0', periods);
-  data.timetables = data.timetables.map((t) => ({ ...t, name: '평일반' }));
+  const data = dataWith([{ id: 't0', name: '평일반', days: ['mon', 'wed'], periods }]);
   data.settings = { ...data.settings, ...settings };
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
 }
@@ -78,12 +75,12 @@ test('수업 시간을 더해 저장하면 앱을 다시 띄워도 남아 있고
   await typeTime('1교시 끝 시각', '1020');
   await expect(page.getByLabel('1교시 끝 시각')).toHaveValue('10:20');
   // 저장 전에는 파일이 그대로다
-  expect((await saved()).timetables[0]?.periods).toEqual([]);
+  expect(timetablesOf(await saved())[0]?.periods).toEqual([]);
 
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: '수업 시간을 저장했어요' })).toBeVisible();
   await expect(page.getByRole('button', { name: '저장', exact: true })).toHaveCount(0);
-  expect((await saved()).timetables[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 20) }]);
+  expect(timetablesOf(await saved())[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 20) }]);
 
   // 같은 시간표를 쓰는 수요일에도 같은 수업 시간이 보인다
   await page.getByRole('button', { name: /^수요일 · / }).click();
@@ -180,7 +177,7 @@ test('저장하지 않고 다른 화면으로 가려 하면 모달이 뜨고, �
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: '저장 안 함' }).click();
   await expect(page.getByRole('button', { name: /^화요일 · / })).toHaveAttribute('aria-pressed', 'true');
-  expect((await saved()).timetables[0]?.periods).toEqual([{ start: at(9, 0), end: at(9, 50) }]);
+  expect(timetablesOf(await saved())[0]?.periods).toEqual([{ start: at(9, 0), end: at(9, 50) }]);
   await page.getByRole('button', { name: /^월요일 · / }).click();
   await expect(page.getByLabel('1교시 끝 시각')).toHaveValue('09:50');
 
@@ -190,7 +187,7 @@ test('저장하지 않고 다른 화면으로 가려 하면 모달이 뜨고, �
   await dialog.getByRole('button', { name: '저장', exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(rail.getByRole('button', { name: '설정' })).toHaveAttribute('aria-current', 'page');
-  expect((await saved()).timetables[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 0) }]);
+  expect(timetablesOf(await saved())[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 0) }]);
 
   // 시간표 선택 창을 열려 할 때도 묻는다
   await rail.getByRole('button', { name: '시간표' }).click();
@@ -236,7 +233,7 @@ test('저장하지 않고 창을 닫으려 하면 닫히지 않고 모달이 뜬
   const closed = page.waitForEvent('close');
   await dialog.getByRole('button', { name: '저장 안 함' }).click();
   await closed;
-  expect((await saved()).timetables[0]?.periods).toEqual([{ start: at(9, 0), end: at(9, 50) }]);
+  expect(timetablesOf(await saved())[0]?.periods).toEqual([{ start: at(9, 0), end: at(9, 50) }]);
 });
 
 test('저장에 실패하면 편집 상태가 그대로 남고 실패 알림이 뜬다', async () => {
@@ -256,7 +253,7 @@ test('저장에 실패하면 편집 상태가 그대로 남고 실패 알림이 
   await chmod(dataDir, 0o755);
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByRole('button', { name: '저장', exact: true })).toHaveCount(0);
-  await expect.poll(async () => (await saved()).timetables[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 0) }]);
+  await expect.poll(async () => timetablesOf(await saved())[0]?.periods).toEqual([{ start: at(9, 0), end: at(10, 0) }]);
 });
 
 test('시각의 숫자는 어떤 숫자든 같은 폭의 칸에 들어간다', async () => {

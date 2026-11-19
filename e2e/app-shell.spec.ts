@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { emptyData } from '../src/shared/data';
+import { timetableFields } from './timetable-fixture';
 
 // 빌드한 실제 앱(out/)을 임시 데이터 폴더로 띄운다. 사용자의 실제 데이터 폴더에는 닿지 않는다.
 /** 띄운 앱. */
@@ -92,8 +93,7 @@ test('렌더러는 Node에 닿지 않고 상태 구독, 명령, 창 닫기 요�
     appVersion: version,
     storage: { saveFailed: false, freshStart: false, saveFailures: 0 },
     settings: emptyData().settings,
-    timetables: [],
-    weekdays: emptyData().weekdays,
+    ...timetableFields([]),
     bellsOffDate: null,
     bellRinging: false,
     sounds: [],

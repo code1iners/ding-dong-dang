@@ -2,7 +2,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import { emptyData, type Data } from '../src/shared/data';
+import { timetableFields, weekdayOf, weekdayOtherThan } from './timetable-fixture';
 import { DOG_THEME_INFOS } from '../src/shared/dog-themes';
 
 // 강아지 그리기와 창 안의 강아지(고리 안, 처음 닫을 때 모달, 시계판 가운데).
@@ -38,13 +39,7 @@ const ringDog = () => page.locator('.ring-dog .dog-art');
 
 /** 시간표는 있지만 오늘 요일에 배정이 없는 저장 값. 현황은 "수업 없는 날"이다. */
 function noClassToday(): Partial<Data> {
-  const today = WEEKDAYS[(new Date().getDay() + 6) % 7]!;
-  /** 오늘이 아닌 요일 하나. */
-  const other = WEEKDAYS.find((d) => d !== today)!;
-  return {
-    timetables: [{ id: 't', name: '시험반', color: 0, periods: [{ start: 600, end: 650 }] }],
-    weekdays: { ...emptyData().weekdays, [other]: 't' },
-  };
+  return timetableFields([{ id: 't', name: '시험반', days: [weekdayOtherThan(weekdayOf())], periods: [{ start: 600, end: 650 }] }]);
 }
 
 test('강아지 견본: 일곱 테마(전신 그림 둘 포함)의 여섯 동작이 모두 그려지고, 동작별 캡처를 남긴다', async () => {

@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import { emptyData, type Data } from '../src/shared/data';
+import { dataWith, weekdayOf } from './timetable-fixture';
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -285,9 +286,7 @@ test('미리 듣는 중에 종 시각이 오면 미리 듣기가 끊기고 종�
   const target = now.getSeconds() < 20 ? passed + 1 : passed + 2;
   const ringAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, target).getTime();
 
-  const data = emptyData();
-  data.timetables = [{ id: 'e2e', name: '시험반', color: 0, periods: [{ start: target, end: target + 1 }] }];
-  data.weekdays[WEEKDAYS[(now.getDay() + 6) % 7]!] = 'e2e';
+  const data = dataWith([{ id: 'e2e', name: '시험반', days: [weekdayOf(now)], periods: [{ start: target, end: target + 1 }] }]);
   // 종은 음원별 20% × 전체 50% = 0.1, 긴 미리 듣기(웨스트민스터 끝, 8.6초)는 100% × 50% = 0.5
   data.masterVolume = 50;
   data.soundVolumes = { 'westminster-start': 20 };

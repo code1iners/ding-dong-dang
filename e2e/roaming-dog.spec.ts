@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { isHeadlessEnv } from '../src/main/headless';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import { emptyData, type Data, type Weekday } from '../src/shared/data';
+import { timetableFields, weekdayOf } from './timetable-fixture';
 
 // 돌아다니는 강아지 창을 실제 앱으로 본다. 행동의 세부(걷기 · 쉬기 길이, 화면 끝)는 shared/roaming-dog.test.ts가 본다.
 // 종이 울리는 동안의 확인은 실제 시각을 기다리므로 마지막 테스트 하나에 모았다.
@@ -39,8 +40,8 @@ function minuteOfDay(at: Date): number {
 }
 
 /** 오늘 요일 키. getDay()는 일요일이 0이다. */
-function today(): (typeof WEEKDAYS)[number] {
-  return WEEKDAYS[(new Date().getDay() + 6) % 7]!;
+function today(): Weekday {
+  return weekdayOf();
 }
 
 /** 강아지 창의 메인 쪽 상태와 주 모니터. */
@@ -139,8 +140,7 @@ test('수업 중에는 걸어 다니고, 걷는 테마는 걷는 쪽으로 그�
   while (minuteOfDay(new Date()) >= 24 * 60 - 3) await new Promise((r) => setTimeout(r, 5_000));
   const now = minuteOfDay(new Date());
   await launch({
-    timetables: [{ id: 't', name: '시험반', color: 0, periods: [{ start: now, end: now + 2 }] }],
-    weekdays: { ...emptyData().weekdays, [today()]: 't' },
+    ...timetableFields([{ id: 't', name: '시험반', days: [today()], periods: [{ start: now, end: now + 2 }] }]),
     settings: { ...emptyData().settings, dogTheme: 'bucktooth' },
   });
   const dog = await dogPage();
@@ -508,8 +508,7 @@ test('종이 울리면 강아지가 신남이 되고 누르면 종이 멈추며,
     // 시작종은 눌러 멈출 틈이 있게 긴 것(웨스트민스터, 8.6초), 끝종은 재생이 끝나는 것까지 빨리 보도록 짧은 것(띠링, 2초)이다
     startBell: 'westminster-start',
     endBell: 'tiring-end',
-    timetables: [{ id: 't', name: '시험반', color: 0, periods: [{ start: target, end: target + 1 }] }],
-    weekdays: { ...emptyData().weekdays, [today()]: 't' },
+    ...timetableFields([{ id: 't', name: '시험반', days: [today()], periods: [{ start: target, end: target + 1 }] }]),
   });
   const dog = await dogPage();
   await expect.poll(async () => (await dogWindow()).visible).toBe(true);

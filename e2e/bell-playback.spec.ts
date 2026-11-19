@@ -2,7 +2,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import { emptyData, type Data } from '../src/shared/data';
+import { dataWith, weekdayOf } from './timetable-fixture';
 
 // 실제 시각을 기다리는 확인은 이 파일 하나다. 다음 분의 0초에 시작종이 울리는 저장 파일을 만들어 앱을 띄운다.
 // 시각을 속이지 않으므로 종 시각까지 최대 1분 남짓 기다린다.
@@ -53,13 +54,12 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   const ringAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, target).getTime();
 
   /** 써 넣을 저장 파일. */
-  const data: Data = {
-    ...emptyData(),
-    timetables: [
+  const data: Data = dataWith(
+    [
       {
         id: 'e2e',
         name: '시험반',
-        color: 0,
+        days: [weekdayOf(now)],
         // 앞 수업의 끝과 다음 수업의 시작이 같아 target에는 시작종만 울린다
         periods: [
           { start: passed, end: target },
@@ -67,15 +67,15 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
         ],
       },
     ],
+    {
+    ...emptyData(),
     // 음원별 음량 50% × 전체 음량 50%
     soundVolumes: { 'westminster-start': 50 },
     masterVolume: 50,
     // 닫기 버튼으로 숨기도록 처음 닫을 때 안내는 이미 본 것으로 둔다
     settings: { ...emptyData().settings, hideNoticeShown: true },
-  };
-  /** 오늘의 요일 키. getDay()는 일요일이 0이다. */
-  const today = WEEKDAYS[(now.getDay() + 6) % 7]!;
-  data.weekdays[today] = 'e2e';
+    },
+  );
 
   dataDir = await mkdtemp(join(tmpdir(), 'ding-dong-dang-e2e-'));
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data), 'utf8');
