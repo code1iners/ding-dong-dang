@@ -1,9 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { CHANNEL, type AppState, type Command, type CommandResult } from '../shared/bridge';
-import { isWeekday, type TimetableSlot } from '../shared/data';
+import { isWeekday, type Period, type TimetableSlot } from '../shared/data';
 import { isDogThemeId } from '../shared/dog-themes';
 import { DOG_HEIGHT_RANGE } from '../shared/roaming-dog';
-import type { Period } from '../shared/timetable-validation';
 
 /** 메인 쪽에서 앱 상태를 읽고 바꾸는 손잡이. */
 export type StateHub = {

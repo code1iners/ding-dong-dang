@@ -9,12 +9,15 @@ export function isWeekday(v: unknown): v is Weekday {
   return typeof v === 'string' && (WEEKDAYS as readonly string[]).includes(v);
 }
 
+/** 수업 시간 하나. 시작과 끝은 자정부터의 분이다. */
+export type Period = { start: number; end: number };
+
 /** 시간대 하나. 한 시간표 안에서 같은 수업 시간을 쓰는 요일들과 그 수업 시간이다. */
 export type TimetableSlot = {
   /** 이 시간대를 쓰는 요일. 한 시간표 안의 다른 시간대와 겹치지 않고, 비어 있어도 된다. */
   days: Weekday[];
   /** 수업 시간. 자정부터의 분이고 시작 시각 순서다. */
-  periods: { start: number; end: number }[];
+  periods: Period[];
 };
 
 /** 시간표 하나. */

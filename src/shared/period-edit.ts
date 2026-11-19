@@ -1,6 +1,6 @@
 // 수업 시간 편집 화면이 쓰는 순수 계산: 교시 번호, 새 줄의 기본값, 시각 숫자 입력, 12시간 시계판의 호.
 
-import type { Period } from './timetable-validation';
+import type { Period } from './data';
 
 /** 하루의 마지막 분(23:59). */
 const LAST_MINUTE = 24 * 60 - 1;

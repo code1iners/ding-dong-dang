@@ -1,7 +1,4 @@
-import type { TimetableSlot } from './data';
-
-/** 수업 시간 하나. 시작과 끝은 자정부터의 분이다. */
-export type Period = TimetableSlot['periods'][number];
+import type { Period } from './data';
 
 /** 한 줄 안에서 오류를 보여 주는 순서이기도 하다. */
 const RULE_ORDER = ['out-of-range', 'end-not-after-start', 'overlap', 'too-long'] as const;

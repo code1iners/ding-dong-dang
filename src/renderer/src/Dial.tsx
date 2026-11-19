@@ -1,5 +1,5 @@
 import { arcOf, periodRanks } from '../../shared/period-edit';
-import type { Period } from '../../shared/timetable-validation';
+import type { Period } from '../../shared/data';
 import { DogArt } from './dog/DogArt';
 
 type Props = {

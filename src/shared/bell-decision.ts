@@ -1,4 +1,4 @@
-import { activeTimetableOf, type Timetable, type Weekday } from './data';
+import { activeTimetableOf, type Period, type Timetable, type Weekday } from './data';
 
 /** 종의 종류. 수업 시간이 시작될 때의 시작종과 끝날 때의 끝종. */
 export type BellKind = 'start' | 'end';
@@ -69,7 +69,7 @@ export function localDate(at: number): string {
  * 그 시각이 속한 현지 날짜의 수업 시간(자정부터의 분). 그날의 수업 시간을 정하는 곳은 여기 한 군데다.
  * 쓰는 시간표에서 그 날짜의 요일이 든 시간대의 수업 시간이고, 쓰는 시간표나 그 요일의 시간대가 없으면 빈 목록이다.
  */
-function periodsOfDay(input: BellSchedule, at: number): readonly { start: number; end: number }[] {
+function periodsOfDay(input: BellSchedule, at: number): readonly Period[] {
   // getDay()는 항상 0~6이라 표에 빈 칸이 없다
   /** 그 날짜의 요일. */
   const day = WEEKDAY_BY_DAY[new Date(at).getDay()] as Weekday;
@@ -83,7 +83,7 @@ function atMinuteOfDay(at: number, minutes: number): number {
 }
 
 /** 시작 시각 순서로 정렬한 그 날의 수업 시간(에포크 ms). */
-function periodsOn(periods: readonly { start: number; end: number }[], at: number): { start: number; end: number }[] {
+function periodsOn(periods: readonly Period[], at: number): { start: number; end: number }[] {
   return periods
     .map((p) => ({ start: atMinuteOfDay(at, p.start), end: atMinuteOfDay(at, p.end) }))
     .sort((a, b) => a.start - b.start);

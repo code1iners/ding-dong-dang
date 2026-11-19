@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Timetable, Weekday } from '../../shared/data';
+import type { Period, Timetable, Weekday } from '../../shared/data';
 import { nextPeriod, periodRanks, sortByStart } from '../../shared/period-edit';
 import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay, toSavedSlots } from '../../shared/slot-edit';
-import { validateSlots, type Period, type SlotError } from '../../shared/timetable-validation';
+import { validateSlots, type SlotError } from '../../shared/timetable-validation';
 import { sendCommand } from './command';
 import { Dial } from './Dial';
 import { ActionIcon } from './icons';

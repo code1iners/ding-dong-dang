@@ -1,9 +1,8 @@
 // 상세 편집의 초안에 쓰는 시간대 조작. 시간대 목록을 받아 새 목록을 돌려주는 순수 함수다.
 // 수업 시간 줄의 모양(화면의 줄 key 같은 것)은 건드리지 않도록 수업 시간 타입을 열어 둔다.
 
-import { WEEKDAYS, type TimetableSlot, type Weekday } from './data';
+import { WEEKDAYS, type Period, type TimetableSlot, type Weekday } from './data';
 import { sortByStart } from './period-edit';
-import type { Period } from './timetable-validation';
 
 /** 조작하는 시간대. 수업 시간 줄은 화면이 쓰는 모양 그대로 둔다. */
 type Slot<P> = { days: readonly Weekday[]; periods: readonly P[] };
