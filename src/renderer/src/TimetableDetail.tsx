@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Command, CommandResult } from '../../shared/bridge';
 import type { Timetable, Weekday } from '../../shared/data';
 import { nextPeriod, periodRanks, sortByStart } from '../../shared/period-edit';
-import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay } from '../../shared/slot-edit';
+import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay, toSavedSlots } from '../../shared/slot-edit';
 import { validateSlots, type Period, type SlotError } from '../../shared/timetable-validation';
 import { Dial } from './Dial';
 import { ActionIcon } from './icons';
@@ -221,6 +221,8 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
   for (const e of errors) if (e.slot === index && !errorOf.has(e.index)) errorOf.set(e.index, e.message);
   /** 잘못된 시각이 든 시간대 번호. 탭에 느낌표를 단다. */
   const badSlots = new Set(errors.map((e) => e.slot));
+  /** 잘못된 시각이 고른 시간대에는 없고 다른 시간대에만 있으면 그 첫 시간대 번호. */
+  const hiddenBadSlot = badSlots.has(index) ? undefined : errors[0]?.slot;
   /** 고른 시간대의 요일 줄에 보일 요일. */
   const shownDays = daysShownFor(slots, index);
   /** 고른 시간대의 이름. 탭과 오른쪽 카드 제목에 쓴다. */
@@ -279,10 +281,8 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
     if (draft === null || errors.length > 0 || saving) return false;
     setSaving(true);
     try {
-      /** 메인에 보낼 시간대. 줄 key를 떼고 수업 시간을 시작 시각 순으로 둔다. */
-      const saved = draft.map((s) => ({ days: [...s.days], periods: sortByStart(s.periods).map(({ start, end }) => ({ start, end })) }));
       /** 메인의 저장 결과. */
-      const result = await send({ type: 'set-slots', id: timetable.id, slots: saved });
+      const result = await send({ type: 'set-slots', id: timetable.id, slots: toSavedSlots(draft) });
       if (!result.ok) return false;
       setDraft(null);
       toasts.notify({ key: 'slots-saved', kind: 'success', text: '저장했어요' });
@@ -327,6 +327,8 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
 
   /** 저장하지 않은 초안이 있는지. */
   const dirty = draft !== null;
+  /** "저장"을 누를 수 있는지. 바꾼 것이 있고 잘못된 시각이 없어야 한다. */
+  const canSave = dirty && errors.length === 0 && !saving;
   // 초안이 있는지 앱(과 메인의 창 닫기)에 알리고, 상세가 사라지면 거둔다
   useEffect(
     function reportDirty() {
@@ -360,9 +362,10 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
 
   /** 줄을 벗어난 초점이 목록 밖으로 나가면 줄을 시작 시각 순으로 정렬한다. 고치는 도중에는 줄이 움직이지 않는다. */
   function sortOnLeave(event: React.FocusEvent<HTMLDivElement>): void {
-    if (draft === null || event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    // 같은 blur에서 시각 칸이 막 확정한 값 위에 정렬해야 하므로 그린 때의 초안이 아니라 최신 초안을 받는다.
     // 정렬은 저장될 값을 바꾸지 않으므로 edit을 거치지 않는다
-    setDraft(draft.map((s, i) => (i === index ? { ...s, periods: sortByStart(s.periods) } : s)));
+    setDraft((latest) => latest && latest.map((s, i) => (i === index ? { ...s, periods: sortByStart(s.periods) } : s)));
   }
 
   return (
@@ -479,12 +482,20 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
             <ActionIcon name="plus" />
             수업 시간
           </button>
-          {/* 바꾼 것이 없어도 늘 같은 자리에 두고 잠근다. 잘못된 시각이 있으면 "저장"만 잠근다 */}
+          {/* 고른 시간대 밖의 잘못된 시각은 줄이 보이지 않으므로 잠근 이유를 단추 곁에 글로 쓴다 */}
+          {hiddenBadSlot !== undefined && (
+            <p className="field-error" role="alert">
+              <ActionIcon name="bang" />
+              {daysSummary(slots[hiddenBadSlot]!.days)} 시간대에 잘못된 시각이 있어요. 고친 뒤 저장해 주세요.
+            </p>
+          )}
+          {/* 바꾼 것이 없어도 늘 같은 자리에 두고 잠근다. 잘못된 시각이 있으면 "저장"만 잠근다.
+              disabled 대신 aria-disabled로 잠가, 누른 뒤 꺼져도 키보드 초점이 그 자리에 남게 한다 */}
           <div className="period-foot">
-            <button type="button" className="button button--ghost" disabled={!dirty} onClick={revert}>
+            <button type="button" className="button button--ghost" aria-disabled={!dirty} onClick={() => dirty && revert()}>
               되돌리기
             </button>
-            <button type="button" className="button" disabled={!dirty || errors.length > 0 || saving} onClick={() => void save()}>
+            <button type="button" className="button" aria-disabled={!canSave} onClick={() => canSave && void save()}>
               저장
             </button>
           </div>

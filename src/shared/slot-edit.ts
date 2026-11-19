@@ -1,7 +1,7 @@
 // 상세 편집의 초안에 쓰는 시간대 조작. 시간대 목록을 받아 새 목록을 돌려주는 순수 함수다.
 // 수업 시간 줄의 모양(화면의 줄 key 같은 것)은 건드리지 않도록 수업 시간 타입을 열어 둔다.
 
-import { WEEKDAYS, type Weekday } from './data';
+import { WEEKDAYS, type TimetableSlot, type Weekday } from './data';
 import { sortByStart } from './period-edit';
 import type { Period } from './timetable-validation';
 
@@ -46,17 +46,15 @@ export function removeSlot<S>(slots: readonly S[], index: number): readonly S[] 
   return slots.filter((_, i) => i !== index);
 }
 
-/** 시간대를 비교하기 위한 글. 요일은 월요일부터, 수업 시간은 시작 시각 순이고 시각만 담는다. */
-function slotsKey(slots: readonly Slot<Period>[]): string {
-  return JSON.stringify(
-    slots.map((slot) => ({
-      days: WEEKDAYS.filter((d) => slot.days.includes(d)),
-      periods: sortByStart(slot.periods).map(({ start, end }) => [start, end]),
-    })),
-  );
-}
-
 /** 두 시간대 목록이 저장했을 때 같은지. 초안이 저장된 값으로 돌아왔는지 볼 때 쓴다. */
 export function sameSlots(a: readonly Slot<Period>[], b: readonly Slot<Period>[]): boolean {
-  return slotsKey(a) === slotsKey(b);
+  return JSON.stringify(toSavedSlots(a)) === JSON.stringify(toSavedSlots(b));
+}
+
+/** 초안을 저장할 모양으로. 요일은 월요일부터, 수업 시간은 시작 시각 순이고 시각만 담는다(화면의 줄 key는 뗀다). */
+export function toSavedSlots(slots: readonly Slot<Period>[]): TimetableSlot[] {
+  return slots.map((slot) => ({
+    days: WEEKDAYS.filter((d) => slot.days.includes(d)),
+    periods: sortByStart(slot.periods).map(({ start, end }) => ({ start, end })),
+  }));
 }

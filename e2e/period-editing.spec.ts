@@ -341,6 +341,8 @@ test('잘못된 시각이 있으면 확인 창의 저장도 잠기고 어느 시
   await tab('월~금').click();
   await expect(tab('토 (잘못된 시각이 있어요)')).toBeVisible();
   await expect(saveButton()).toBeDisabled();
+  // 잘못된 줄이 보이지 않는 시간대에서는 잠근 이유를 "저장" 곁에 글로 쓴다
+  await expect(page.getByRole('alert').filter({ hasText: '토 시간대에 잘못된 시각이 있어요. 고친 뒤 저장해 주세요.' })).toBeVisible();
   await page.getByRole('button', { name: '시간표 목록' }).click();
   await expect(leaveDialog().getByRole('button', { name: '저장', exact: true })).toBeDisabled();
   await expect(leaveDialog().getByRole('alert')).toContainText('토 1교시: 09:30~10:50 수업과 겹쳐요');
@@ -389,6 +391,19 @@ test('저장에 실패하면 초안이 그대로 남고 실패 알림이 뜨며,
   await saveButton().click();
   await expect(saveButton()).toBeDisabled();
   await expect.poll(savedSlots).toEqual([{ days: ['mon'], periods: [{ start: at(9, 0), end: at(10, 0) }] }]);
+});
+
+test('시각을 치고 Enter 없이 바로 "저장"을 눌러도 친 시각이 저장된다', async () => {
+  await seed({ days: ['mon'], periods: [{ start: at(9, 0), end: at(9, 50) }] });
+  await launch();
+  // 초안이 이미 있는 상태에서 친다
+  await day('화요일').click();
+  const end = page.getByLabel('1교시 끝 시각', { exact: true });
+  await end.click();
+  await end.pressSequentially('1000');
+  await saveButton().click();
+  await expect.poll(savedSlots).toEqual([{ days: ['mon', 'tue'], periods: [{ start: at(9, 0), end: at(10, 0) }] }]);
+  await expect(end).toHaveValue('10:00');
 });
 
 test('교시 번호는 시작 시각 순서이고, 줄 밖으로 초점이 나가면 줄이 정렬되며 시계판 호에 같은 번호가 붙는다', async () => {

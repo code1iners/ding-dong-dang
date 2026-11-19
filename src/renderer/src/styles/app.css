@@ -946,7 +946,7 @@ button.tcard--new:focus-visible {
   margin-left: auto;
   padding: var(--space-1) 6px;
   border-radius: var(--radius-input);
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-2);
   white-space: nowrap;
 }
 
@@ -1129,12 +1129,22 @@ button.tcard--new:focus-visible {
   outline-offset: -2px;
 }
 
-/* 잠긴 단추는 회색이고 이유는 곁의 글이 말한다 */
-.button:disabled {
+/* 잠긴 단추는 회색이고 이유는 곁의 글이 말한다. 초점을 남겨야 하는 단추는 aria-disabled로 잠근다 */
+.button:disabled,
+.button[aria-disabled='true'] {
   background: var(--color-locked);
   color: var(--color-locked-ink);
   box-shadow: none;
   cursor: not-allowed;
+}
+
+/* 잠겨도 초점이 남는 단추: 눌러도 내려가지 않고, 초점 테두리는 그대로 그린다 */
+.button[aria-disabled='true']:active {
+  transform: none;
+}
+
+.button[aria-disabled='true']:focus-visible {
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
 }
 
 .field-error--center {

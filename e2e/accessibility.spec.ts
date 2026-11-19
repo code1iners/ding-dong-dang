@@ -213,11 +213,11 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   await page.keyboard.press('Enter');
   expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
   await page.keyboard.press('Escape');
-  // 상세: 세로 줄 넷, "← 시간표 목록", ✎, 시간대 탭과 "+ 다른 시간대", 요일 동그라미 일곱, 두 교시의 시각 칸 둘과 지우기, "+ 수업 시간"
-  // ("되돌리기" · "저장"은 바꾼 것이 없어 꺼져 있다)
+  // 상세: 세로 줄 넷, "← 시간표 목록", ✎, 시간대 탭과 "+ 다른 시간대", 요일 동그라미 일곱, 두 교시의 시각 칸 둘과 지우기, "+ 수업 시간",
+  // "되돌리기" · "저장"(바꾼 것이 없어 잠겨 있어도 늘 그 자리에 있고 초점이 닿는다)
   await focusByTab(page.getByRole('button', { name: /^평일반/ }));
   await page.keyboard.press('Enter');
-  expect(await everyStopShowsFocus()).toBe(22);
+  expect(await everyStopShowsFocus()).toBe(24);
   // 저장하지 않고 떠나려 할 때의 확인 창: "계속 편집", "저장 안 함", "저장"
   await focusByTab(page.getByRole('button', { name: '토요일' }));
   await page.keyboard.press('Enter');
@@ -339,10 +339,27 @@ test('키보드만으로 시간대 탭을 고르고 요일을 켜고 수업 시�
   await expect(dialog).toBeHidden();
   await expect(back).toBeFocused();
 
-  // "저장"으로 저장한다
-  await focusByTab(page.locator('.period-foot').getByRole('button', { name: '저장', exact: true }));
+  // "되돌리기"로 버렸다가 다시 고치고 "저장"으로 저장한다. 누른 단추가 꺼져도 초점은 그 자리에 남는다
+  const revert = page.getByRole('button', { name: '되돌리기' });
+  await focusByTab(revert);
+  await page.keyboard.press('Enter');
+  await expect(sunday).toHaveAttribute('aria-pressed', 'false');
+  await expect(revert).toBeDisabled();
+  await expect(revert).toBeFocused();
+  await focusByTab(sunday);
+  await page.keyboard.press('Space');
+  await focusByTab(page.getByRole('button', { name: '수업 시간', exact: true }));
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('1000');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('1130');
+  await page.keyboard.press('Tab');
+  const save = page.locator('.period-foot').getByRole('button', { name: '저장', exact: true });
+  await focusByTab(save);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('status').filter({ hasText: '저장했어요' })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await expect(save).toBeFocused();
   await expect
     .poll(async () => timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data)[0]!.slots)
     .toEqual([

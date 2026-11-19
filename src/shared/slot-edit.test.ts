@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimetableSlot } from './data';
-import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay } from './slot-edit';
+import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay, toSavedSlots } from './slot-edit';
 
 /** 평일 시간대와 토요일 시간대. */
 const WEEK_AND_SAT: readonly TimetableSlot[] = [
@@ -78,5 +78,12 @@ describe('sameSlots', () => {
     expect(sameSlots([{ ...saved[0]!, periods: [{ start: 540, end: 595 }, { start: 600, end: 650 }] }], saved)).toBe(false);
     expect(sameSlots([{ ...saved[0]!, periods: [{ start: 540, end: 590 }] }], saved)).toBe(false);
     expect(sameSlots([...saved, { days: [], periods: [] }], saved)).toBe(false);
+  });
+});
+
+describe('toSavedSlots', () => {
+  it('요일은 월요일부터, 수업 시간은 시작 시각 순으로 두고 시각 밖의 값은 뗀다', () => {
+    const draft = [{ days: ['fri', 'mon'] as const, periods: [{ key: 7, start: 600, end: 650 }, { key: 1, start: 540, end: 590 }] }];
+    expect(toSavedSlots(draft)).toEqual([{ days: ['mon', 'fri'], periods: [{ start: 540, end: 590 }, { start: 600, end: 650 }] }]);
   });
 });
