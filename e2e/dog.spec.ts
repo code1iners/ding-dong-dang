@@ -6,7 +6,7 @@ import { emptyData, type Data } from '../src/shared/data';
 import { timetableFields, weekdayOf, weekdayOtherThan } from './timetable-fixture';
 import { DOG_THEME_INFOS } from '../src/shared/dog-themes';
 
-// 강아지 그리기와 창 안의 강아지(고리 안, 처음 닫을 때 모달, 시계판 가운데).
+// 강아지 그리기와 창 안의 강아지(고리 안, 처음 닫을 때 모달, 시간표 화면). 상세의 시계판 가운데 강아지는 05 티켓이 상세와 함께 더한다.
 // 종이 울리는 동안 고리 안 강아지를 누르면 멈추는 것은 실제 시각을 기다려야 해서 bell-playback.spec.ts에서 본다.
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
@@ -155,12 +155,12 @@ test('강아지는 움직이고, OS의 동작 줄이기가 켜져 있으면 멈�
   expect(await pose()).toBe(still);
 });
 
-test('처음 닫을 때 모달과 시간표 시계판 가운데에 강아지가 나온다', async () => {
-  await launch({ ...noClassToday(), settings: { ...emptyData().settings, hideNoticeShown: false } });
-  await page.getByRole('button', { name: '시간표' }).click();
-  await expect(page.locator('.dial .dog-art svg')).toBeAttached();
-  await expect(page.locator('.dial .dog-art')).toHaveAttribute('data-dog-action', 'idle');
-  await page.locator('.card--dial').screenshot({ path: 'test-results/dial-dog.png' });
+test('처음 닫을 때 모달과 시간표가 없는 시간표 화면에 강아지가 나온다', async () => {
+  await launch({ settings: { ...emptyData().settings, hideNoticeShown: false } });
+  await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '시간표' }).click();
+  await expect(page.locator('.timetable-empty .dog-art svg')).toBeAttached();
+  await expect(page.locator('.timetable-empty .dog-art')).toHaveAttribute('data-dog-action', 'idle');
+  await page.locator('.timetable-empty').screenshot({ path: 'test-results/timetable-empty-dog.png' });
 
   await (await app!.browserWindow(page)).evaluate((w) => w.close());
   const modal = page.getByRole('dialog', { name: '딩동댕은 계속 켜져 있어요' });
@@ -255,9 +255,9 @@ test('설정에서 테마를 바꾸면 고리 안 강아지가 바뀌고, 앱을
   await expect(page.getByRole('radio', { name: '뻐드렁니 강아지' })).toHaveAttribute('aria-checked', 'true');
   expect(await savedTheme()).toBe('bucktooth');
 
-  // 고른 테마가 시계판 가운데에도 나온다
+  // 고른 테마가 시간표 화면의 강아지에도 나온다
   await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '시간표' }).click();
-  await expect(page.locator('.dial__dog')).toHaveAttribute('data-dog-theme', 'bucktooth');
+  await expect(page.locator('.timetable-empty__dog')).toHaveAttribute('data-dog-theme', 'bucktooth');
 });
 
 test('일곱 테마 모두 고리 안에 그려진다', async () => {

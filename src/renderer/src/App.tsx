@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DogArt } from './dog/DogArt';
 import { Modal } from './Modal';
 import { BellScreen, UNDO_SOUND_PREFIX } from './BellScreen';
@@ -6,7 +6,7 @@ import { Rail } from './Rail';
 import { SCREENS, type ScreenId } from './screens';
 import { SettingsScreen } from './SettingsScreen';
 import { StatusScreen } from './StatusScreen';
-import { TimetableScreen, type LeaveGuard } from './TimetableScreen';
+import { TimetableScreen } from './TimetableScreen';
 import { ToastStack, useToasts } from './Toasts';
 import { useAppState } from './useAppState';
 import { useUpdateTiming } from './useUpdateTiming';
@@ -61,32 +61,6 @@ export function App() {
   /** 알림 목록과 손잡이. */
   const toasts = useToasts();
   const { notify } = toasts;
-
-  /** 시간표 화면이 등록한, 저장하지 않은 편집을 두고 떠나기 전에 묻는 손잡이. 화면이 없으면 null. */
-  const guardRef = useRef<LeaveGuard | null>(null);
-  const registerGuard = useCallback((guard: LeaveGuard | null) => {
-    guardRef.current = guard;
-  }, []);
-  /** 저장하지 않은 수업 시간 편집이 있는지. */
-  const [editingDirty, setEditingDirty] = useState(false);
-  /** 저장하지 않은 편집이 있으면 먼저 묻고, 허락을 받으면 `proceed`를 부른다. */
-  const leave: LeaveGuard = useCallback((proceed) => (guardRef.current ? guardRef.current(proceed) : proceed()), []);
-
-  // 편집이 있는지 메인에 알려, 창을 닫으려 할 때 메인이 닫기를 멈추고 묻게 한다
-  useEffect(
-    function reportEditingDirty() {
-      window.dingdong.command({ type: 'set-editing-dirty', dirty: editingDirty }).catch((error: unknown) => console.error(error));
-    },
-    [editingDirty],
-  );
-  // 메인이 멈춘 창 닫기는 저장하지 않은 편집을 어떻게 할지 정한 뒤에 이어서 닫는다
-  useEffect(function closeAfterAsking() {
-    return window.dingdong.onCloseRequested(() => {
-      leave(() => {
-        window.dingdong.command({ type: 'close-window' }).catch((error: unknown) => console.error(error));
-      });
-    });
-  }, [leave]);
 
   /** 지금까지 알린 저장 실패 횟수. 처음 상태를 받았을 때의 값으로 시작해, 그 뒤에 늘어난 것만 알린다. */
   const notifiedFailures = useRef<number | null>(null);
@@ -165,21 +139,14 @@ export function App() {
     <div className="app">
       <Rail
         current={screen}
-        onSelect={(next) => next !== screen && leave(() => setScreen(next))}
+        onSelect={(next) => next !== screen && setScreen(next)}
         updateReady={state ? readyVersion(state.update.status) !== null : false}
       />
       {/* 화면 제목은 보이지 않게 두고(DESIGN.md "글"), 화면 읽기용 이름만 붙인다. 비어 있는 화면은 화면 티켓에서 채운다 */}
       <main className="screen" aria-label={name}>
         {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
         {screen === 'timetable' && state && (
-          <TimetableScreen
-            timetables={state.timetables}
-            weekdays={state.weekdays}
-            toasts={toasts}
-            registerGuard={registerGuard}
-            onDirtyChange={setEditingDirty}
-            dogTheme={state.settings.dogTheme}
-          />
+          <TimetableScreen timetables={state.timetables} dogTheme={state.settings.dogTheme} />
         )}
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
         {screen === 'settings' && state && <Settings state={state} />}

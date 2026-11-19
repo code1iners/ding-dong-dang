@@ -1,4 +1,4 @@
-import type { Timetable, Weekday } from './data';
+import { activeTimetableOf, type Timetable, type Weekday } from './data';
 
 /** 종의 종류. 수업 시간이 시작될 때의 시작종과 끝날 때의 끝종. */
 export type BellKind = 'start' | 'end';
@@ -20,11 +20,16 @@ export type BellStatus = {
   segment: { start: number; end: number } | null;
 };
 
-export type BellDecisionInput = {
+/** 날짜마다 어느 수업 시간으로 종이 울리는지 정하는 저장된 값. 스케줄러, 업데이트 잠금, 돌아다니는 강아지, 현황 화면이 같은 값을 넘긴다. */
+export type BellSchedule = {
   timetables: readonly Timetable[];
-  weekdays: Readonly<Record<Weekday, string | null>>;
+  /** 쓰는 시간표의 id. 종은 이 시간표만 따른다. */
+  activeTimetable: string | null;
   /** 오늘만 끄기를 켠 현지 날짜 'YYYY-MM-DD'. */
   bellsOffDate: string | null;
+};
+
+export type BellDecisionInput = BellSchedule & {
   /** 지난번 확인한 시각(에포크 ms). 앱을 막 켰으면 null. */
   lastChecked: number | null;
   /** 지금 시각(에포크 ms). */
@@ -50,7 +55,7 @@ const WEEKDAY_BY_DAY: readonly Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', '
 /** 울릴 시각이 정해진 종 하나. `at`은 에포크 ms. */
 type Bell = { kind: BellKind; at: number };
 
-/** 종도 구간도 없는 현황 값. 수업 없는 날과 시간표 없음이 같이 쓴다. */
+/** 종도 구간도 없는 현황 값. 수업 없는 날과 시간표 없음(쓰는 시간표 없음)이 같이 쓴다. */
 const NO_LESSONS = { periodNumber: null, periodCount: 0, periodsDone: 0, nextBell: null, segment: null } as const;
 
 /** 현지 날짜 'YYYY-MM-DD'. 오늘만 끄기의 끈 날짜와 견주는 형식이다. */
@@ -60,11 +65,15 @@ export function localDate(at: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** 그 시각이 속한 현지 날짜의 시간표. 배정이 없거나 목록에 없는 id면 null. */
-function timetableOn(input: BellDecisionInput, at: number): Timetable | null {
+/**
+ * 그 시각이 속한 현지 날짜의 수업 시간(자정부터의 분). 그날의 수업 시간을 정하는 곳은 여기 한 군데다.
+ * 쓰는 시간표에서 그 날짜의 요일이 든 시간대의 수업 시간이고, 쓰는 시간표나 그 요일의 시간대가 없으면 빈 목록이다.
+ */
+function periodsOfDay(input: BellSchedule, at: number): readonly { start: number; end: number }[] {
   // getDay()는 항상 0~6이라 표에 빈 칸이 없다
-  const id = input.weekdays[WEEKDAY_BY_DAY[new Date(at).getDay()] as Weekday];
-  return input.timetables.find((t) => t.id === id) ?? null;
+  /** 그 날짜의 요일. */
+  const day = WEEKDAY_BY_DAY[new Date(at).getDay()] as Weekday;
+  return activeTimetableOf(input)?.slots.find((slot) => slot.days.includes(day))?.periods ?? [];
 }
 
 /** 그 시각이 속한 현지 날짜의 자정에서 minutes분 뒤(에포크 ms). */
@@ -74,9 +83,8 @@ function atMinuteOfDay(at: number, minutes: number): number {
 }
 
 /** 시작 시각 순서로 정렬한 그 날의 수업 시간(에포크 ms). */
-function periodsOn(timetable: Timetable | null, at: number): { start: number; end: number }[] {
-  if (!timetable) return [];
-  return timetable.periods
+function periodsOn(periods: readonly { start: number; end: number }[], at: number): { start: number; end: number }[] {
+  return periods
     .map((p) => ({ start: atMinuteOfDay(at, p.start), end: atMinuteOfDay(at, p.end) }))
     .sort((a, b) => a.start - b.start);
 }
@@ -103,9 +111,9 @@ function bellToRing(input: BellDecisionInput): BellKind | null {
   const dayStarts = new Set([atMinuteOfDay(now - LATE_LIMIT_MS, 0), atMinuteOfDay(now, 0)]);
   let latest: Bell | null = null;
   for (const dayStart of dayStarts) {
-    // 종 시각마다 그 날짜의 요일 배정과 끈 날짜를 쓴다
+    // 종 시각마다 그 날짜의 요일이 든 시간대와 끈 날짜를 쓴다
     if (localDate(dayStart) === input.bellsOffDate) continue;
-    for (const bell of bellsOf(periodsOn(timetableOn(input, dayStart), dayStart))) {
+    for (const bell of bellsOf(periodsOn(periodsOfDay(input, dayStart), dayStart))) {
       if (bell.at <= lastChecked || bell.at > now) continue;
       if (!latest || bell.at > latest.at) latest = bell;
     }
@@ -123,7 +131,7 @@ export function firstBellOnLaterDays(input: BellDecisionInput, days = 7): number
   for (let offset = 1; offset <= days; offset += 1) {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset).getTime();
     if (localDate(dayStart) === input.bellsOffDate) continue;
-    const first = bellsOf(periodsOn(timetableOn(input, dayStart), dayStart))[0];
+    const first = bellsOf(periodsOn(periodsOfDay(input, dayStart), dayStart))[0];
     if (first) return first.at;
   }
   return null;
@@ -132,10 +140,11 @@ export function firstBellOnLaterDays(input: BellDecisionInput, days = 7): number
 /** 지금 시각의 현황. 오늘 시간표의 수업 시간 사이에서 지금이 어디인지 가려낸다. */
 function statusAt(input: BellDecisionInput): BellStatus {
   const { now } = input;
-  if (input.timetables.length === 0) {
+  // 시간표가 있어도 쓰는 시간표가 없으면 종이 따를 시간표가 없으니 시간표가 하나도 없을 때와 같다
+  if (!activeTimetableOf(input)) {
     return { kind: 'no-timetables', ...NO_LESSONS };
   }
-  const periods = periodsOn(timetableOn(input, now), now);
+  const periods = periodsOn(periodsOfDay(input, now), now);
   const first = periods[0];
   if (!first) {
     return { kind: 'no-class-day', ...NO_LESSONS };

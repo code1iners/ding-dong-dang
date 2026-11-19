@@ -18,7 +18,11 @@ afterEach(() => {
 
 /** 시간표 하나가 든 데이터. 쓴 내용을 구분하려고 이름을 받는다. */
 function dataWith(name: string): Data {
-  return { ...emptyData(), timetables: [{ id: 't1', name, color: 0, periods: [{ start: 540, end: 590 }] }] };
+  return {
+    ...emptyData(),
+    timetables: [{ id: 't1', name, color: 0, slots: [{ days: ['mon'], periods: [{ start: 540, end: 590 }] }] }],
+    activeTimetable: 't1',
+  };
 }
 
 /** 폴더에 있는 파일 이름들. */
@@ -31,10 +35,10 @@ describe('저장소', () => {
     const { storage, loaded } = openStorage(dir, DATA_FORMAT);
     expect(loaded.startedFresh).toBe(false);
     expect(storage.get()).toEqual({
-      version: 1,
+      version: 2,
       timetables: [],
       nextColor: 0,
-      weekdays: { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
+      activeTimetable: null,
       bellsOffDate: null,
       sounds: [],
       soundVolumes: {},
@@ -118,7 +122,7 @@ describe('저장소', () => {
   });
 
   it('앱이 아는 것보다 높은 형태 버전은 깨진 파일처럼 처리한다', () => {
-    writeFileSync(join(dir, DATA_FILE), JSON.stringify({ ...emptyData(), version: 2 }));
+    writeFileSync(join(dir, DATA_FILE), JSON.stringify({ ...emptyData(), version: 3 }));
     const { loaded } = openStorage(dir, DATA_FORMAT);
     expect(loaded.startedFresh).toBe(true);
     expect(files()).toEqual([CORRUPT_FILE]);

@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { emptyData } from '../src/shared/data';
-import { createTimetable } from '../src/shared/timetable-ops';
 import { trayIconFile } from '../src/main/residency';
+import { dataWith } from './timetable-fixture';
 
 // 창을 닫아도 앱이 남는 동작을 실제 앱으로 본다. 트레이 메뉴의 항목과 순서는 residency.test.ts가 본다.
 /** 이 파일의 테스트들이 나눠 쓰는 임시 데이터 폴더. */
@@ -152,7 +152,7 @@ test('저장하지 않은 편집이 있어도 종료 요청은 확인 없이 앱
 // 트레이는 OS가 그려 에이전트가 볼 수 없다. 대신 메인 프로세스가 트레이에 건넨 메뉴와 아이콘을 가로채어 실제 앱이 만든 것을 읽는다.
 test('트레이 메뉴의 "오늘 종"은 현황의 스위치와 같은 값이고, 끄면 빗금 아이콘으로 바뀐다', async () => {
   // 시간표가 하나는 있어야 현황에 "오늘 종" 스위치가 나온다
-  await writeFile(join(dataDir, 'data.json'), JSON.stringify(createTimetable(emptyData(), 't0')));
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(dataWith([{ name: '평일반', days: [], periods: [] }])));
   const launched = await launch();
   const page = await launched.firstWindow();
   /** 켜짐과 꺼짐 아이콘 파일 이름. */

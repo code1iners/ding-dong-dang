@@ -3,8 +3,7 @@
 // - 명령: 렌더러가 메인에 일을 시킨다.
 
 import type { BellKind } from './bell-decision';
-import type { RegisteredSound, Settings, Timetable, Weekday } from './data';
-import type { Period } from './timetable-validation';
+import type { RegisteredSound, Settings, Timetable, TimetableSlot } from './data';
 import type { UpdateState } from './update';
 
 /** 메인이 렌더러에 보내는 앱 상태. 기능 티켓이 필요한 값을 더한다. */
@@ -17,8 +16,8 @@ export type AppState = {
   settings: Settings;
   /** 시간표 목록. 만든 순서다. 저장된 값과 같다. */
   timetables: Timetable[];
-  /** 요일별로 배정한 시간표 id. 배정이 없으면 null. 저장된 값과 같다. */
-  weekdays: Record<Weekday, string | null>;
+  /** 쓰는 시간표의 id. 종은 이 시간표만 따른다. 없으면 null. 저장된 값과 같다. */
+  activeTimetable: string | null;
   /** 오늘만 끄기를 켠 현지 날짜 'YYYY-MM-DD'. 없으면 null. 오늘 날짜와 같을 때만 꺼진 것이다. 저장된 값과 같다. */
   bellsOffDate: string | null;
   /** 지금 종이 울리는 중인지. 숨긴 창의 재생이 끝나거나 멈추면 false가 된다. */
@@ -69,21 +68,19 @@ export type Command =
   | { type: 'set-dog-height'; height: number }
   /** "오늘 종" 스위치. `off`면 오늘 날짜를 끈 날짜로 저장해 울리던 종도 멈추고, 아니면 끈 날짜를 푼다. */
   | { type: 'set-bells-off'; off: boolean }
-  /** 새 시간표를 만든다. `assignTo`를 주면 그 요일에 바로 배정한다. */
-  | { type: 'create-timetable'; assignTo?: Weekday }
+  /** 받은 이름으로 새 시간표를 만든다. 비게 되는 이름은 거절한다. 결과의 `id`가 만든 시간표다. 첫 시간표는 쓰는 시간표가 된다. */
+  | { type: 'create-timetable'; name: string }
   /** 시간표 이름을 바꾼다. 비게 되는 이름은 거절한다. */
   | { type: 'rename-timetable'; id: string; name: string }
-  /** 시간표를 지운다. 쓰던 요일은 없음이 된다. 요일에 배정되지 않았던 시간표는 `restore-timetable`로 되돌릴 수 있다. */
+  /** 시간표를 지운다. 되돌릴 수 없다. 쓰는 시간표를 지우면 쓰는 시간표가 없어진다. */
   | { type: 'delete-timetable'; id: string }
-  /** 방금 지운 시간표를 원래 자리에 되돌린다. */
-  | { type: 'restore-timetable'; id: string }
-  /** 요일에 시간표 하나 또는 없음(null)을 배정한다. */
-  | { type: 'assign-weekday'; day: Weekday; timetableId: string | null }
+  /** 쓰는 시간표를 정한다. 목록에 있는 id만 받는다. */
+  | { type: 'set-active-timetable'; id: string }
   /** "저장된 시간표를 읽지 못해 새로 시작했어요" 알림을 보여 줬음을 알린다. 같은 실행에서 다시 보이지 않게 한다. */
   | { type: 'ack-fresh-start' }
-  /** 시간표의 수업 시간을 통째로 바꿔 저장한다. 결과의 `ok`가 false면 저장하지 못한 것이다. */
-  | { type: 'set-periods'; id: string; periods: Period[] }
-  /** 저장하지 않은 수업 시간 편집이 있는지 알린다. 있으면 메인은 창 닫기를 멈추고 렌더러에 묻는다. */
+  /** 시간표의 시간대 목록을 통째로 바꿔 저장한다(상세의 "저장"). 결과의 `ok`가 false면 저장하지 못한 것이다. */
+  | { type: 'set-slots'; id: string; slots: TimetableSlot[] }
+  /** 저장하지 않은 시간표 편집이 있는지 알린다. 있으면 메인은 창 닫기를 멈추고 렌더러에 묻는다. */
   | { type: 'set-editing-dirty'; dirty: boolean }
   /** 창을 닫는다. 저장하지 않은 편집을 어떻게 할지 정한 뒤에 보낸다. */
   | { type: 'close-window' }
@@ -136,6 +133,8 @@ export type CommandResult = {
   message?: string;
   /** `register-sound`가 등록한 종소리의 이름. */
   name?: string;
+  /** `create-timetable`이 만든 시간표의 id. */
+  id?: string;
 };
 
 /** preload가 렌더러의 `window.dingdong`으로 내보내는 통로. */

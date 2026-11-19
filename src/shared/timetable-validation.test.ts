@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validatePeriods } from './timetable-validation';
+import { validatePeriods, validateSlots } from './timetable-validation';
 
 /** 'HH:MM'을 자정부터의 분으로. */
 function min(clock: string): number {
@@ -122,5 +122,32 @@ describe('validatePeriods', () => {
     expect(tooLong?.message).toBe('첫 수업 시작부터 마지막 수업 끝까지 12시간을 넘을 수 없어요. 끝 시각을 앞당겨 주세요.');
     const [reversed] = validatePeriods([period('11:00', '10:00')]);
     expect(reversed?.message).toBe('끝 시각이 시작 시각보다 늦어야 해요. 끝 시각을 고쳐 주세요.');
+  });
+});
+
+describe('validateSlots', () => {
+  it('규칙을 시간대마다 적용하고, 오류에 시간대 번호를 붙인다', () => {
+    const errors = validateSlots([
+      { days: ['mon'], periods: [period('09:00', '09:50')] },
+      { days: ['sat'], periods: [period('10:00', '11:00'), period('10:30', '11:30')] },
+    ]);
+    expect(errors.map(({ slot, index, rule }) => ({ slot, index, rule }))).toEqual([
+      { slot: 1, index: 0, rule: 'overlap' },
+      { slot: 1, index: 1, rule: 'overlap' },
+    ]);
+  });
+
+  it('다른 시간대끼리는 겹치거나 합쳐서 12시간을 넘어도 통과한다', () => {
+    expect(
+      validateSlots([
+        { days: ['mon', 'tue'], periods: [period('06:00', '12:00')] },
+        { days: ['sat'], periods: [period('11:00', '18:30')] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('요일 없는 시간대, 수업 시간 없는 시간대, 요일이 하나도 없는 시간표는 통과한다', () => {
+    expect(validateSlots([{ days: [], periods: [] }])).toEqual([]);
+    expect(validateSlots([{ days: [], periods: [period('09:00', '09:50')] }, { days: [], periods: [] }])).toEqual([]);
   });
 });

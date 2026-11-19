@@ -15,7 +15,7 @@ let page: Page;
 /** 시:분을 자정부터의 분으로. */
 const at = (h: number, m: number): number => h * 60 + m;
 
-/** 모든 화면의 모든 부품이 나오도록 채운 저장 파일: 시간표 둘(하나는 월요일에 배정), 등록한 종소리 하나. */
+/** 모든 화면의 모든 부품이 나오도록 채운 저장 파일: 시간표 둘(평일반이 쓰는 시간표), 등록한 종소리 하나. */
 async function seedFull(): Promise<void> {
   const data = dataWith([
     {
@@ -157,66 +157,6 @@ test.afterEach(async () => {
   await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 });
 
-test('키보드만으로 시간표를 만들고 수업 시간을 저장하고 요일에 배정한다', async () => {
-  await launch();
-
-  // 시간표가 하나도 없는 현황에서 "시간표 만들기" → 시간표 화면
-  await focusByTab(page.getByRole('button', { name: '시간표 만들기' }));
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('main', { name: '시간표' })).toBeVisible();
-
-  // 오늘 요일의 시간표 고르기 단추 → 모달이 열리고 초점이 모달 안에 간다
-  /** 시간표 고르기 단추. 이름에 요일이 들어 있다. */
-  const select = page.getByRole('button', { name: /시간표 고르기/ });
-  await focusByTab(select);
-  await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-
-  // 모달 안의 "새 시간표"로 가서 만든다 → 오늘 요일에 배정되고 모달이 닫힌다
-  await focusByTab(dialog.getByRole('button', { name: '새 시간표' }));
-  await page.keyboard.press('Enter');
-  await expect(dialog).toHaveCount(0);
-  // 닫히면 초점이 연 곳으로 돌아간다
-  await expect(select).toBeFocused();
-  await expect(select).toContainText('새 시간표');
-
-  // "수업 시간"을 더하면 그 줄의 시작 시각 칸으로 초점이 간다. 숫자 키로 시각을 쓰고 Enter로 확정한다
-  await focusByTab(page.getByRole('button', { name: '수업 시간' }));
-  await page.keyboard.press('Enter');
-  const start = page.getByLabel('1교시 시작 시각', { exact: true });
-  await expect(start).toBeFocused();
-  await page.keyboard.type('0850');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Tab');
-  await expect(page.getByLabel('1교시 끝 시각', { exact: true })).toBeFocused();
-  await page.keyboard.type('0935');
-  await page.keyboard.press('Enter');
-
-  // 저장은 키보드로 눌러야 하는 단추다
-  await focusByTab(page.getByRole('button', { name: '저장', exact: true }));
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('status').filter({ hasText: '수업 시간을 저장했어요' })).toBeVisible();
-  /** 저장된 파일. */
-  const saved = JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data;
-  expect(timetablesOf(saved)[0]?.periods).toEqual([{ start: at(8, 50), end: at(9, 35) }]);
-
-  // 다른 요일 동그라미를 키보드로 고르고(눌림 상태가 바뀐다) 시간표를 배정한다
-  const tuesday = page.getByRole('button', { name: /^화요일 · / });
-  await focusByTab(tuesday);
-  await page.keyboard.press('Space');
-  await expect(tuesday).toHaveAttribute('aria-pressed', 'true');
-  await focusByTab(select);
-  await page.keyboard.press('Enter');
-  await focusByTab(dialog.locator('.timetable-list').getByRole('button', { name: '새 시간표' }));
-  await page.keyboard.press('Enter');
-  await expect(dialog).toHaveCount(0);
-  expect(timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).find((t) => t.days.includes('tue'))?.id).toBe(
-    timetablesOf(saved)[0]?.id,
-  );
-});
-
 test('키보드만으로 시작종을 바꾸고 설정의 스위치와 슬라이더를 바꾸고, 모달을 Esc로 닫는다', async () => {
   await seedFull();
   await launch();
@@ -265,35 +205,9 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   // 현황
   expect(await everyStopShowsFocus()).toBeGreaterThan(4);
 
-  // 시간표 화면
+  // 시간표 화면의 목록은 아직 보기만 한다(카드를 누르는 흐름은 04 티켓). 왼쪽 세로 줄 단추만 Tab에 닿는다
   await openScreenByKeyboard('시간표');
-  await page.getByRole('button', { name: /^월요일 · / }).click();
-  expect(await everyStopShowsFocus()).toBeGreaterThan(8);
-
-  // 시간표 선택 창: 선택 모드와 편집 모드, 지우기 확인
-  await page.getByRole('button', { name: /시간표 고르기/ }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(5);
-  await page.getByRole('button', { name: '편집', exact: true }).click();
-  expect(await everyStopShowsFocus('[role="dialog"]')).toBeGreaterThan(5);
-  await page.getByRole('button', { name: "'평일반' 지우기" }).click();
-  await expect(page.getByRole('dialog', { name: "'평일반' 시간표를 지울까요?" })).toBeVisible();
-  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(2);
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
-
-  // 수업 시간을 고치면 나오는 "되돌리기" · "저장"
-  await page.getByLabel('1교시 끝 시각', { exact: true }).fill('0946');
-  await page.getByLabel('1교시 끝 시각', { exact: true }).press('Enter');
-  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeVisible();
-  expect(await everyStopShowsFocus()).toBeGreaterThan(10);
-  // 저장하지 않은 편집을 두고 나가려 하면 뜨는 모달(단추 셋)
-  await railButton('종').focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog', { name: '바꾼 내용을 저장할까요?' })).toBeVisible();
-  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
-  await page.getByRole('button', { name: '저장 안 함' }).click();
+  expect(await everyStopShowsFocus()).toBe(4);
 
   // 종 화면
   await openScreenByKeyboard('종');
@@ -355,10 +269,6 @@ test('아이콘만 있는 단추는 대상을 포함한 이름이 있고 마우�
   });
 
   // 대상을 포함한 이름 몇 가지를 직접 확인한다
-  await railButton('시간표').click();
-  await page.getByRole('button', { name: /^월요일 · / }).click();
-  await expect(page.getByRole('button', { name: '1교시 지우기' })).toHaveAttribute('title', '1교시 지우기');
-  await expect(page.getByRole('button', { name: '2교시 지우기' })).toHaveAttribute('title', '2교시 지우기');
   await railButton('종').click();
   await expect(page.getByRole('button', { name: "'내 종소리' 지우기" })).toHaveAttribute('title', "'내 종소리' 지우기");
   await expect(page.getByRole('button', { name: "'내 종소리' 이름 바꾸기" })).toHaveAttribute('title', "'내 종소리' 이름 바꾸기");
@@ -385,18 +295,16 @@ test('아이콘만 있는 단추는 대상을 포함한 이름이 있고 마우�
 test('성공 알림은 status, 실패 알림은 alert로 접근성 트리에 나타난다', async () => {
   await seedFull();
   await launch();
-  await railButton('시간표').click();
-  await page.getByRole('button', { name: /^월요일 · / }).click();
-  await page.getByLabel('1교시 끝 시각', { exact: true }).fill('0946');
-  await page.getByLabel('1교시 끝 시각', { exact: true }).press('Enter');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('수업 시간을 저장했어요');
+  await railButton('종').click();
+  await page.getByRole('button', { name: "'내 종소리' 지우기" }).click();
+  await expect(page.getByRole('status').filter({ hasText: '내 종소리' })).toBeVisible();
+  await app?.evaluate(({ app: electronApp }) => electronApp.exit(0)).catch(() => undefined);
 
-  // 겹치는 시각은 그 줄 아래에 alert로 이유를 알린다
-  await page.getByRole('button', { name: '수업 시간' }).click();
-  await page.getByLabel('3교시 시작 시각', { exact: true }).fill('0900');
-  await page.getByLabel('3교시 시작 시각', { exact: true }).press('Enter');
-  await expect(page.getByRole('alert').first()).toBeVisible();
+  // 저장된 파일을 읽지 못하면 실패 알림이 alert로 뜬다
+  await writeFile(join(dataDir, 'data.json'), '{깨진 파일');
+  await writeFile(join(dataDir, 'data.backup.json'), 'also broken');
+  await launch();
+  await expect(page.getByRole('alert').filter({ hasText: '저장된 시간표를 읽지 못해 새로 시작했어요' })).toBeVisible();
 });
 
 test('OS의 동작 줄이기가 켜져 있으면 창 안의 강아지가 멈추고 모달과 알림이 움직임 없이 나타난다', async () => {
@@ -456,6 +364,8 @@ async function clippedElements(): Promise<string[]> {
       if (rect.width === 0 || rect.height === 0) continue;
       const style = getComputedStyle(el);
       if (style.visibility === 'hidden') continue;
+      // 화면 읽기에만 들리는 글은 일부러 1px 칸에 잘라 둔 것이다
+      if (el.closest('.sr-only')) continue;
       /** 스크롤하는 조상 안에 있으면 보이는 영역 밖은 정상이다. */
       const scrolled = (() => {
         for (let p: HTMLElement | null = el.parentElement; p; p = p.parentElement) {
@@ -490,17 +400,11 @@ test('창을 최소 크기와 큰 크기로 띄운 모든 화면에서 글자와
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width);
     for (const screen of ['현황', '시간표', '종', '설정']) {
       await railButton(screen).click();
-      if (screen === '시간표') await page.getByRole('button', { name: /^월요일 · / }).click();
       await page.waitForTimeout(150);
       problems[`${width}x${height} ${screen}`] = await clippedElements();
       if (shots) await page.screenshot({ path: join(shots, `${width}x${height}-${screen}.png`) });
     }
     // 모달도 본다
-    await railButton('시간표').click();
-    await page.getByRole('button', { name: /시간표 고르기/ }).click();
-    problems[`${width}x${height} 시간표 선택 창`] = await clippedElements();
-    if (shots) await page.screenshot({ path: join(shots, `${width}x${height}-시간표 선택 창.png`) });
-    await page.keyboard.press('Escape');
     await railButton('설정').click();
     await page.getByRole('button', { name: '모든 데이터 지우기' }).click();
     problems[`${width}x${height} 지우기 모달`] = await clippedElements();

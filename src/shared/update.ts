@@ -1,5 +1,5 @@
 // 앱 내 업데이트의 화면 쪽 값. 메인이 상태를 만들고, 설정 화면이 버전 줄 · 주황 점 · 확인 모달을 그린다.
-import { decideBell, firstBellOnLaterDays, type BellDecision, type BellDecisionInput } from './bell-decision';
+import { decideBell, firstBellOnLaterDays, type BellDecision, type BellSchedule } from './bell-decision';
 
 /** 앱 내 업데이트의 상태. */
 export type UpdateStatus =
@@ -91,7 +91,7 @@ export type UpdateTiming = {
 
 /** 시간표와 지금 시각으로 업데이트 잠금을 정한다. 화면의 단추와 메인의 설치 명령이 같은 판정을 쓴다. */
 export function updateTimingAt(
-  schedule: Pick<BellDecisionInput, 'timetables' | 'weekdays' | 'bellsOffDate'>,
+  schedule: BellSchedule,
   ringing: boolean,
   now: number,
 ): UpdateTiming {

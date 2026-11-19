@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Timetable, Weekday } from './data';
+import type { Timetable, TimetableSlot } from './data';
 import { decideBell, type BellDecisionInput } from './bell-decision';
 
 /** 2026-11-16은 월요일이다. 스펙 시나리오 표의 기준 날짜. */
@@ -23,39 +23,31 @@ function period(start: string, end: string) {
   return { start: min(start), end: min(end) };
 }
 
-/** 스펙 시나리오 표의 평일반. */
-const weekdayClass: Timetable = {
-  id: 'weekday',
-  name: '평일반',
-  color: 0,
-  periods: [
-    period('09:00', '09:50'),
-    period('10:00', '10:50'),
-    period('10:50', '11:40'),
-    period('13:00', '13:50'),
-  ],
-};
-/** 자정에 시작하는 새벽반. */
-const dawnClass: Timetable = { id: 'dawn', name: '새벽반', color: 1, periods: [period('00:00', '00:40')] };
-/** 수업 시간이 하나도 없는 시간표. */
-const emptyClass: Timetable = { id: 'empty', name: '비어 있는 반', color: 2, periods: [] };
+/** 스펙 시나리오 표의 평일반 수업 시간. */
+const weekdayPeriods = [period('09:00', '09:50'), period('10:00', '10:50'), period('10:50', '11:40'), period('13:00', '13:50')];
+/** 자정에 시작하는 새벽 수업. */
+const dawnPeriods = [period('00:00', '00:40')];
 
-/** 월 · 화는 평일반, 수는 새벽반, 나머지는 없음. */
-const weekdays: Record<Weekday, string | null> = {
-  mon: 'weekday',
-  tue: 'weekday',
-  wed: 'dawn',
-  thu: null,
-  fri: null,
-  sat: null,
-  sun: null,
+/** 평일반 시간표. 시나리오 표의 요일 배정(월 · 화는 평일반, 수는 새벽반, 나머지는 없음)을 시간대로 옮겼다. */
+function weekdayClass(slots: TimetableSlot[] = [
+  { days: ['mon', 'tue'], periods: weekdayPeriods },
+  { days: ['wed'], periods: dawnPeriods },
+]): Timetable {
+  return { id: 'weekday', name: '평일반', color: 0, slots };
+}
+/** 쓰는 시간표가 아닌 토요반. 월요일 이른 아침에도 수업이 있다. */
+const saturdayClass: Timetable = {
+  id: 'saturday',
+  name: '토요반',
+  color: 1,
+  slots: [{ days: ['mon', 'thu', 'sat'], periods: [period('08:30', '08:45')] }],
 };
 
-/** 시나리오 표의 기본 상태에서 필요한 부분만 바꿔 판정한다. */
+/** 시나리오 표의 기본 상태(쓰는 시간표는 평일반)에서 필요한 부분만 바꿔 판정한다. */
 function decide(from: string | null, to: string, override: Partial<BellDecisionInput> = {}) {
   return decideBell({
-    timetables: [weekdayClass, dawnClass, emptyClass],
-    weekdays,
+    timetables: [weekdayClass(), saturdayClass],
+    activeTimetable: 'weekday',
     bellsOffDate: null,
     lastChecked: from === null ? null : at(from),
     now: at(to),
@@ -124,7 +116,7 @@ describe('종 판정: 시나리오 표', () => {
     expect(result.keepAwake).toBe(true);
   });
 
-  it('12. 자정을 넘기면 넘어간 날의 요일 배정으로 종을 정한다', () => {
+  it('12. 자정을 넘기면 넘어간 날의 요일이 든 시간대로 종을 정한다', () => {
     expect(decide('화 23:59:59', '수 00:00:00').bell).toBe('start');
   });
 
@@ -133,10 +125,13 @@ describe('종 판정: 시나리오 표', () => {
   });
 
   it('자정 직전에 끝난 수업의 끝종은 자정이 지난 뒤 확인해도 울린다', () => {
-    const night: Timetable = { id: 'night', name: '야간반', color: 3, periods: [period('23:00', '23:59')] };
     const result = decide('화 23:58:50', '수 00:00:00', {
-      timetables: [weekdayClass, night],
-      weekdays: { ...weekdays, tue: 'night', wed: 'weekday' },
+      timetables: [
+        weekdayClass([
+          { days: ['tue'], periods: [period('23:00', '23:59')] },
+          { days: ['wed'], periods: weekdayPeriods },
+        ]),
+      ],
     });
     expect(result.bell).toBe('end');
   });
@@ -145,7 +140,7 @@ describe('종 판정: 시나리오 표', () => {
     expect(decide('화 23:59:59', '수 00:00:00', { bellsOffDate: '2026-11-17' }).bell).toBe('start');
   });
 
-  it('15. 배정이 없는 요일은 종이 없고 수업 없는 날이다', () => {
+  it('15. 쓰는 시간표에 그 요일이 든 시간대가 없으면 종이 없고 수업 없는 날이다', () => {
     const result = decide('목 08:59:59', '목 09:00:00');
     expect(result.bell).toBe('none');
     expect(result.status.kind).toBe('no-class-day');
@@ -171,16 +166,14 @@ describe('종 판정: 시나리오 표', () => {
   });
 
   it('18. 수업 시작을 지난 시각으로 고쳐 저장해도 종이 뒤늦게 울리지 않는다', () => {
-    const edited: Timetable = {
-      ...weekdayClass,
-      periods: [
-        period('09:00', '09:50'),
-        period('09:52', '10:50'),
-        period('10:50', '11:40'),
-        period('13:00', '13:50'),
-      ],
-    };
-    const result = decide('월 09:55:00', '월 09:55:01', { timetables: [edited, dawnClass, emptyClass] });
+    const edited = weekdayClass([
+      {
+        days: ['mon', 'tue'],
+        periods: [period('09:00', '09:50'), period('09:52', '10:50'), period('10:50', '11:40'), period('13:00', '13:50')],
+      },
+      { days: ['wed'], periods: dawnPeriods },
+    ]);
+    const result = decide('월 09:55:00', '월 09:55:01', { timetables: [edited, saturdayClass] });
     expect(result.bell).toBe('none');
     expect(result.status.kind).toBe('in-class');
     expect(result.status.periodNumber).toBe(2);
@@ -205,8 +198,10 @@ describe('종 판정: 시나리오 표', () => {
     expect(result.keepAwake).toBe(false);
   });
 
-  it('22. 수업 시간이 없는 시간표가 배정된 요일은 종이 없고 수업 없는 날이다', () => {
-    const result = decide('월 08:59:59', '월 09:00:00', { weekdays: { ...weekdays, mon: 'empty' } });
+  it('22. 그 요일이 든 시간대에 수업 시간이 없으면 종이 없고 수업 없는 날이다', () => {
+    const result = decide('월 08:59:59', '월 09:00:00', {
+      timetables: [weekdayClass([{ days: ['mon'], periods: [] }, { days: ['tue'], periods: weekdayPeriods }])],
+    });
     expect(result.bell).toBe('none');
     expect(result.status.kind).toBe('no-class-day');
     expect(result.keepAwake).toBe(false);
@@ -285,8 +280,8 @@ describe('현황', () => {
     });
   });
 
-  it('시간표가 하나도 없으면 요일 배정이 있어도 시간표 없음이고 종이 없다', () => {
-    const result = decide('월 08:59:59', '월 09:00:00', { timetables: [] });
+  it('시간표가 하나도 없으면 시간표 없음이고 종이 없다', () => {
+    const result = decide('월 08:59:59', '월 09:00:00', { timetables: [], activeTimetable: null });
     expect(result.bell).toBe('none');
     expect(result.status.kind).toBe('no-timetables');
     expect(result.keepAwake).toBe(false);
@@ -298,15 +293,58 @@ describe('현황', () => {
     expect(result.status.nextBell).toEqual({ kind: 'end', at: at('월 09:50:00') });
   });
 
-  it('요일에 배정한 시간표가 목록에 없으면 수업 없는 날로 본다', () => {
-    const result = decide('월 08:59:59', '월 09:00:00', { weekdays: { ...weekdays, mon: 'gone' } });
+  it('쓰는 시간표 id가 목록에 없으면 시간표 없음으로 본다', () => {
+    const result = decide('월 08:59:59', '월 09:00:00', { activeTimetable: 'gone' });
+    expect(result.bell).toBe('none');
+    expect(result.status.kind).toBe('no-timetables');
+  });
+
+  it('수업 시간을 입력 순서와 상관없이 시작 시각 순서로 매긴다', () => {
+    const shuffled = weekdayClass([{ days: ['mon'], periods: [...weekdayPeriods].reverse() }]);
+    const { status } = decide('월 10:29:59', '월 10:30:00', { timetables: [shuffled] });
+    expect(status.periodNumber).toBe(2);
+  });
+});
+
+describe('쓰는 시간표', () => {
+  it('쓰는 시간표가 아닌 시간표의 시각에는 종이 울리지 않고, 현황도 쓰는 시간표를 따른다', () => {
+    const result = decide('월 08:29:59', '월 08:30:00');
+    expect(result.bell).toBe('none');
+    expect(result.status.kind).toBe('before-first');
+    expect(result.status.nextBell).toEqual({ kind: 'start', at: at('월 09:00:00') });
+  });
+
+  it('쓰는 시간표를 바꾸면 바꾼 시간표의 시각에 종이 울린다', () => {
+    const result = decide('월 08:29:59', '월 08:30:00', { activeTimetable: 'saturday' });
+    expect(result.bell).toBe('start');
+    expect(result.status.kind).toBe('in-class');
+    expect(decide('월 08:59:59', '월 09:00:00', { activeTimetable: 'saturday' }).bell).toBe('none');
+  });
+
+  it('시간표가 있어도 쓰는 시간표가 없으면 종이 없고 시간표 없음이다', () => {
+    const result = decide('월 08:59:59', '월 09:00:00', { activeTimetable: null });
+    expect(result.bell).toBe('none');
+    expect(result.status.kind).toBe('no-timetables');
+    expect(result.keepAwake).toBe(false);
+  });
+
+  it('그 요일이 든 시간대가 없는 날은 수업 없는 날이고, 다른 요일의 시간대는 쓰지 않는다', () => {
+    const result = decide('목 08:29:59', '목 08:30:00');
     expect(result.bell).toBe('none');
     expect(result.status.kind).toBe('no-class-day');
   });
 
-  it('수업 시간을 입력 순서와 상관없이 시작 시각 순서로 매긴다', () => {
-    const shuffled: Timetable = { ...weekdayClass, periods: [...weekdayClass.periods].reverse() };
-    const { status } = decide('월 10:29:59', '월 10:30:00', { timetables: [shuffled] });
-    expect(status.periodNumber).toBe(2);
+  it('자정을 걸치면 날짜마다 그 요일이 든 시간대를 다시 찾는다', () => {
+    const timetables = [
+      weekdayClass([
+        { days: ['tue'], periods: [period('23:00', '23:59')] },
+        { days: ['wed'], periods: [period('00:00', '00:30')] },
+      ]),
+    ];
+    // 화요일 시간대의 끝종과 수요일 시간대의 시작종이 한 구간에 들면 가장 최근인 수요일 시작종 하나만 울린다
+    expect(decide('화 23:58:50', '수 00:00:10', { timetables }).bell).toBe('start');
+    // 수요일 현황은 수요일 시간대만 본다
+    const { status } = decide(null, '수 00:10:00', { timetables });
+    expect(status).toMatchObject({ kind: 'in-class', periodNumber: 1, periodCount: 1 });
   });
 });

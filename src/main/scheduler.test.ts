@@ -12,17 +12,21 @@ const mondayClass: Timetable = {
   id: 'mon-class',
   name: '월요반',
   color: 0,
-  periods: [
-    { start: 9 * 60, end: 9 * 60 + 50 },
-    { start: 10 * 60, end: 10 * 60 + 50 },
-    { start: 13 * 60, end: 13 * 60 + 50 },
+  slots: [
+    {
+      days: ['mon'],
+      periods: [
+        { start: 9 * 60, end: 9 * 60 + 50 },
+        { start: 10 * 60, end: 10 * 60 + 50 },
+        { start: 13 * 60, end: 13 * 60 + 50 },
+      ],
+    },
   ],
 };
 
-/** 월요일에 월요반을 배정한 저장 값. */
+/** 월요반이 쓰는 시간표인 저장 값. */
 function mondayData(): SchedulerData {
-  const data = emptyData();
-  return { ...data, timetables: [mondayClass], weekdays: { ...data.weekdays, mon: mondayClass.id } };
+  return { ...emptyData(), timetables: [mondayClass], activeTimetable: mondayClass.id };
 }
 
 /**
@@ -173,7 +177,7 @@ describe('스케줄러', () => {
     expect(s.log.filter((l) => l.startsWith('ring'))).toEqual(['ring start']);
   });
 
-  it('저장된 시간표나 요일 배정이 바뀌면 다음 판정부터 새 값을 쓴다', () => {
+  it('저장된 시간표나 쓰는 시간표가 바뀌면 다음 판정부터 새 값을 쓴다', () => {
     const s = setup(mon(9, 55, 0));
     // 2교시 시작을 09:57로 앞당겨 저장하면 그 시각에 시작종이 울린다
     s.setData((d) => ({
@@ -181,15 +185,15 @@ describe('스케줄러', () => {
       timetables: [
         {
           ...mondayClass,
-          periods: mondayClass.periods.map((p, i) => (i === 1 ? { ...p, start: 9 * 60 + 57 } : p)),
+          slots: [{ days: ['mon'], periods: mondayClass.slots[0]!.periods.map((p, i) => (i === 1 ? { ...p, start: 9 * 60 + 57 } : p)) }],
         },
       ],
     }));
     s.runUntil(mon(9, 57, 0));
     expect(s.log).toContain('ring start');
-    // 월요일 배정을 없음으로 바꾸면 그다음 종은 울리지 않고 잠자기 막기도 푼다
+    // 쓰는 시간표를 없음으로 바꾸면 그다음 종은 울리지 않고 잠자기 막기도 푼다
     s.finishBell();
-    s.setData((d) => ({ ...d, weekdays: { ...d.weekdays, mon: null } }));
+    s.setData((d) => ({ ...d, activeTimetable: null }));
     s.runUntil(mon(10, 50, 0));
     expect(s.log.filter((l) => l.startsWith('ring'))).toEqual(['ring start']);
     expect(s.log.at(-1)).toBe('release awake');

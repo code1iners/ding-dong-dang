@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
@@ -94,6 +94,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await quit();
+  await chmod(dataDir, 0o755);
   await rm(dataDir, { recursive: true, force: true });
 });
 
@@ -109,6 +110,33 @@ test('창을 열면 현황 화면이고 수업 중에는 초록 고리, 남은 �
   await expect(page.locator('.ring')).toHaveAttribute('data-fraction', /^0\.(6000|599\d)$/);
   expect(await paws()).toEqual(['1교시 · 끝남', '2교시 · 지금', '3교시 · 남음']);
   await expect(page.getByRole('switch', { name: '오늘 종' })).toHaveAttribute('aria-checked', 'true');
+  // 종이 따르는 시간표의 이름이 보인다
+  await expect(page.locator('.status__timetable')).toHaveText('쓰는 시간표 시험반');
+});
+
+test('현황은 쓰는 시간표만 따르고 그 이름을 보여 주며, 쓰는 시간표가 없으면 시간표가 있어도 "시간표가 하나도 없음" 상태다', async () => {
+  /** 오늘 수업이 있는 두 시간표. 평일반은 10:00~10:50, 토요반은 10:30~11:00이다. */
+  const specs = [
+    { id: 'weekday', name: '평일반', days: [todayKey], periods: [{ start: min('10:00'), end: min('10:50') }] },
+    { id: 'saturday', name: '토요반', days: [todayKey], periods: [{ start: min('10:30'), end: min('11:00') }] },
+  ];
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(dataWith(specs, emptyData(), 'saturday')));
+  await launch(today(10, 20, 0));
+  /** 쓰는 시간표 이름 줄. */
+  const name = page.locator('.status__timetable');
+  await expect(name).toHaveText('쓰는 시간표 토요반');
+  await expect(name).toHaveAttribute('title', '토요반');
+  // 10:20은 평일반의 수업 중이지만 쓰는 시간표인 토요반은 첫 수업 전이다
+  await expect(page.getByRole('timer')).toHaveAttribute('aria-label', /^시작종까지 (10:00|09:5\d)$/);
+  expect(await paws()).toEqual(['1교시 · 남음']);
+
+  await quit();
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(dataWith(specs, emptyData(), null)));
+  await launch(today(10, 20, 0));
+  await expect(page.getByText('시간표를 만들어 주세요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '시간표 만들기' })).toBeVisible();
+  await expect(page.locator('.status__timetable')).toHaveCount(0);
+  await expect(page.getByRole('switch', { name: '오늘 종' })).toHaveCount(0);
 });
 
 test('쉬는 시간에는 주황 고리와 시작종까지, 첫 수업 전에는 빈 고리와 한 시간 넘는 시:분:초가 나온다', async () => {
@@ -200,6 +228,33 @@ test('"오늘 종"을 끄면 끈 날짜가 저장되고 앱을 다시 띄워도 
   await page.getByRole('switch', { name: '오늘 종' }).click();
   await expect(page.getByRole('switch', { name: '오늘 종' })).toHaveAttribute('aria-checked', 'true');
   await expect.poll(async () => (await saved()).bellsOffDate).toBeNull();
+});
+
+test('저장에 실패하면 실패 알림이 뜨고, 또 실패하면 다시 뜨며, 쓸 수 있게 되면 다음 변경에서 함께 저장된다', async () => {
+  test.skip(process.getuid?.() === 0, '루트는 쓰기 권한 검사를 건너뛴다');
+  await seed(PERIODS);
+  await launch();
+  // 데이터 폴더를 읽기 전용으로 바꿔 다음 쓰기를 실패시킨다
+  await chmod(dataDir, 0o555);
+  /** 스위치. */
+  const toggle = page.getByRole('switch', { name: '오늘 종' });
+  await toggle.click();
+  /** 실패 알림. */
+  const alert = page.getByRole('alert').filter({ hasText: '저장하지 못했어요. 디스크에 빈 공간이 있는지 확인하고 다시 저장해 주세요.' });
+  await expect(alert).toBeVisible();
+  // 메모리에는 남아 화면에 보인다
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+  // 또 실패해도 닫았던 알림이 다시 뜬다
+  await alert.getByRole('button', { name: '알림 닫기' }).click();
+  await expect(alert).toBeHidden();
+  await toggle.click();
+  await expect(alert).toBeVisible();
+
+  // 폴더가 다시 쓸 수 있게 되면 다음 변경에서 함께 저장된다
+  await chmod(dataDir, 0o755);
+  await toggle.click();
+  await expect.poll(async () => (await saved()).bellsOffDate).toBe(localDate(Date.now()));
 });
 
 test('끈 날짜가 어제인 파일로 띄우면 "오늘 종"이 켜져 있다', async () => {
