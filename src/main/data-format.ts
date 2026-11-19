@@ -91,11 +91,10 @@ export function parseData(raw: unknown): Data | null {
 
 /**
  * 버전 1(요일마다 시간표 배정)을 버전 2(시간표마다 시간대, 쓰는 시간표 하나)로 올린다.
- * 배포 전에 바꾼 형태라 시간표와 요일 배정은 옮기지 않고 비운다. 음원 · 설정 · 창 위치 같은 나머지는 그대로 둔다.
- * 시간표가 비므로 다음 색도 처음 색부터 다시 배정한다.
+ * 배포 전에 바꾼 형태라 시간표와 요일 배정은 옮기지 않고 비운다. 음원 · 설정 · 창 위치 · 다음 색 같은 나머지는 그대로 둔다.
  */
 function fromVersion1(raw: Record<string, unknown>): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...raw, timetables: [], nextColor: 0, activeTimetable: null };
+  const next: Record<string, unknown> = { ...raw, timetables: [], activeTimetable: null };
   delete next.weekdays;
   return next;
 }

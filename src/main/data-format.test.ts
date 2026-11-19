@@ -66,7 +66,7 @@ describe('저장 형태 버전 2', () => {
     expect(parseData(sample())).toEqual(sample());
   });
 
-  it('버전 1 파일을 읽으면 시간표는 비고 쓰는 시간표는 없으며, 음원 · 설정 · 창 위치는 남는다', () => {
+  it('버전 1 파일을 읽으면 시간표는 비고 쓰는 시간표는 없으며, 음원 · 설정 · 창 위치 · 다음 색은 남는다', () => {
     writeFileSync(join(dir, DATA_FILE), JSON.stringify(VERSION_1));
     const { storage, loaded } = openStorage(dir, DATA_FORMAT);
     // 깨진 파일이 아니라 올려 쓴 것이라 알리지 않는다
@@ -74,7 +74,7 @@ describe('저장 형태 버전 2', () => {
     /** 요일 배정을 뺀 버전 1의 나머지 값. */
     const rest: Record<string, unknown> = { ...VERSION_1 };
     delete rest.weekdays;
-    expect(storage.get()).toEqual({ ...rest, version: 2, timetables: [], nextColor: 0, activeTimetable: null });
+    expect(storage.get()).toEqual({ ...rest, version: 2, timetables: [], nextColor: 4, activeTimetable: null });
   });
 
   it('한 시간표 안에서 같은 요일이 두 시간대에 있으면 깨진 파일로 본다', () => {
