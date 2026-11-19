@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BellStatus } from './bell-decision';
-import { formatRemaining, pawStates, remainingFraction, ringDogAction } from './status-view';
+import { type DogAction, formatRemaining, framesPerSecond, pawStates, remainingFraction, ringDogAction } from './status-view';
 
 describe('formatRemaining', () => {
   it('한 시간 미만이면 분:초이고 두 자리로 채운다', () => {
@@ -85,5 +85,11 @@ describe('ringDogAction: 고리 안 강아지의 동작(DESIGN.md "현황" 표)'
     expect(ringDogAction('in-class', { ringing: true, petted: false })).toBe('happy');
     expect(ringDogAction('no-class-day', { ringing: false, petted: true })).toBe('happy');
     expect(ringDogAction('break', { ringing: false, petted: true })).toBe('happy');
+  });
+});
+
+describe('framesPerSecond', () => {
+  it.each(['idle', 'sleepy', 'happy', 'move', 'drag', 'fall'] satisfies DogAction[])('%s 동작도 초당 60번 그린다', (action) => {
+    expect(framesPerSecond(action)).toBe(60);
   });
 });

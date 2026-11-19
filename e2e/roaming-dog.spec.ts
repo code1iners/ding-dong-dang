@@ -467,7 +467,7 @@ test('화면이 잠기거나 PC가 잠들면 그리기를 멈추고, 풀리면 �
   await launch();
   const dog = await dogPage();
   await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-dog-action', 'sleepy');
-  // 졸림은 초당 4번 그리므로 1초 안에 자세가 바뀐다
+  // 졸림도 그리는 중이므로 1초 안에 자세가 바뀐다
   const moving = await pose(dog);
   await expect.poll(() => pose(dog), { timeout: 2_000 }).not.toBe(moving);
 

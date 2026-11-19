@@ -126,7 +126,7 @@ function schedule(): void {
   drawTimer = undefined;
   if (!view || view.paused) return;
   draw();
-  if (reducedQuery.matches && framesPerSecond(view.action) > 4) return;
+  if (reducedQuery.matches && view.action !== 'idle' && view.action !== 'sleepy') return;
   drawTimer = setInterval(draw, 1000 / framesPerSecond(view.action));
 }
 
