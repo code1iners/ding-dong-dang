@@ -213,10 +213,18 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   await page.keyboard.press('Enter');
   expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
   await page.keyboard.press('Escape');
-  // 상세: 세로 줄 넷, "← 시간표 목록", ✎
+  // 상세: 세로 줄 넷, "← 시간표 목록", ✎, 시간대 탭과 "+ 다른 시간대", 요일 동그라미 일곱, 두 교시의 시각 칸 둘과 지우기, "+ 수업 시간",
+  // "되돌리기" · "저장"(바꾼 것이 없어 잠겨 있어도 늘 그 자리에 있고 초점이 닿는다)
   await focusByTab(page.getByRole('button', { name: /^평일반/ }));
   await page.keyboard.press('Enter');
-  expect(await everyStopShowsFocus()).toBe(6);
+  expect(await everyStopShowsFocus()).toBe(24);
+  // 저장하지 않고 떠나려 할 때의 확인 창: "계속 편집", "저장 안 함", "저장"
+  await focusByTab(page.getByRole('button', { name: '토요일' }));
+  await page.keyboard.press('Enter');
+  await focusByTab(page.getByRole('button', { name: '시간표 목록' }));
+  await page.keyboard.press('Enter');
+  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
+  await page.getByRole('dialog').getByRole('button', { name: '저장 안 함' }).click();
 
   // 종 화면
   await openScreenByKeyboard('종');
@@ -262,10 +270,10 @@ test('키보드만으로 새 시간표를 만들어 상세에 들어가고 목�
   }
   expect(order).toEqual(['취소', '만들기', '새 시간표 창 닫기', '이름']);
 
-  // Enter로 만들면 상세로 들어가고 초점은 상세의 첫 조작 요소에 놓인다
+  // Enter로 만들면 상세로 들어가고 초점은 첫 요일 동그라미에 놓인다
   await page.keyboard.press('Enter');
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('button', { name: "'수요반' 이름 바꾸기" })).toBeFocused();
+  await expect(page.getByRole('button', { name: '월요일' })).toBeFocused();
   // "← 시간표 목록"까지 가서 목록으로 돌아오면 그 시간표의 카드에 초점이 있다
   await focusByTab(page.getByRole('button', { name: '시간표 목록' }));
   await page.keyboard.press('Enter');
@@ -275,6 +283,89 @@ test('키보드만으로 새 시간표를 만들어 상세에 들어가고 목�
     '토요반',
     '수요반',
   ]);
+});
+
+test('키보드만으로 시간대 탭을 고르고 요일을 켜고 수업 시간을 더해 고친 뒤 저장하며, 확인 창의 Esc와 초점 돌아오기가 맞다', async () => {
+  await writeFile(
+    join(dataDir, 'data.json'),
+    JSON.stringify(
+      dataWith([
+        {
+          id: 't0',
+          name: '평일반',
+          slots: [
+            { days: ['mon', 'tue', 'wed', 'thu', 'fri'], periods: [{ start: at(9, 0), end: at(9, 50) }] },
+            { days: ['sat'], periods: [] },
+          ],
+        },
+      ]),
+    ),
+  );
+  await launch();
+  await openScreenByKeyboard('시간표');
+  await focusByTab(page.getByRole('button', { name: /^평일반/ }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: '시간표 목록' })).toBeFocused();
+
+  // 시간대 탭 "토"를 골라 일요일을 켠다
+  const saturday = page.getByRole('group', { name: '시간대' }).getByRole('button', { name: '토', exact: true });
+  await focusByTab(saturday);
+  await page.keyboard.press('Enter');
+  await expect(saturday).toHaveAttribute('aria-pressed', 'true');
+  const sunday = page.getByRole('button', { name: '일요일' });
+  await focusByTab(sunday);
+  await page.keyboard.press('Space');
+  await expect(sunday).toHaveAttribute('aria-pressed', 'true');
+
+  // "+ 수업 시간"으로 줄을 더하면 시작 시각 칸에 초점이 가고, 숫자만 쳐서 시각을 고친다
+  await focusByTab(page.getByRole('button', { name: '수업 시간', exact: true }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('1교시 시작 시각')).toBeFocused();
+  await page.keyboard.type('1000');
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('1교시 끝 시각')).toBeFocused();
+  await page.keyboard.type('1130');
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('1교시 시작 시각')).toHaveValue('10:00');
+  await expect(page.getByLabel('1교시 끝 시각')).toHaveValue('11:30');
+
+  // 떠나려 하면 확인 창이 뜨고, Esc로 닫으면 초점이 "← 시간표 목록"으로 돌아온다
+  const back = page.getByRole('button', { name: '시간표 목록' });
+  await focusByTab(back);
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: '바꾼 내용을 저장할까요?' });
+  await expect(dialog.getByRole('button', { name: '저장', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(back).toBeFocused();
+
+  // "되돌리기"로 버렸다가 다시 고치고 "저장"으로 저장한다. 누른 단추가 꺼져도 초점은 그 자리에 남는다
+  const revert = page.getByRole('button', { name: '되돌리기' });
+  await focusByTab(revert);
+  await page.keyboard.press('Enter');
+  await expect(sunday).toHaveAttribute('aria-pressed', 'false');
+  await expect(revert).toBeDisabled();
+  await expect(revert).toBeFocused();
+  await focusByTab(sunday);
+  await page.keyboard.press('Space');
+  await focusByTab(page.getByRole('button', { name: '수업 시간', exact: true }));
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('1000');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('1130');
+  await page.keyboard.press('Tab');
+  const save = page.locator('.period-foot').getByRole('button', { name: '저장', exact: true });
+  await focusByTab(save);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: '저장했어요' })).toBeVisible();
+  await expect(save).toBeDisabled();
+  await expect(save).toBeFocused();
+  await expect
+    .poll(async () => timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data)[0]!.slots)
+    .toEqual([
+      { days: ['mon', 'tue', 'wed', 'thu', 'fri'], periods: [{ start: at(9, 0), end: at(9, 50) }] },
+      { days: ['sat', 'sun'], periods: [{ start: at(10, 0), end: at(11, 30) }] },
+    ]);
 });
 
 test('아이콘만 있는 단추는 대상을 포함한 이름이 있고 마우스를 올리면 같은 이름이 뜬다. 스위치와 선택 동그라미는 상태를 알린다', async () => {

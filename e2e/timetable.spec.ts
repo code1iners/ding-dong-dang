@@ -5,7 +5,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { emptyData, type Data } from '../src/shared/data';
 import { dataWith, timetablesOf, version1Data, weekdayOf, type TimetableSpec } from './timetable-fixture';
 
-// 시간표 화면의 목록(카드) · 만들기 · 상세와 저장 파일. 상세 편집 · 쓰는 시간표 바꾸기 · 지우기 흐름은 05~06 티켓이 이 파일에 더한다.
+// 시간표 화면의 목록(카드) · 만들기 · 상세와 저장 파일. 상세 편집은 period-editing.spec.ts가, 쓰는 시간표 바꾸기 · 지우기 흐름은 06 티켓이 이 파일에 더한다.
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -102,10 +102,13 @@ test('시간표마다 카드가 있고, 카드에 색 점 · 이름 · 모든 �
   await expect(weekday.locator('.mini-day')).toHaveCount(7);
   // 작은 시계판은 첫 시간대(평일)의 수업 시간 셋을 호로 그린다
   await expect(weekday.locator('.dial--compact path')).toHaveCount(3);
+  // 시간대마다 요일 요약, 교시 수, 첫 시작~마지막 끝
+  await expect(weekday.locator('.tcard__meta > span')).toHaveText(['월~금 3교시 · 09:00~11:50', '토 1교시 · 10:00~11:30']);
 
   await expect(vacation.locator('.tcard__name')).toHaveText('방학 특강');
   await expect(vacation.locator('.mini-day--on')).toHaveCount(0);
   await expect(vacation.locator('.dial--compact path')).toHaveCount(0);
+  await expect(vacation.locator('.tcard__meta > span')).toHaveText(['요일 없음 수업 시간 없음']);
   // 화면 읽기는 요일을 글로 듣는다
   await expect(vacation).toContainText('요일 없음');
 });
@@ -262,7 +265,8 @@ test('빈 상태에서 이름을 받아 만들면 상세로 들어가고, 앱을
   await create.click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('status').filter({ hasText: "'평일반' 시간표를 만들었어요" })).toBeVisible();
-  // 상세: 위 줄의 "← 시간표 목록"과 왼쪽 카드의 이름
+  // 상세: 위 줄의 "← 시간표 목록"과 왼쪽 카드의 이름. 초점은 첫 요일 동그라미에 있다
+  await expect(page.getByRole('group', { name: '이 시간대를 쓰는 요일' }).getByRole('button', { name: '월요일' })).toBeFocused();
   await expect(backButton()).toBeVisible();
   await expect(page.locator('.timetable-name__text')).toHaveText('평일반');
   // 시간표가 하나뿐이면 "쓰는 중" 표시가 없다

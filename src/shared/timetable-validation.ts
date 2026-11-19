@@ -87,6 +87,6 @@ export type SlotError = PeriodError & {
  * 시간표의 시간대마다 수업 시간 규칙을 검사한다. 시간대 순, 그 안에서는 `validatePeriods`의 순서다.
  * 다른 시간대의 수업 시간끼리는 비교하지 않는다. 같은 날에 함께 울리지 않기 때문이다.
  */
-export function validateSlots(slots: readonly TimetableSlot[]): SlotError[] {
+export function validateSlots<S extends { periods: readonly Period[] }>(slots: readonly S[]): SlotError[] {
   return slots.flatMap(({ periods }, slot) => validatePeriods(periods).map((error) => ({ ...error, slot })));
 }

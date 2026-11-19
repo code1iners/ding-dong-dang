@@ -687,7 +687,19 @@ button.tcard--new:focus-visible {
   gap: var(--space-3);
 }
 
-.dial--compact {
+/* 목록 카드의 시간대 요약 두 줄까지. 시계판 아래 카드 폭을 다 써서 한 시간대가 한 줄에 든다 */
+.tcard__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-2);
+  line-height: 1.3;
+  color: var(--color-ink-2);
+}
+
+/* 상세 시계판의 폭 채우기(.dial)보다 앞서도록 선택자를 겹친다 */
+.dial.dial--compact {
   flex: none;
   width: 110px;
   height: 110px;
@@ -800,6 +812,170 @@ button.tcard--new:focus-visible {
   flex: 1;
   height: var(--button-height);
   font-size: var(--font-size-3);
+}
+
+/* 상세 왼쪽 카드: 이름 · 시간대 탭 · 요일 줄은 제 높이를 쓰고, 시계판이 남는 높이를 다 쓴다. 카드는 스크롤하지 않고 시계판이 줄어든다 */
+.timetable-left {
+  overflow: hidden;
+}
+
+/* 시간대 탭: 이름은 요일 요약이다. 고른 탭은 선택 테두리(글자 색 3px을 3px 띄움)로 보이고, 테두리가 잘리지 않게 여백을 둔다 */
+.slot-tabs {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-2);
+  padding: 6px;
+  margin: -6px;
+}
+
+.slot-tab {
+  height: var(--button-height-sm);
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
+  font-size: var(--font-size-2);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.slot-tab[aria-pressed='true'] {
+  outline: var(--focus-ring) solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+.slot-tab .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 잘못된 시각이 든 시간대의 느낌표 */
+.slot-tab__bad {
+  display: inline-flex;
+  color: var(--color-red);
+}
+
+/* "+ 다른 시간대": 아직 없는 것을 더하는 칸이라 점선 테두리다 */
+.slot-tab--add {
+  background: transparent;
+  border: 2px dashed var(--color-line);
+  color: var(--color-ink-2);
+}
+
+.slot-tab:focus-visible {
+  outline: var(--focus-ring) solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* 선택과 초점이 겹치면 안쪽에 초점, 바깥에 선택 테두리 */
+.slot-tab[aria-pressed='true']:focus-visible {
+  outline: var(--focus-ring) solid var(--color-ink);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 고른 시간대의 요일 줄. 폭이 모자라면 "이 시간대 지우기"가 다음 줄로 간다 */
+.slot-days-row {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 40px;
+}
+
+.slot-days {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 요일 동그라미: 꺼진 요일은 점선 테두리, 켠 요일은 시간표 색 면에 글자 색 테두리와 체크 */
+/* 체크 표시를 단추 곁에 겹쳐 그리는 칸. 표시는 누르는 자리를 가리지 않는다 */
+.slot-day-wrap {
+  position: relative;
+  display: flex;
+}
+
+.slot-day {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-size: var(--font-size-2);
+  border: 2px dashed var(--color-line);
+  background: var(--color-card);
+  color: var(--color-ink-2);
+}
+
+.slot-day--on {
+  border: 2px solid var(--color-ink);
+  color: var(--color-ink);
+}
+
+.slot-day__check {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-card);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--color-card);
+  pointer-events: none;
+}
+
+.slot-day__check .icon {
+  width: 11px;
+  height: 11px;
+}
+
+.slot-day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 빨간 글자의 작은 단추("이 시간대 지우기") */
+.text-button {
+  margin-left: auto;
+  padding: var(--space-1) 6px;
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-2);
+  white-space: nowrap;
+}
+
+.text-button--red {
+  color: var(--color-red);
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.text-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 오른쪽 카드 위의 "월~금 수업 시간" */
+.periods-head {
+  flex: none;
+  font-size: var(--font-size-2);
+  font-weight: 400;
+  color: var(--color-ink-2);
+}
+
+.period-empty {
+  margin: var(--space-4) 0;
+  text-align: center;
+  font-size: var(--font-size-2);
+  color: var(--color-ink-2);
 }
 
 /* 시간표 화면의 두 카드: 왼쪽은 시계판, 오른쪽은 교시별 시각 */
@@ -953,12 +1129,22 @@ button.tcard--new:focus-visible {
   outline-offset: -2px;
 }
 
-/* 잠긴 단추는 회색이고 이유는 곁의 글이 말한다 */
-.button:disabled {
+/* 잠긴 단추는 회색이고 이유는 곁의 글이 말한다. 초점을 남겨야 하는 단추는 aria-disabled로 잠근다 */
+.button:disabled,
+.button[aria-disabled='true'] {
   background: var(--color-locked);
   color: var(--color-locked-ink);
   box-shadow: none;
   cursor: not-allowed;
+}
+
+/* 잠겨도 초점이 남는 단추: 눌러도 내려가지 않고, 초점 테두리는 그대로 그린다 */
+.button[aria-disabled='true']:active {
+  transform: none;
+}
+
+.button[aria-disabled='true']:focus-visible {
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
 }
 
 .field-error--center {

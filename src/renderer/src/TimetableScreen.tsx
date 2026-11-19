@@ -4,23 +4,31 @@ import { CreateTimetableModal } from './CreateTimetableModal';
 import { Dial } from './Dial';
 import { DogArt } from './dog/DogArt';
 import { ActionIcon } from './icons';
-import { DETAIL_BACK_SELECTOR, DETAIL_START_SELECTOR, TimetableDetail } from './TimetableDetail';
+import { DETAIL_BACK_SELECTOR, DETAIL_START_SELECTOR, TimetableDetail, type LeaveGuard } from './TimetableDetail';
 import type { ToastApi } from './Toasts';
-import { WEEKDAY_SHORT } from './weekdays';
+import { slotSummary, WEEKDAY_SHORT } from './weekdays';
 
 type Props = {
   timetables: Timetable[];
-  /** 시계판이 없는 빈 상태에 그릴 강아지의 테마 id. */
+  /** 빈 상태와 상세 시계판 가운데에 그릴 강아지의 테마 id. */
   dogTheme: string;
-  /** 만들었다는 알림을 띄운다. */
-  notify: ToastApi['notify'];
+  /** 만들었다는 알림과 저장했다는 알림을 띄우고, 고치기 시작하면 종소리 되돌리기 알림을 거둔다. */
+  toasts: Pick<ToastApi, 'notify' | 'dismissUndo'>;
+  /** 상세의 초안을 두고 다른 화면으로 가거나 창을 닫기 전에 묻는 손잡이를 앱에 등록한다. */
+  registerGuard(guard: LeaveGuard | null): void;
+  /** 상세에 초안이 생기거나 사라질 때 앱에 알린다. */
+  onDirtyChange(dirty: boolean): void;
 };
+
+/** 목록 카드에 보이는 시간대 요약의 최대 줄 수. 나머지는 "외 N개"로 줄인다. */
+const SUMMARY_LINES = 2;
 
 /** 시간표 id로 목록 카드를 찾는 선택자를 만든다. 상세에서 돌아오면 그 카드로 초점을 돌려준다. */
 const cardSelector = (id: string): string => `[data-timetable-id="${CSS.escape(id)}"]`;
 
 /**
- * 목록 카드 하나. 누르면 상세로 들어가는 단추 하나이고, 색 점과 한 줄 이름, 모든 시간대의 요일 동그라미 일곱, 첫 시간대의 작은 시계판이 있다.
+ * 목록 카드 하나. 누르면 상세로 들어가는 단추 하나이고, 색 점과 한 줄 이름, 모든 시간대의 요일 동그라미 일곱,
+ * 첫 시간대의 작은 시계판, 시간대별 요약 두 줄까지(셋째부터 "외 N개")가 있다.
  */
 function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): void }) {
   /** 어느 시간대에든 든 요일. */
@@ -56,6 +64,12 @@ function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): 
         <span className="tcard__body">
           <Dial periods={timetable.slots[0]?.periods ?? []} color={timetable.color} compact />
         </span>
+        <span className="tcard__meta">
+          {timetable.slots.slice(0, SUMMARY_LINES).map((slot, i) => (
+            <span key={i}>{slotSummary(slot)}</span>
+          ))}
+          {timetable.slots.length > SUMMARY_LINES && <span>외 {timetable.slots.length - SUMMARY_LINES}개</span>}
+        </span>
       </button>
     </li>
   );
@@ -66,7 +80,8 @@ function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): 
  * 목록은 시간표마다 카드 한 장을 격자로 놓고 맨 끝에 "새 시간표" 카드를 둔다. 넘치면 격자 안에서 스크롤한다.
  * 시간표가 하나도 없으면 같은 격자의 첫 칸에 카드 하나 크기의 빈 상태를 보여 준다.
  */
-export function TimetableScreen({ timetables, dogTheme, notify }: Props) {
+export function TimetableScreen({ timetables, dogTheme, toasts, registerGuard, onDirtyChange }: Props) {
+  const { notify } = toasts;
   /** 상세로 연 시간표 id. 목록이면 null이다. */
   const [openId, setOpenId] = useState<string | null>(null);
   /** 이름 받는 창이 떠 있는지. */
@@ -123,6 +138,10 @@ export function TimetableScreen({ timetables, dogTheme, notify }: Props) {
         {shown && (
           <TimetableDetail
             timetable={shown}
+            dogTheme={dogTheme}
+            toasts={toasts}
+            registerGuard={registerGuard}
+            onDirtyChange={onDirtyChange}
             onBack={() => {
               focusAfter.current = cardSelector(shown.id);
               setOpenId(null);
