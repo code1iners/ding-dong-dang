@@ -327,6 +327,22 @@ test('키보드만으로 "이 시간표 쓰기"를 누르고, 지우기 확인 �
   await expect(page.getByRole('button', { name: /^평일반/ })).toBeFocused();
 });
 
+test('하나 남은 시간표에 쓰는 시간표가 없으면 키보드만으로 "이 시간표 쓰기"를 누르고, 단추가 사라지면 초점이 "시간표 지우기"로 옮겨 간다', async () => {
+  // 쓰는 시간표를 지워 하나만 남은 상태
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(dataWith([{ id: 't1', name: '토요반', days: [], periods: [] }], undefined, null)));
+  await launch();
+  await openScreenByKeyboard('시간표');
+  await focusByTab(page.getByRole('button', { name: /^토요반/ }));
+  await page.keyboard.press('Enter');
+
+  await focusByTab(page.getByRole('button', { name: '이 시간표 쓰기' }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: "이제 '토요반' 시간표로 종이 울려요" })).toBeVisible();
+  // 하나뿐인 쓰는 시간표에는 "쓰는 중" 표시도 없으므로, 사라진 단추 다음 자리인 "시간표 지우기"가 초점을 받는다
+  await expect(page.getByRole('button', { name: '이 시간표 쓰기' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: "'토요반' 시간표 지우기" })).toBeFocused();
+});
+
 test('키보드만으로 시간대 탭을 고르고 요일을 켜고 수업 시간을 더해 고친 뒤 저장하며, 확인 창의 Esc와 초점 돌아오기가 맞다', async () => {
   await writeFile(
     join(dataDir, 'data.json'),

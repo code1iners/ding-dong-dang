@@ -23,6 +23,10 @@ function send(command: Command): Promise<CommandResult> {
 export const DETAIL_START_SELECTOR = '[data-detail-start]';
 /** 위 줄의 "← 시간표 목록". 목록의 카드로 상세에 들어오면 이 단추에 초점을 둔다. */
 export const DETAIL_BACK_SELECTOR = '.back-button';
+/** 위 줄의 "쓰는 중" 표시. "이 시간표 쓰기"를 누르면 이 표시로 초점을 옮긴다. */
+const ACTIVE_BADGE_SELECTOR = '[data-active-badge]';
+/** 위 줄의 "시간표 지우기". 하나뿐인 시간표에서 "이 시간표 쓰기"를 누르면 표시가 없어 이 단추로 초점을 옮긴다. */
+const DELETE_BUTTON_SELECTOR = '[data-delete-timetable]';
 
 /**
  * 왼쪽 카드 맨 위의 색 점 · 이름 · ✎. ✎를 누르면 그 자리에서 입력으로 바뀌고 ✓ · ×가 나온다.
@@ -184,7 +188,10 @@ type Props = {
   timetable: Timetable;
   /** 이 시간표가 쓰는 시간표인지. */
   isActive: boolean;
-  /** 쓰는 시간표 동작("쓰는 중" 표시나 "이 시간표 쓰기")을 보여 줄지. 시간표가 둘 이상일 때만이다. */
+  /**
+   * 쓰는 시간표 동작("쓰는 중" 표시나 "이 시간표 쓰기")을 보여 줄지. 시간표가 둘 이상일 때와,
+   * 하나뿐인데 쓰는 시간표가 없을 때(쓰는 시간표를 지워 하나만 남았을 때)다.
+   */
   showActive: boolean;
   /** 하나뿐인 시간표인지. 지우면 종이 멈춘다고 알린다. */
   isOnly: boolean;
@@ -349,13 +356,13 @@ export function TimetableDetail({
 
   /**
    * 이 시간표를 쓰는 시간표로 바로 저장한다. 초안은 건드리지 않고 그대로 남는다.
-   * 단추가 "쓰는 중" 표시로 바뀌므로 초점을 그 표시로 옮긴다.
+   * 단추가 "쓰는 중" 표시로 바뀌므로 초점을 그 표시로 옮긴다. 하나뿐인 시간표는 표시도 숨으므로 그다음 자리의 "시간표 지우기"로 옮긴다.
    */
   async function activate(): Promise<void> {
     if (activating) return;
     setActivating(true);
     // 새 상태가 명령의 답보다 먼저 올 수 있어 보내기 전에 정해 둔다
-    focusAfter.current = '[data-active-badge]';
+    focusAfter.current = isOnly ? DELETE_BUTTON_SELECTOR : ACTIVE_BADGE_SELECTOR;
     /** 메인의 저장 결과. */
     const result = await send({ type: 'set-active-timetable', id: timetable.id });
     setActivating(false);
@@ -457,6 +464,7 @@ export function TimetableDetail({
           <button
             type="button"
             className="button button--ghost button--sm button--red-text"
+            data-delete-timetable
             aria-label={`'${timetable.name}' 시간표 지우기`}
             onClick={() => setConfirmingDelete(true)}
           >

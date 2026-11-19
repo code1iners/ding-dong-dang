@@ -100,8 +100,10 @@ export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts,
 
   /** 상세로 연 시간표. 만든 직후 메인의 새 상태가 아직 오지 않았으면 잠깐 없다. */
   const shown = openId === null ? undefined : timetables.find((t) => t.id === openId);
-  /** "쓰는 중"을 드러낼지. 시간표가 하나뿐이면 쓰는 시간표라는 개념을 숨긴다. */
+  /** 목록 카드에 "쓰는 중"을 드러낼지. 시간표가 하나뿐이면 쓰는 시간표라는 개념을 숨긴다. */
   const showActive = timetables.length > 1;
+  /** 상세 위 줄에 쓰는 시간표 동작을 보여 줄지. 하나뿐이어도 쓰는 시간표가 없으면 종을 되살릴 "이 시간표 쓰기"가 있어야 한다. */
+  const showActiveInDetail = showActive || activeTimetable === null;
 
   // 목록과 상세를 오간 뒤, 새로 그려진 요소에 초점을 준다. 만든 시간표가 아직 상태에 없으면 올 때까지 기다린다
   useEffect(function focusAfterMove() {
@@ -150,7 +152,7 @@ export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts,
           <TimetableDetail
             timetable={shown}
             isActive={shown.id === activeTimetable}
-            showActive={showActive}
+            showActive={showActiveInDetail}
             isOnly={timetables.length === 1}
             dogTheme={dogTheme}
             toasts={toasts}

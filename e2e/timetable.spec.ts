@@ -586,3 +586,36 @@ test('지우기는 항상 확인 창을 거치고, 쓰는 시간표를 지우면
   await expect(page.getByText('시간표를 만들어 주세요')).toBeVisible();
   await expect(page.locator('.status__timetable')).toHaveCount(0);
 });
+
+test('쓰는 시간표를 지워 하나만 남으면 그 상세에 "이 시간표 쓰기"가 나오고, 누르면 종과 현황이 다시 그 시간표를 따르며 표시는 숨는다', async () => {
+  /** 오늘 요일. 현황의 도장 수로 종이 토요반을 따르는지 본다. */
+  const today = weekdayOf();
+  await seed([
+    { id: 'weekday', name: '평일반', days: [], periods: [] },
+    { id: 'saturday', name: '토요반', days: [today], periods: [{ start: at(9, 0), end: at(9, 50) }] },
+  ]);
+  await launch();
+
+  // 쓰는 시간표인 평일반을 지우면 쓰는 시간표가 없어진다
+  await cards().nth(0).click();
+  await page.getByRole('button', { name: "'평일반' 시간표 지우기" }).click();
+  await deleteDialog('평일반').getByRole('button', { name: '시간표 지우기' }).click();
+  await expect(cards()).toHaveCount(1);
+  await expect.poll(async () => (await saved()).activeTimetable).toBeNull();
+
+  // 하나 남은 토요반의 상세에는 "쓰는 중" 표시 대신 "이 시간표 쓰기"가 나온다
+  await cards().first().click();
+  const activate = page.getByRole('button', { name: '이 시간표 쓰기' });
+  await expect(activate).toBeVisible();
+  await activate.click();
+  await expect(page.getByRole('status').filter({ hasText: "이제 '토요반' 시간표로 종이 울려요" })).toBeVisible();
+  await expect.poll(async () => (await saved()).activeTimetable).toBe('saturday');
+  // 하나뿐이고 쓰는 시간표이니 평소처럼 단추도 표시도 없다
+  await expect(activate).toHaveCount(0);
+  await expect(page.getByText('쓰는 중')).toHaveCount(0);
+
+  // 현황이 다시 토요반의 이름과 수업 시간을 따른다
+  await railButton('현황').click();
+  await expect(page.locator('.status__timetable')).toHaveText('쓰는 시간표 토요반');
+  await expect.poll(pawCount).toBe(1);
+});
