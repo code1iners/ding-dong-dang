@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AppState, Command, CommandResult } from '../../shared/bridge';
+import type { AppState } from '../../shared/bridge';
 import { BUILTIN_SOUNDS } from '../../shared/builtin-sounds';
+import { sendCommand } from './command';
 import { ActionIcon } from './icons';
 import { Slider } from './Slider';
 import type { ToastApi } from './Toasts';
@@ -15,14 +16,6 @@ export const UNDO_SOUND_PREFIX = 'undo-sound-';
 
 /** 목록의 한 줄. 내장 음원과 등록 음원이 같은 모양이고, 등록 음원에만 이름 바꾸기와 지우기가 있다. */
 type Row = { id: string; name: string; registered: boolean };
-
-/** 메인에 명령을 보낸다. 거절되면 콘솔에만 남긴다. */
-function send(command: Command): Promise<CommandResult> {
-  return window.dingdong.command(command).catch((error: unknown) => {
-    console.error(error);
-    return { ok: false };
-  });
-}
 
 /**
  * 종 화면. 위에 전체 음량과 "종소리 등록", 아래 목록의 줄마다 미리 듣기, 이름, 음량,
@@ -69,7 +62,7 @@ export function BellScreen({ state, toasts }: Props) {
     setRegistering(true);
     toasts.dismissUndo();
     try {
-      const result = await send({ type: 'register-sound' });
+      const result = await sendCommand({ type: 'register-sound' });
       if (result.message) {
         toasts.notify({ key: 'register-failed', kind: 'failure', text: result.message });
       } else if (result.name) {
@@ -91,14 +84,14 @@ export function BellScreen({ state, toasts }: Props) {
   function commitRename(id: string): void {
     if (draft.trim() === '') return;
     toasts.dismissUndo();
-    void send({ type: 'rename-sound', id, name: draft });
+    void sendCommand({ type: 'rename-sound', id, name: draft });
     endRename(id);
   }
 
   /** 등록한 종소리를 바로 지우고 "되돌리기" 알림을 띄운다. */
   function remove(row: Row): void {
     toasts.dismissUndo();
-    void send({ type: 'delete-sound', id: row.id });
+    void sendCommand({ type: 'delete-sound', id: row.id });
     toasts.notify({
       key: `${UNDO_SOUND_PREFIX}${row.id}`,
       kind: 'undo',
@@ -106,7 +99,7 @@ export function BellScreen({ state, toasts }: Props) {
       action: {
         label: '되돌리기',
         run: () => {
-          void send({ type: 'restore-sound', id: row.id });
+          void sendCommand({ type: 'restore-sound', id: row.id });
           toasts.notify({ key: `restored-sound-${row.id}`, kind: 'success', text: `'${row.name}' 종소리를 되돌렸어요` });
         },
       },
@@ -122,7 +115,7 @@ export function BellScreen({ state, toasts }: Props) {
           value={state.masterVolume}
           onChange={(volume) => {
             toasts.dismissUndo();
-            void send({ type: 'set-master-volume', volume });
+            void sendCommand({ type: 'set-master-volume', volume });
           }}
         />
         <button type="button" className="button button--ghost button--sm bell-head__add" disabled={registering} onClick={() => void register()}>
@@ -152,7 +145,7 @@ export function BellScreen({ state, toasts }: Props) {
                 title={`${row.name} ${previewing ? '미리 듣기 멈추기' : '미리 듣기'}`}
                 aria-label={`${row.name} ${previewing ? '미리 듣기 멈추기' : '미리 듣기'}`}
                 aria-pressed={previewing}
-                onClick={() => void send({ type: 'toggle-preview', id: row.id })}
+                onClick={() => void sendCommand({ type: 'toggle-preview', id: row.id })}
               >
                 <ActionIcon name={previewing ? 'stop' : 'play'} />
               </button>
@@ -192,7 +185,7 @@ export function BellScreen({ state, toasts }: Props) {
                 value={state.soundVolumes[row.id] ?? 100}
                 onChange={(volume) => {
                   toasts.dismissUndo();
-                  void send({ type: 'set-sound-volume', id: row.id, volume });
+                  void sendCommand({ type: 'set-sound-volume', id: row.id, volume });
                 }}
               />
               {(['start', 'end'] as const).map((kind) => {
@@ -210,7 +203,7 @@ export function BellScreen({ state, toasts }: Props) {
                     aria-pressed={chosen}
                     onClick={() => {
                       toasts.dismissUndo();
-                      void send({ type: 'set-bell', kind, id: row.id });
+                      void sendCommand({ type: 'set-bell', kind, id: row.id });
                     }}
                   >
                     <ActionIcon name="ok" />

@@ -1,23 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Command, CommandResult } from '../../shared/bridge';
 import type { Timetable, Weekday } from '../../shared/data';
 import { nextPeriod, periodRanks, sortByStart } from '../../shared/period-edit';
 import { addSlot, daysShownFor, hasUnassignedDay, removeSlot, sameSlots, toggleDay, toSavedSlots } from '../../shared/slot-edit';
 import { validateSlots, type Period, type SlotError } from '../../shared/timetable-validation';
+import { sendCommand } from './command';
 import { Dial } from './Dial';
 import { ActionIcon } from './icons';
 import { Modal } from './Modal';
 import { TimeField } from './TimeField';
 import type { ToastApi } from './Toasts';
 import { daysSummary, WEEKDAY_SHORT, weekdayName } from './weekdays';
-
-/** 메인에 명령을 보낸다. 실패는 메인이 저장 실패 알림으로 알리므로 여기서는 기록만 한다. */
-function send(command: Command): Promise<CommandResult> {
-  return window.dingdong.command(command).catch((error: unknown) => {
-    console.error(error);
-    return { ok: false };
-  });
-}
 
 /** 만들고 상세에 들어왔을 때 초점을 받는 요소. 고른 시간대의 첫 요일 동그라미이고, 보일 요일이 없으면 ✎다. */
 export const DETAIL_START_SELECTOR = '[data-detail-start]';
@@ -58,7 +50,7 @@ function TimetableName({ timetable, start }: { timetable: Timetable; start: bool
   /** 바꾼 이름을 저장한다. 비어 있으면 아무것도 하지 않는다(✓도 잠겨 있다). */
   function commit(): void {
     if (draft === null || draft.trim() === '') return;
-    void send({ type: 'rename-timetable', id: timetable.id, name: draft });
+    void sendCommand({ type: 'rename-timetable', id: timetable.id, name: draft });
     end();
   }
 
@@ -325,7 +317,7 @@ export function TimetableDetail({
     setSaving(true);
     try {
       /** 메인의 저장 결과. */
-      const result = await send({ type: 'set-slots', id: timetable.id, slots: toSavedSlots(draft) });
+      const result = await sendCommand({ type: 'set-slots', id: timetable.id, slots: toSavedSlots(draft) });
       if (!result.ok) return false;
       setDraft(null);
       toasts.notify({ key: 'slots-saved', kind: 'success', text: '저장했어요' });
@@ -364,7 +356,7 @@ export function TimetableDetail({
     // 새 상태가 명령의 답보다 먼저 올 수 있어 보내기 전에 정해 둔다
     focusAfter.current = isOnly ? DELETE_BUTTON_SELECTOR : ACTIVE_BADGE_SELECTOR;
     /** 메인의 저장 결과. */
-    const result = await send({ type: 'set-active-timetable', id: timetable.id });
+    const result = await sendCommand({ type: 'set-active-timetable', id: timetable.id });
     setActivating(false);
     if (!result.ok) {
       focusAfter.current = null;
@@ -378,7 +370,7 @@ export function TimetableDetail({
     if (deleting) return;
     setDeleting(true);
     /** 메인의 저장 결과. */
-    const result = await send({ type: 'delete-timetable', id: timetable.id });
+    const result = await sendCommand({ type: 'delete-timetable', id: timetable.id });
     setDeleting(false);
     setConfirmingDelete(false);
     if (result.ok) onDeleted(timetable.name);

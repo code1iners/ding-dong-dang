@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { WEEKDAYS, type Timetable } from '../../shared/data';
+import { sendCommand } from './command';
 import { CreateTimetableModal } from './CreateTimetableModal';
 import { Dial } from './Dial';
 import { DogArt } from './dog/DogArt';
@@ -123,13 +124,10 @@ export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts,
 
   /** 받은 이름으로 시간표를 만들고 알린 뒤 그 상세로 들어간다. */
   async function create(name: string): Promise<void> {
-    /** 메인의 결과. 명령이 거절되면 null이다. */
-    const result = await window.dingdong.command({ type: 'create-timetable', name }).catch((error: unknown) => {
-      console.error(error);
-      return null;
-    });
+    /** 메인의 결과. 명령이 거절되면 id가 없다. */
+    const result = await sendCommand({ type: 'create-timetable', name });
     // 메인이 명령을 받지 못했으면 창을 열어 둔 채 알린다. 파일에 쓰지 못한 것은 메모리에는 만들어져 있고, 저장 실패 알림은 App이 따로 띄운다
-    if (!result?.id) {
+    if (!result.id) {
       notify({ key: 'timetable-create-failed', kind: 'failure', text: '시간표를 만들지 못했어요. 다시 만들어 주세요.' });
       return;
     }
