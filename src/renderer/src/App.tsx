@@ -146,7 +146,7 @@ export function App() {
       <main className="screen" aria-label={name}>
         {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
         {screen === 'timetable' && state && (
-          <TimetableScreen timetables={state.timetables} dogTheme={state.settings.dogTheme} />
+          <TimetableScreen timetables={state.timetables} dogTheme={state.settings.dogTheme} notify={notify} />
         )}
         {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
         {screen === 'settings' && state && <Settings state={state} />}

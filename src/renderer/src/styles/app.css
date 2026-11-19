@@ -433,6 +433,50 @@ button {
   padding: 0 var(--space-2);
 }
 
+/* 제목 줄 오른쪽에 × 닫기가 있는 모달 */
+.modal__head {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.modal__close {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  color: var(--color-ink-2);
+}
+
+/* 입력 칸이 든 모달: 왼쪽 정렬이고 칸과 단추 줄이 폭을 다 쓴다 */
+.modal--form {
+  align-items: stretch;
+  text-align: left;
+}
+
+.modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: var(--font-size-2);
+  color: var(--color-ink-2);
+}
+
+.field .input {
+  width: 100%;
+  height: var(--button-height);
+  font-size: var(--font-size-3);
+}
+
 /* 목록이 든 모달은 안쪽 여백이 좁고 왼쪽 정렬이다 */
 .modal--sheet {
   padding: var(--space-4);
@@ -554,6 +598,48 @@ button {
   text-align: left;
 }
 
+/* 목록의 칸. 카드 단추가 칸을 채운다 */
+.timetable-cards__item {
+  display: flex;
+  min-width: 0;
+}
+
+.timetable-cards__item > .tcard {
+  flex: 1;
+}
+
+/* 누를 수 있는 카드라서 아래 띠를 단다(DESIGN.md "모양과 여백") */
+button.tcard {
+  --band: var(--color-band);
+  align-items: stretch;
+  justify-content: flex-start;
+  box-shadow: 0 var(--band-height) 0 var(--band);
+}
+
+button.tcard:focus-visible {
+  outline: none;
+  box-shadow:
+    0 var(--band-height) 0 var(--band),
+    0 0 0 var(--focus-ring) var(--color-focus),
+    0 var(--band-height) 0 var(--focus-ring) var(--color-focus);
+}
+
+/* 목록 맨 끝의 "새 시간표" 카드: 바탕 위의 점선 칸 */
+button.tcard--new {
+  background: transparent;
+  border: 2px dashed var(--color-line-on-bg);
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 6px;
+  font-size: var(--font-size-3);
+}
+
+button.tcard--new:focus-visible {
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
 /* 이름 줄 높이를 "쓰는 중" 표시(28)에 고정해, 표시가 있든 없든 카드들의 요일 줄이 같은 높이에 놓인다 */
 .tcard__top {
   height: 28px;
@@ -626,6 +712,94 @@ button {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+/* 시간표 상세: 카드 밖 위 줄(화면 단위 동작)과 아래 카드들 */
+.timetable-detail {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.timetable-detail__bar {
+  flex: none;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* "← 시간표 목록". 바탕 위라 링크 색(대비 3.9:1) 대신 글자 색을 쓴다 */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-2);
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.back-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
+}
+
+.timetable-detail__cols {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-4);
+}
+
+/* 왼쪽 카드 맨 위의 색 점 · 이름 · ✎. 이름은 두 줄까지 단어 단위로 바꾸고, 넘치면 말줄임이다 */
+.timetable-name {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.timetable-name__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.timetable-name .dot {
+  width: 16px;
+  height: 16px;
+}
+
+.timetable-name__text {
+  min-width: 0;
+  font-size: var(--font-size-4);
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.timetable-name .icon-buttons {
+  flex: none;
+}
+
+.timetable-name__input {
+  flex: 1;
+  height: var(--button-height);
+  font-size: var(--font-size-3);
 }
 
 /* 시간표 화면의 두 카드: 왼쪽은 시계판, 오른쪽은 교시별 시각 */
