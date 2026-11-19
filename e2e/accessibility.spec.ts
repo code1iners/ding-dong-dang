@@ -205,9 +205,18 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   // 현황
   expect(await everyStopShowsFocus()).toBeGreaterThan(4);
 
-  // 시간표 화면의 목록은 아직 보기만 한다(카드를 누르는 흐름은 04 티켓). 왼쪽 세로 줄 단추만 Tab에 닿는다
+  // 시간표 화면의 목록: 왼쪽 세로 줄 단추 넷, 시간표 카드 둘, "새 시간표" 카드
   await openScreenByKeyboard('시간표');
-  expect(await everyStopShowsFocus()).toBe(4);
+  expect(await everyStopShowsFocus()).toBe(7);
+  // 이름 받는 창: ×, 이름 입력, "취소"(만들기는 이름이 비어 잠겨 있다)
+  await focusByTab(page.getByRole('button', { name: '새 시간표' }));
+  await page.keyboard.press('Enter');
+  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
+  await page.keyboard.press('Escape');
+  // 상세: 세로 줄 넷, "← 시간표 목록", ✎
+  await focusByTab(page.getByRole('button', { name: /^평일반/ }));
+  await page.keyboard.press('Enter');
+  expect(await everyStopShowsFocus()).toBe(6);
 
   // 종 화면
   await openScreenByKeyboard('종');
@@ -219,6 +228,53 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   await page.getByRole('button', { name: '모든 데이터 지우기' }).focus();
   await page.keyboard.press('Enter');
   expect(await everyStopShowsFocus('[role="dialog"]')).toBe(2);
+});
+
+test('키보드만으로 새 시간표를 만들어 상세에 들어가고 목록으로 돌아오며, 이름 창의 Tab 순서와 Esc 닫기, 초점 돌아오기가 맞다', async () => {
+  await seedFull();
+  await launch();
+  await openScreenByKeyboard('시간표');
+  const newCard = page.getByRole('button', { name: '새 시간표' });
+  await focusByTab(newCard);
+
+  // Esc로 닫으면 초점이 "새 시간표"로 돌아온다
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: '새 시간표' });
+  await expect(dialog.getByRole('textbox', { name: '이름' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(newCard).toBeFocused();
+
+  // Tab 순서: 이름 입력 → "취소" → "만들기" → × → 이름 입력
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('수요반');
+  const order: string[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    await page.keyboard.press('Tab');
+    order.push(
+      await page.evaluate(() => {
+        const el = document.activeElement;
+        // 이름 입력은 곁의 글 "이름"이 이름이다
+        if (el instanceof HTMLInputElement) return el.labels?.[0]?.textContent?.trim() ?? '';
+        return el?.getAttribute('aria-label') ?? el?.textContent?.trim() ?? '';
+      }),
+    );
+  }
+  expect(order).toEqual(['취소', '만들기', '새 시간표 창 닫기', '이름']);
+
+  // Enter로 만들면 상세로 들어가고 초점은 상세의 첫 조작 요소에 놓인다
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('button', { name: "'수요반' 이름 바꾸기" })).toBeFocused();
+  // "← 시간표 목록"까지 가서 목록으로 돌아오면 그 시간표의 카드에 초점이 있다
+  await focusByTab(page.getByRole('button', { name: '시간표 목록' }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: /^수요반/ })).toBeFocused();
+  expect(timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).map((t) => t.name)).toEqual([
+    '평일반',
+    '토요반',
+    '수요반',
+  ]);
 });
 
 test('아이콘만 있는 단추는 대상을 포함한 이름이 있고 마우스를 올리면 같은 이름이 뜬다. 스위치와 선택 동그라미는 상태를 알린다', async () => {
@@ -404,6 +460,16 @@ test('창을 최소 크기와 큰 크기로 띄운 모든 화면에서 글자와
       problems[`${width}x${height} ${screen}`] = await clippedElements();
       if (shots) await page.screenshot({ path: join(shots, `${width}x${height}-${screen}.png`) });
     }
+    // 시간표 상세와 이름 받는 창도 본다
+    await railButton('시간표').click();
+    await page.getByRole('button', { name: /^평일반/ }).click();
+    problems[`${width}x${height} 시간표 상세`] = await clippedElements();
+    if (shots) await page.screenshot({ path: join(shots, `${width}x${height}-시간표 상세.png`) });
+    await page.getByRole('button', { name: '시간표 목록' }).click();
+    await page.getByRole('button', { name: '새 시간표' }).click();
+    problems[`${width}x${height} 새 시간표 창`] = await clippedElements();
+    if (shots) await page.screenshot({ path: join(shots, `${width}x${height}-새 시간표 창.png`) });
+    await page.keyboard.press('Escape');
     // 모달도 본다
     await railButton('설정').click();
     await page.getByRole('button', { name: '모든 데이터 지우기' }).click();

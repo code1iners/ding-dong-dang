@@ -65,6 +65,7 @@ const ACTION_ICONS = {
   stop: { width: 2.4, shape: <rect x="6.5" y="6.5" width="11" height="11" rx="2" /> },
   down: { width: 3, shape: <path d="M6 9.5l6 6 6-6" /> },
   right: { width: 3, shape: <path d="M5 12h14M13 6l6 6-6 6" /> },
+  left: { width: 3, shape: <path d="M19 12H5M11 6l-6 6 6 6" /> },
 } satisfies Record<string, { width: number; shape: ReactNode }>;
 
 /** 동작 아이콘 이름. */

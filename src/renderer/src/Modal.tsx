@@ -4,14 +4,16 @@ import { createPortal } from 'react-dom';
 type Props = {
   /** 모달 제목. 확인 모달은 행동과 대상을 말한다(DESIGN.md "글"). */
   title: string;
-  /** 제목 줄 오른쪽 끝에 놓을 것. 시간표 선택 창의 "편집"이 들어간다. */
+  /** 제목 줄 오른쪽 끝에 놓을 것. 이름 받는 창의 × 닫기가 들어간다. 제목 밖에 놓아 모달 이름에 섞이지 않는다. */
   titleAction?: ReactNode;
   /** 모달 폭. 기본 380, 단추가 셋이면 440(DESIGN.md "모달"). */
   width?: number;
   /** 제목 위에 놓는 그림. 처음 닫을 때 안내의 강아지가 들어간다. */
   illustration?: ReactNode;
-  /** 시간표 선택 창처럼 목록이 든 모달의 모양. 안쪽 여백이 좁고 내용이 왼쪽 정렬이다. */
+  /** 목록이 든 모달의 모양. 안쪽 여백이 좁고 내용이 왼쪽 정렬이다. */
   sheet?: boolean;
+  /** 입력 칸이 든 모달의 모양. 내용이 왼쪽 정렬이고 칸이 폭을 다 쓴다. */
+  form?: boolean;
   /** Esc로 닫을 때 부른다. 아무것도 하지 않고 닫는 동작이어야 한다. */
   onClose(): void;
   children: ReactNode;
@@ -32,7 +34,7 @@ const TOAST_BUTTONS = '.toasts button';
  * 처음 초점은 `data-autofocus`를 단 요소에 간다. 되돌릴 수 없는 일의 확인에서는 "취소"에 단다.
  * 모달 위에 모달이 뜨면 아래 것은 비활성(inert)이 된다.
  */
-export function Modal({ title, titleAction, illustration, width = 380, sheet = false, onClose, children }: Props) {
+export function Modal({ title, titleAction, illustration, width = 380, sheet = false, form = false, onClose, children }: Props) {
   /** 제목 요소의 id. 모달의 이름으로 쓴다. */
   const titleId = useId();
   /** 뒷판 요소. */
@@ -96,20 +98,31 @@ export function Modal({ title, titleAction, illustration, width = 380, sheet = f
     };
   }, []);
 
+  /** 모달 제목. 모달의 이름이 된다. */
+  const heading = (
+    <h2 id={titleId} className="modal__title">
+      {title}
+    </h2>
+  );
+
   return createPortal(
     <div className="modal-backdrop" ref={backdropRef}>
       <div
-        className={`modal${sheet ? ' modal--sheet' : ''}`}
+        className={`modal${sheet ? ' modal--sheet' : ''}${form ? ' modal--form' : ''}`}
         style={{ width }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
         {illustration}
-        <h2 id={titleId} className="modal__title">
-          {title}
-          {titleAction}
-        </h2>
+        {titleAction ? (
+          <div className="modal__head">
+            {heading}
+            {titleAction}
+          </div>
+        ) : (
+          heading
+        )}
         {children}
       </div>
     </div>,
