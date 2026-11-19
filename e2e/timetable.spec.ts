@@ -619,3 +619,20 @@ test('쓰는 시간표를 지워 하나만 남으면 그 상세에 "이 시간�
   await expect(page.locator('.status__timetable')).toHaveText('쓰는 시간표 토요반');
   await expect.poll(pawCount).toBe(1);
 });
+
+test('메인은 시간대가 없거나 요일이 겹치거나 잘못된 수업 시간이 든 시간대 저장을 거절하고 파일을 바꾸지 않는다', async () => {
+  await seed(SPECS);
+  await launch();
+  /** 화면을 거치지 않고 메인에 시간대 저장을 보낸 결과. */
+  const send = (slots: unknown) =>
+    page.evaluate((s) => window.dingdong.command({ type: 'set-slots', id: 'vacation', slots: s as never }), slots);
+  expect(await send([])).toEqual({ ok: false });
+  expect(await send([{ days: ['mon'], periods: [] }, { days: ['mon'], periods: [] }])).toEqual({ ok: false });
+  expect(await send([{ days: ['mon'], periods: [{ start: at(10, 0), end: at(9, 0) }] }])).toEqual({ ok: false });
+  expect(timetablesOf(await saved()).find((t) => t.id === 'vacation')!.slots).toEqual([{ days: [], periods: [] }]);
+  // 받을 수 있는 값은 저장한다
+  expect(await send([{ days: ['mon'], periods: [{ start: at(9, 0), end: at(9, 50) }] }])).toEqual({ ok: true });
+  await expect
+    .poll(async () => timetablesOf(await saved()).find((t) => t.id === 'vacation')!.slots)
+    .toEqual([{ days: ['mon'], periods: [{ start: at(9, 0), end: at(9, 50) }] }]);
+});

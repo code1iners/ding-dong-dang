@@ -20,7 +20,7 @@ import {
   setSoundVolume,
   type RemovedSound,
 } from '../shared/sound-ops';
-import { createTimetable, daysOverlap, deleteTimetable, renameTimetable, setActiveTimetable, setSlots } from '../shared/timetable-ops';
+import { createTimetable, deleteTimetable, renameTimetable, setActiveTimetable, setSlots } from '../shared/timetable-ops';
 import { validateSlots } from '../shared/timetable-validation';
 import { updateTimingAt } from '../shared/update';
 import { APP_ID } from './app-identity';
@@ -330,9 +330,12 @@ void app.whenReady().then(() => {
           hub.update({ storage: { ...hub.get().storage, freshStart: false } });
           break;
         case 'set-slots': {
-          // 화면이 이미 막지만, 시간대가 없거나 요일이 겹치거나 잘못된 수업 시간은 여기서도 저장하지 않는다
+          // 화면이 이미 막지만, 잘못된 수업 시간은 여기서도 저장하지 않는다.
+          // 시간대가 없거나 요일이 겹치는 것은 setSlots가 거절하고, 거절하면 받은 데이터를 그대로 돌려준다
           const { slots } = command;
-          if (slots.length === 0 || daysOverlap(slots) || validateSlots(slots).length > 0) return { ok: false };
+          if (validateSlots(slots).length > 0) return { ok: false };
+          const current = storage.get();
+          if (setSlots(current, command.id, slots) === current) return { ok: false };
           return { ok: save((d) => setSlots(d, command.id, slots)) };
         }
         case 'set-editing-dirty':
