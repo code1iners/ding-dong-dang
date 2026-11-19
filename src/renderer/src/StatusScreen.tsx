@@ -1,5 +1,6 @@
 import { decideBell, type StatusKind } from '../../shared/bell-decision';
 import type { AppState } from '../../shared/bridge';
+import { activeTimetableOf } from '../../shared/data';
 import { formatRemaining, pawStates, remainingFraction, type PawState } from '../../shared/status-view';
 import { RingDog } from './dog/RingDog';
 import { ActionIcon } from './icons';
@@ -8,7 +9,7 @@ import { useNow } from './useNow';
 
 type Props = {
   /** 메인에서 받은 앱 상태. */
-  state: Pick<AppState, 'timetables' | 'weekdays' | 'bellsOffDate' | 'bellRinging'> & { settings: Pick<AppState['settings'], 'dogTheme'> };
+  state: Pick<AppState, 'timetables' | 'activeTimetable' | 'bellsOffDate' | 'bellRinging'> & { settings: Pick<AppState['settings'], 'dogTheme'> };
   /** "시간표 만들기"를 눌러 시간표 화면으로 갈 때 부른다. */
   onMakeTimetable(): void;
 };
@@ -65,6 +66,8 @@ export function StatusScreen({ state, onMakeTimetable }: Props) {
   const now = useNow();
   /** 지금의 현황과 오늘만 끄기 여부. 지난번 확인 시각은 없어 종은 판정하지 않는다. */
   const { status, bellsOff } = decideBell({ ...state, lastChecked: null, now });
+  /** 지금 종이 따르는 시간표. 없으면 현황이 "시간표가 하나도 없음" 상태다. */
+  const active = activeTimetableOf(state);
   /** 다음 종까지 남은 시간(ms). 다음 종이 없으면 null. */
   const untilBell = status.nextBell ? status.nextBell.at - now : null;
   /** 고리가 채워진 비율. */
@@ -80,6 +83,14 @@ export function StatusScreen({ state, onMakeTimetable }: Props) {
 
   return (
     <div className="status">
+      {/* 종이 왜 울리는지 · 안 울리는지 알 수 있게 쓰는 시간표의 이름을 스위치 반대편에 둔다. 길면 한 줄로 줄이고 전체는 마우스를 올려 본다 */}
+      {active && (
+        <p className="status__timetable" title={active.name}>
+          <i className="dot" aria-hidden="true" style={{ background: `var(--timetable-${active.color})` }} />
+          <span className="sr-only">쓰는 시간표 </span>
+          <span className="status__timetable-name">{active.name}</span>
+        </p>
+      )}
       {/* 시안대로 시간표가 하나도 없을 때는 끌 종이 없어 스위치를 두지 않는다 */}
       {status.kind !== 'no-timetables' && (
         <div className="status__switch">

@@ -1,11 +1,11 @@
-import { decideBell, type BellKind } from '../shared/bell-decision';
+import { decideBell, type BellKind, type BellSchedule } from '../shared/bell-decision';
 import type { Data } from '../shared/data';
 
 /** 잠자기 막기의 종류. system은 방치로 인한 잠자기만, display는 화면 꺼짐까지 막는다. */
 export type KeepAwakeMode = 'system' | 'display';
 
 /** 스케줄러가 판정할 때마다 읽는 저장된 값. */
-export type SchedulerData = Pick<Data, 'timetables' | 'weekdays' | 'bellsOffDate' | 'settings'>;
+export type SchedulerData = BellSchedule & Pick<Data, 'settings'>;
 
 /** 스케줄러가 받는 갈아 끼울 수 있는 부품. 실제 앱은 Electron에 닿는 것을, 테스트는 가짜를 끼운다. */
 export type SchedulerParts = {
@@ -31,7 +31,7 @@ export type SchedulerParts = {
     /** 걸어 둔 막기를 푼다. */
     stop(): void;
   };
-  /** 지금 저장된 값. 판정할 때마다 다시 읽어 바뀐 시간표와 배정을 다음 판정부터 쓴다. */
+  /** 지금 저장된 값. 판정할 때마다 다시 읽어 바뀐 시간표와 쓰는 시간표를 다음 판정부터 쓴다. */
   read(): SchedulerData;
 };
 
@@ -67,7 +67,7 @@ export function startScheduler(parts: SchedulerParts): Scheduler {
     /** 종 판정 결과. */
     const decision = decideBell({
       timetables: data.timetables,
-      weekdays: data.weekdays,
+      activeTimetable: data.activeTimetable,
       bellsOffDate: data.bellsOffDate,
       lastChecked,
       now,

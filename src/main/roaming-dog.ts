@@ -123,7 +123,7 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
       /** 종 판정 결과. 현황과 오늘만 끄기만 쓴다. */
       const decision = decideBell({
         timetables: data.timetables,
-        weekdays: data.weekdays,
+        activeTimetable: data.activeTimetable,
         bellsOffDate: data.bellsOffDate,
         lastChecked: null,
         now,

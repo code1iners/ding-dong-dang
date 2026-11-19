@@ -1,8 +1,21 @@
 // 데이터 폴더의 JSON 파일에 담기는 내용. 메인(저장소)과 화면이 같은 모양을 쓴다.
 
-/** 요일 키. 시간표 배정의 열쇠다. */
+/** 요일 키. 시간대가 어느 요일에 쓰이는지 나타낸다. */
 export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
+
+/** 요일 키인지. 저장 파일과 렌더러가 보낸 값처럼 믿을 수 없는 값을 읽을 때 쓴다. */
+export function isWeekday(v: unknown): v is Weekday {
+  return typeof v === 'string' && (WEEKDAYS as readonly string[]).includes(v);
+}
+
+/** 시간대 하나. 한 시간표 안에서 같은 수업 시간을 쓰는 요일들과 그 수업 시간이다. */
+export type TimetableSlot = {
+  /** 이 시간대를 쓰는 요일. 한 시간표 안의 다른 시간대와 겹치지 않고, 비어 있어도 된다. */
+  days: Weekday[];
+  /** 수업 시간. 자정부터의 분이고 시작 시각 순서다. */
+  periods: { start: number; end: number }[];
+};
 
 /** 시간표 하나. */
 export type Timetable = {
@@ -10,8 +23,8 @@ export type Timetable = {
   name: string;
   /** 0~7, DESIGN.md의 시간표 색 순서. */
   color: number;
-  /** 수업 시간. 자정부터의 분이다. */
-  periods: { start: number; end: number }[];
+  /** 시간대 목록. 한 개 이상이다. */
+  slots: TimetableSlot[];
 };
 
 /** 등록한 음원 하나. 파일은 데이터 폴더의 `sounds/` 안에 있다. */
@@ -33,14 +46,14 @@ export type Settings = {
 /** 앱 창의 바깥 크기와 위치. */
 export type WindowBounds = { x: number; y: number; width: number; height: number };
 
-/** 현재 형태(버전 1)의 저장 데이터. */
+/** 현재 형태(버전 2)의 저장 데이터. */
 export type Data = {
-  version: 1;
+  version: 2;
   timetables: Timetable[];
   /** 다음 시간표가 받을 색 번호. */
   nextColor: number;
-  /** 요일별로 배정한 시간표 id. 배정이 없으면 null. */
-  weekdays: Record<Weekday, string | null>;
+  /** 쓰는 시간표의 id. 종은 이 시간표만 따른다. 시간표가 없거나 쓰는 시간표를 지웠으면 null. */
+  activeTimetable: string | null;
   /** 오늘만 끄기를 켠 현지 날짜 'YYYY-MM-DD'. */
   bellsOffDate: string | null;
   sounds: RegisteredSound[];
@@ -64,10 +77,10 @@ export const DEFAULT_END_BELL = 'westminster-end';
 /** 처음 실행한 빈 상태. 부를 때마다 새 객체를 돌려준다. */
 export function emptyData(): Data {
   return {
-    version: 1,
+    version: 2,
     timetables: [],
     nextColor: 0,
-    weekdays: { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
+    activeTimetable: null,
     bellsOffDate: null,
     sounds: [],
     soundVolumes: {},
@@ -85,4 +98,12 @@ export function emptyData(): Data {
     },
     window: null,
   };
+}
+
+/** 쓰는 시간표. 정하지 않았거나 목록에 없는 id면 null. */
+export function activeTimetableOf({ timetables, activeTimetable }: {
+  timetables: readonly Timetable[];
+  activeTimetable: string | null;
+}): Timetable | null {
+  return timetables.find((t) => t.id === activeTimetable) ?? null;
 }

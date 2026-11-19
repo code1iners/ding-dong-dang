@@ -375,10 +375,7 @@ button {
 .icon-button:focus-visible,
 .toast__close:focus-visible,
 .modal__link:focus-visible,
-.text-link:focus-visible,
-.timetable-option:focus-visible,
-.timetable-select:focus-visible,
-.day:focus-visible {
+.text-link:focus-visible {
   outline: none;
   box-shadow: 0 0 0 var(--focus-ring) var(--color-focus);
 }
@@ -388,11 +385,6 @@ button {
   height: 14px;
   border-radius: 50%;
   flex: none;
-}
-
-/* 배정이 없음을 색 대신 점선 고리로 보여 준다 */
-.dot--none {
-  border: 2px dashed var(--color-line);
 }
 
 /* 모달: 폭 380, 반지름 20, 화면 가운데. 뒤는 반투명 면으로 덮는다 */
@@ -533,115 +525,98 @@ button {
   }
 }
 
-/* 시간표 화면 */
-/* 창이 좁아 한 줄에 다 못 들어가면 요일 동그라미가 아래 줄로 내려가, 시간표 이름이 "…"로 잘리지 않게 한다 */
-.timetable-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 10px;
-}
-
-.timetable-select {
-  height: 44px;
-  min-width: 116px;
-  max-width: 240px;
-  padding: 0 12px;
-  border: 2px solid var(--color-line);
-  border-radius: var(--radius-button);
-  background: var(--color-card);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.timetable-select__name {
+/* 시간표 화면의 목록: 칸 폭은 최소 250에서 늘어나 창 920 · 1000에서 세 칸이다. 넘치면 격자 안에서 스크롤한다.
+   카드의 선택 · 초점 테두리가 스크롤 영역에 잘리지 않게 여백 4를 두고 그만큼 바깥으로 당긴다 */
+.timetable-cards {
+  flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.timetable-select .icon {
-  margin-left: auto;
-  color: var(--color-ink-2);
-}
-
-.days {
-  display: flex;
-  gap: 6px;
-  padding-right: var(--space-1);
-}
-
-.day {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  min-height: 0;
+  list-style: none;
   display: grid;
-  place-items: center;
-  font-size: var(--font-size-2);
-  color: var(--color-ink);
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-content: start;
+  gap: var(--space-4);
+  overflow-y: auto;
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
 }
 
-.day--none {
-  border: 2px dashed var(--color-line);
-  color: var(--color-ink-2);
-}
-
-/* 선택 표시: 글자 색 3px 테두리를 3px 띄워 그린다. 초점은 box-shadow로 안쪽에 와서 둘이 겹쳐도 안쪽이 초점이다 */
-.day--selected,
-.timetable-option[aria-current='true'] {
-  outline: var(--focus-ring) solid var(--color-ink);
-  outline-offset: 3px;
-}
-
-/* 시간표 선택 창의 목록: 줄 위로 다섯 줄 반(293)이 보여 여섯째 줄이 반쯤 보인다.
-   스크롤 영역에 잘리지 않게 선택 테두리(3px 두께 + 3px 간격)가 들어갈 여백 8을 위아래 양옆에 둔다 */
-.timetable-list {
+/* 카드 높이는 시안 값 248에서 시작해, 빈 상태와 요약 줄이 늘어난 카드도 같은 크기의 칸이 된다 */
+.tcard {
+  min-height: 248px;
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  max-height: calc(293px + var(--space-2));
-  overflow-y: auto;
-  padding: var(--space-2);
-  margin: calc(-1 * var(--space-2));
-}
-
-.timetable-option {
-  min-height: 46px;
-  flex: none;
-  padding: 0 14px;
-  border-radius: var(--radius-button);
-  background: var(--color-soft);
-  display: flex;
-  align-items: center;
   gap: 10px;
+  min-width: 0;
   text-align: left;
 }
 
-.timetable-option__name {
+/* 이름 줄 높이를 "쓰는 중" 표시(28)에 고정해, 표시가 있든 없든 카드들의 요일 줄이 같은 높이에 놓인다 */
+.tcard__top {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
+}
+
+.tcard__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-3);
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timetable-option--editing {
-  flex-wrap: wrap;
-  padding-top: var(--space-1);
-  padding-bottom: var(--space-1);
+/* 요일 동그라미 일곱: 쓰는 요일은 시간표 색 면과 글자 색 테두리, 안 쓰는 요일은 점선 테두리 */
+.mini-days {
+  display: flex;
+  gap: var(--space-1);
 }
 
-.timetable-option__input {
-  flex: 1;
-}
-
-.timetable-option--new {
-  background: none;
+.mini-day {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-1);
   border: 2px dashed var(--color-line);
   color: var(--color-ink-2);
+}
+
+.mini-day--on {
+  border: 2px solid var(--color-ink);
+  color: var(--color-ink);
+}
+
+.tcard__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dial--compact {
+  flex: none;
+  width: 110px;
+  height: 110px;
+}
+
+/* 시간표가 하나도 없을 때: 목록 카드 한 칸 크기에 강아지와 안내 */
+.timetable-empty {
+  align-items: center;
   justify-content: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.timetable-empty__message {
+  font-size: var(--font-size-3);
 }
 
 .field-error {
@@ -851,6 +826,26 @@ button {
   font-size: var(--font-size-2);
 }
 
+/* 쓰는 시간표 이름: 왼쪽 위, 다른 화면의 카드 왼쪽 끝과 같은 자리. 오른쪽 위 스위치와 같은 높이에 놓고, 길면 한 줄로 줄인다 */
+.status__timetable {
+  position: absolute;
+  top: 0;
+  left: var(--rail-width);
+  max-width: calc(50% - var(--rail-width));
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-2);
+}
+
+.status__timetable-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ring {
   position: relative;
   width: 290px;
@@ -902,6 +897,13 @@ button {
 .modal__dog {
   width: 72px;
   height: 72px;
+  flex: none;
+}
+
+/* 시간표가 없을 때 목록 자리의 강아지. 위의 .dog-art가 칸을 채우게 하므로 그 뒤에 크기를 둔다 */
+.timetable-empty__dog {
+  width: 96px;
+  height: 96px;
   flex: none;
 }
 

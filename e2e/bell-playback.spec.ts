@@ -37,8 +37,8 @@ async function playerState(launched: ElectronApplication) {
   });
 }
 
-test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서 종이 울리고, 앱이 뜨기 직전에 지난 종은 울리지 않는다', async () => {
-  test.setTimeout(230_000);
+test('앱 창을 숨겨도 쓰는 시간표의 종 시각에 숨긴 창에서 종이 울리고, 앱이 뜨기 직전에 지난 종과 쓰는 시간표가 아닌 시간표의 종은 울리지 않는다', async () => {
+  test.setTimeout(300_000);
 
   // 자정을 넘기는 수업 시간은 저장할 수 없어, 하루의 마지막 몇 분이면 자정이 지나기를 기다린다
   while (minuteOfDay(new Date()) >= 24 * 60 - 4) {
@@ -53,19 +53,21 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   /** 종이 울릴 시각(에포크 ms). */
   const ringAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, target).getTime();
 
-  /** 써 넣을 저장 파일. */
+  /** 써 넣을 저장 파일. 쓰는 시간표는 첫 시간표인 시험반이다. */
   const data: Data = dataWith(
     [
       {
         id: 'e2e',
         name: '시험반',
         days: [weekdayOf(now)],
-        // 앞 수업의 끝과 다음 수업의 시작이 같아 target에는 시작종만 울린다
+        // 앞 수업의 끝과 다음 수업의 시작이 같아 target에는 시작종만 울린다. 둘째 수업은 2분 뒤에 끝난다
         periods: [
           { start: passed, end: target },
-          { start: target, end: target + 1 },
+          { start: target, end: target + 2 },
         ],
       },
+      // 쓰는 시간표가 아닌 시간표. 시험반의 두 종 사이인 target + 1에 시작종이 있지만 울리지 않아야 한다
+      { id: 'other', name: '다른반', days: [weekdayOf(now)], periods: [{ start: target + 1, end: target + 2 }] },
     ],
     {
     ...emptyData(),
@@ -156,8 +158,13 @@ test('앱 창을 숨겨도 저장된 시간표의 종 시각에 숨긴 창에서
   const ringDog = page.locator('.ring-dog .dog-art');
   await expect(ringDog).toHaveAttribute('data-dog-action', 'idle');
 
-  // 1분 뒤 둘째 수업의 끝종이 울리면 고리 안 강아지가 신남이 되고, 누르면 그 종이 멈춘다
-  await expect.poll(ringing, { timeout: ringAt + 60_000 - Date.now() + 10_000, intervals: [250] }).toBe(true);
+  // 1분 뒤 쓰는 시간표가 아닌 다른반의 시작종 시각이 지나도 종은 울리지 않는다
+  await new Promise((r) => setTimeout(r, Math.max(0, ringAt + 60_000 + 3_000 - Date.now())));
+  expect(await ringing()).toBe(false);
+  expect((await playerState(app))?.audio).toBeNull();
+
+  // 2분 뒤 둘째 수업의 끝종이 울리면 고리 안 강아지가 신남이 되고, 누르면 그 종이 멈춘다
+  await expect.poll(ringing, { timeout: ringAt + 120_000 - Date.now() + 10_000, intervals: [250] }).toBe(true);
   await expect(ringDog).toHaveAttribute('data-dog-action', 'happy');
   await page.getByRole('button', { name: '종 멈추기' }).click();
   await expect.poll(ringing).toBe(false);

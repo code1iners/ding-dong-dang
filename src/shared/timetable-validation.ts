@@ -1,7 +1,7 @@
-import type { Timetable } from './data';
+import type { TimetableSlot } from './data';
 
 /** 수업 시간 하나. 시작과 끝은 자정부터의 분이다. */
-export type Period = Timetable['periods'][number];
+export type Period = TimetableSlot['periods'][number];
 
 /** 한 줄 안에서 오류를 보여 주는 순서이기도 하다. */
 const RULE_ORDER = ['out-of-range', 'end-not-after-start', 'overlap', 'too-long'] as const;
@@ -75,4 +75,18 @@ export function validatePeriods(periods: readonly Period[]): PeriodError[] {
   }
 
   return errors.sort((a, b) => a.index - b.index || RULE_ORDER.indexOf(a.rule) - RULE_ORDER.indexOf(b.rule));
+}
+
+/** 시간대 하나의 수업 시간 오류. */
+export type SlotError = PeriodError & {
+  /** 시간대 목록에서 그 시간대의 번호(0부터). */
+  slot: number;
+};
+
+/**
+ * 시간표의 시간대마다 수업 시간 규칙을 검사한다. 시간대 순, 그 안에서는 `validatePeriods`의 순서다.
+ * 다른 시간대의 수업 시간끼리는 비교하지 않는다. 같은 날에 함께 울리지 않기 때문이다.
+ */
+export function validateSlots(slots: readonly TimetableSlot[]): SlotError[] {
+  return slots.flatMap(({ periods }, slot) => validatePeriods(periods).map((error) => ({ ...error, slot })));
 }

@@ -47,8 +47,8 @@ describe('확인 모달의 다음 종까지 남은 시간', () => {
 describe('잠금에 쓰는 다음 종 시각', () => {
   /** 오늘 13:00에 시작하는 수업 하나가 든 판정 입력. 2026-11-16은 월요일이다. */
   const input = (bellsOffDate: string | null) => ({
-    timetables: [{ id: 't', name: '평일반', color: 0, periods: [{ start: 13 * 60, end: 13 * 60 + 50 }] }],
-    weekdays: { mon: 't', tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
+    timetables: [{ id: 't', name: '평일반', color: 0, slots: [{ days: ['mon' as const], periods: [{ start: 13 * 60, end: 13 * 60 + 50 }] }] }],
+    activeTimetable: 't',
     bellsOffDate,
     lastChecked: null,
     now: new Date(2026, 10, 16, 12, 59).getTime(),
@@ -77,8 +77,8 @@ describe('다시 켜진 뒤의 알림 문장', () => {
 describe('지금 시각의 업데이트 잠금', () => {
   /** 오늘 13:00에 시작하는 수업 하나. 2026-11-16은 월요일이다. */
   const schedule = {
-    timetables: [{ id: 't', name: '평일반', color: 0, periods: [{ start: 13 * 60, end: 13 * 60 + 50 }] }],
-    weekdays: { mon: 't', tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
+    timetables: [{ id: 't', name: '평일반', color: 0, slots: [{ days: ['mon' as const], periods: [{ start: 13 * 60, end: 13 * 60 + 50 }] }] }],
+    activeTimetable: 't',
     bellsOffDate: null,
   };
   /** 오늘 13:00. */
@@ -93,11 +93,16 @@ describe('지금 시각의 업데이트 잠금', () => {
     expect(updateTimingAt({ ...schedule, bellsOffDate: '2026-11-16' }, false, bellAt - min(1))).toEqual({ locked: false, nextBellAt: null });
   });
 
+  it('쓰는 시간표가 아닌 시간표의 종으로는 잠그지 않는다', () => {
+    const notActive = { ...schedule, activeTimetable: null };
+    expect(updateTimingAt(notActive, false, bellAt - min(1))).toEqual({ locked: false, nextBellAt: null });
+  });
+
   it('오늘 남은 종이 없어도 자정 너머 다음 날 첫 종이 2분 안이면 잠근다', () => {
     // 2026-11-17은 화요일, 수요일 00:00에 시작하는 새벽반
     const overnight = {
-      timetables: [{ id: 'd', name: '새벽반', color: 0, periods: [{ start: 0, end: 50 }] }],
-      weekdays: { mon: null, tue: null, wed: 'd', thu: null, fri: null, sat: null, sun: null },
+      timetables: [{ id: 'd', name: '새벽반', color: 0, slots: [{ days: ['wed' as const], periods: [{ start: 0, end: 50 }] }] }],
+      activeTimetable: 'd',
       bellsOffDate: null,
     };
     const midnight = new Date(2026, 10, 18, 0, 0).getTime();
@@ -105,10 +110,25 @@ describe('지금 시각의 업데이트 잠금', () => {
     expect(updateTimingAt(overnight, false, midnight - min(2))).toEqual({ locked: false, nextBellAt: null });
   });
 
+  it('다음 날의 첫 종도 쓰는 시간표에서 그 요일이 든 시간대로 찾는다', () => {
+    // 화요일 23:59. 수요일 시간대는 00:00에 시작하지만 쓰는 시간표가 아니면 잠그지 않는다
+    const overnight = {
+      timetables: [
+        { id: 'a', name: '평일반', color: 0, slots: [{ days: ['mon' as const], periods: [{ start: 600, end: 650 }] }] },
+        { id: 'd', name: '새벽반', color: 1, slots: [{ days: ['wed' as const], periods: [{ start: 0, end: 50 }] }] },
+      ],
+      activeTimetable: 'a',
+      bellsOffDate: null,
+    };
+    const midnight = new Date(2026, 10, 18, 0, 0).getTime();
+    expect(updateTimingAt(overnight, false, midnight - min(1)).locked).toBe(false);
+    expect(updateTimingAt({ ...overnight, activeTimetable: 'd' }, false, midnight - min(1)).locked).toBe(true);
+  });
+
   it('오늘 종을 꺼도 자정 너머 다음 날 종은 울리니 잠근다', () => {
     const overnight = {
-      timetables: [{ id: 'd', name: '새벽반', color: 0, periods: [{ start: 0, end: 50 }] }],
-      weekdays: { mon: null, tue: null, wed: 'd', thu: null, fri: null, sat: null, sun: null },
+      timetables: [{ id: 'd', name: '새벽반', color: 0, slots: [{ days: ['wed' as const], periods: [{ start: 0, end: 50 }] }] }],
+      activeTimetable: 'd',
       bellsOffDate: '2026-11-17',
     };
     const midnight = new Date(2026, 10, 18, 0, 0).getTime();

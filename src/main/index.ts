@@ -20,16 +20,8 @@ import {
   setSoundVolume,
   type RemovedSound,
 } from '../shared/sound-ops';
-import {
-  assignWeekday,
-  createTimetable,
-  deleteTimetable,
-  renameTimetable,
-  restoreTimetable,
-  setPeriods,
-  type RemovedTimetable,
-} from '../shared/timetable-ops';
-import { validatePeriods } from '../shared/timetable-validation';
+import { createTimetable, daysOverlap, deleteTimetable, renameTimetable, setActiveTimetable, setSlots } from '../shared/timetable-ops';
+import { validateSlots } from '../shared/timetable-validation';
 import { updateTimingAt } from '../shared/update';
 import { APP_ID } from './app-identity';
 import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, launchedByAutoStart, reconcileAutoStart } from './auto-start';
@@ -96,9 +88,11 @@ const updatesEnabled = customDataDir === null && app.isPackaged;
 const justUpdated = takeJustUpdated(dataDir, app.getVersion());
 
 /** 저장된 값 가운데 화면 쪽 상태에 그대로 실리는 부분. */
-function viewOf(data: Data): Pick<AppState, 'settings' | 'timetables' | 'weekdays' | 'bellsOffDate' | 'sounds' | 'soundVolumes' | 'startBell' | 'endBell' | 'masterVolume'> {
-  const { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume } = data;
-  return { settings, timetables, weekdays, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume };
+function viewOf(
+  data: Data,
+): Pick<AppState, 'settings' | 'timetables' | 'activeTimetable' | 'bellsOffDate' | 'sounds' | 'soundVolumes' | 'startBell' | 'endBell' | 'masterVolume'> {
+  const { settings, timetables, activeTimetable, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume } = data;
+  return { settings, timetables, activeTimetable, bellsOffDate, sounds, soundVolumes, startBell, endBell, masterVolume };
 }
 
 /**
@@ -252,8 +246,6 @@ if (isHeadlessRun(process.env, customDataDir)) {
 void app.whenReady().then(() => {
   // 자동 검증 실행은 macOS Dock 아이콘을 숨겨 앱이 활성화되며 포커스를 가져가지 않게 한다
   if (customDataDir && process.platform === 'darwin') app.dock?.hide();
-  /** 이번 실행에서 지운 시간표. 알림의 "되돌리기"가 id로 찾아 되살린다. */
-  const removedTimetables = new Map<string, RemovedTimetable>();
   /** 숨긴 창의 종 재생기. 앱 창 다음에 만든다. */
   let bell: BellPlayer | null = null;
   /** 돌아다니는 강아지 창. 트레이와 함께 앱 창의 화면을 불러온 뒤에 만든다. */
@@ -320,36 +312,28 @@ void app.whenReady().then(() => {
         case 'open-auto-start-help':
           void shell.openExternal(AUTO_START_HELP_URL);
           break;
-        case 'create-timetable':
-          save((d) => createTimetable(d, randomUUID(), command.assignTo));
-          break;
+        case 'create-timetable': {
+          /** 새 시간표의 id. 화면이 만든 시간표의 상세로 들어갈 때 쓴다. */
+          const id = randomUUID();
+          return { ok: save((d) => createTimetable(d, id, command.name)), id };
+        }
         case 'rename-timetable':
           save((d) => renameTimetable(d, command.id, command.name));
           break;
         case 'delete-timetable':
-          save((d) => {
-            const result = deleteTimetable(d, command.id);
-            if (result.removed) removedTimetables.set(command.id, result.removed);
-            return result.data;
-          });
+          save((d) => deleteTimetable(d, command.id));
           break;
-        case 'restore-timetable': {
-          const removed = removedTimetables.get(command.id);
-          if (!removed) break;
-          removedTimetables.delete(command.id);
-          save((d) => restoreTimetable(d, removed));
-          break;
-        }
-        case 'assign-weekday':
-          save((d) => assignWeekday(d, command.day, command.timetableId));
+        case 'set-active-timetable':
+          save((d) => setActiveTimetable(d, command.id));
           break;
         case 'ack-fresh-start':
           hub.update({ storage: { ...hub.get().storage, freshStart: false } });
           break;
-        case 'set-periods': {
-          // 화면이 이미 막지만, 잘못된 수업 시간은 여기서도 저장하지 않는다
-          if (validatePeriods(command.periods).length > 0) return { ok: false };
-          return { ok: save((d) => setPeriods(d, command.id, command.periods)) };
+        case 'set-slots': {
+          // 화면이 이미 막지만, 시간대가 없거나 요일이 겹치거나 잘못된 수업 시간은 여기서도 저장하지 않는다
+          const { slots } = command;
+          if (slots.length === 0 || daysOverlap(slots) || validateSlots(slots).length > 0) return { ok: false };
+          return { ok: save((d) => setSlots(d, command.id, slots)) };
         }
         case 'set-editing-dirty':
           editingDirty = command.dirty;

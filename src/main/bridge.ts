@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { CHANNEL, type AppState, type Command, type CommandResult } from '../shared/bridge';
-import { WEEKDAYS, type Weekday } from '../shared/data';
+import { isWeekday, type TimetableSlot } from '../shared/data';
 import { isDogThemeId } from '../shared/dog-themes';
 import { DOG_HEIGHT_RANGE } from '../shared/roaming-dog';
 import type { Period } from '../shared/timetable-validation';
@@ -53,24 +53,19 @@ export function parseCommand(raw: unknown): Command | null {
     case 'set-bells-off':
       return typeof value.off === 'boolean' ? { type: 'set-bells-off', off: value.off } : null;
     case 'create-timetable':
-      if (value.assignTo === undefined) return { type: 'create-timetable' };
-      return isWeekday(value.assignTo) ? { type: 'create-timetable', assignTo: value.assignTo } : null;
+      return typeof value.name === 'string' && value.name.trim() !== '' ? { type: 'create-timetable', name: value.name } : null;
     case 'rename-timetable':
       return typeof value.id === 'string' && typeof value.name === 'string' && value.name.trim() !== ''
         ? { type: 'rename-timetable', id: value.id, name: value.name }
         : null;
     case 'delete-timetable':
-    case 'restore-timetable':
+    case 'set-active-timetable':
       return typeof value.id === 'string' ? { type: value.type, id: value.id } : null;
-    case 'assign-weekday':
-      return isWeekday(value.day) && (value.timetableId === null || typeof value.timetableId === 'string')
-        ? { type: 'assign-weekday', day: value.day, timetableId: value.timetableId }
-        : null;
     case 'ack-fresh-start':
       return { type: 'ack-fresh-start' };
-    case 'set-periods': {
-      const periods = readPeriods(value.periods);
-      return typeof value.id === 'string' && periods ? { type: 'set-periods', id: value.id, periods } : null;
+    case 'set-slots': {
+      const slots = readSlots(value.slots);
+      return typeof value.id === 'string' && slots ? { type: 'set-slots', id: value.id, slots } : null;
     }
     case 'set-editing-dirty':
       return typeof value.dirty === 'boolean' ? { type: 'set-editing-dirty', dirty: value.dirty } : null;
@@ -129,9 +124,21 @@ function isVolume(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100;
 }
 
-/** 요일 키인지. */
-function isWeekday(v: unknown): v is Weekday {
-  return typeof v === 'string' && (WEEKDAYS as readonly string[]).includes(v);
+/**
+ * 시간대 목록으로 읽는다. 요일 키 배열과 수업 시간 목록을 가진 객체의 배열이 아니면 null이다.
+ * 시간대 수, 요일 겹침, 수업 시간 규칙은 메인의 조작 · 검증 함수의 몫이다.
+ */
+function readSlots(raw: unknown): TimetableSlot[] | null {
+  if (!Array.isArray(raw)) return null;
+  const slots: TimetableSlot[] = [];
+  for (const item of raw as unknown[]) {
+    if (typeof item !== 'object' || item === null) return null;
+    const { days, periods: rawPeriods } = item as Record<string, unknown>;
+    const periods = readPeriods(rawPeriods);
+    if (!Array.isArray(days) || !days.every(isWeekday) || !periods) return null;
+    slots.push({ days: [...days], periods });
+  }
+  return slots;
 }
 
 /** 수업 시간 목록으로 읽는다. 시작과 끝이 모두 정수인 객체의 배열이 아니면 null이다. 범위와 겹침은 검증 함수의 몫이다. */

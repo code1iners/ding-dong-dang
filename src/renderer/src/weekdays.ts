@@ -1,4 +1,4 @@
-import { WEEKDAYS, type Weekday } from '../../shared/data';
+import type { Weekday } from '../../shared/data';
 
 /** 요일 동그라미에 쓰는 한 글자 이름. */
 export const WEEKDAY_SHORT: Record<Weekday, string> = {
@@ -14,10 +14,4 @@ export const WEEKDAY_SHORT: Record<Weekday, string> = {
 /** 요일의 전체 이름. 마우스를 올렸을 때와 화면 읽기에 쓴다. */
 export function weekdayName(day: Weekday): string {
   return `${WEEKDAY_SHORT[day]}요일`;
-}
-
-/** 지금 PC의 현지 요일. */
-export function todayWeekday(now: Date = new Date()): Weekday {
-  // Date.getDay()는 일요일이 0이다
-  return WEEKDAYS[(now.getDay() + 6) % 7]!;
 }
