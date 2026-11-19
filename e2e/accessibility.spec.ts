@@ -213,11 +213,16 @@ test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 
   await page.keyboard.press('Enter');
   expect(await everyStopShowsFocus('[role="dialog"]')).toBe(3);
   await page.keyboard.press('Escape');
-  // 상세: 세로 줄 넷, "← 시간표 목록", ✎, 시간대 탭과 "+ 다른 시간대", 요일 동그라미 일곱, 두 교시의 시각 칸 둘과 지우기, "+ 수업 시간",
-  // "되돌리기" · "저장"(바꾼 것이 없어 잠겨 있어도 늘 그 자리에 있고 초점이 닿는다)
+  // 상세: 세로 줄 넷, "← 시간표 목록", "시간표 지우기"("쓰는 중" 표시는 Tab이 닿지 않는다), ✎, 시간대 탭과 "+ 다른 시간대", 요일 동그라미 일곱,
+  // 두 교시의 시각 칸 둘과 지우기, "+ 수업 시간", "되돌리기" · "저장"(바꾼 것이 없어 잠겨 있어도 늘 그 자리에 있고 초점이 닿는다)
   await focusByTab(page.getByRole('button', { name: /^평일반/ }));
   await page.keyboard.press('Enter');
-  expect(await everyStopShowsFocus()).toBe(24);
+  expect(await everyStopShowsFocus()).toBe(25);
+  // 지우기 확인 창: "취소", "시간표 지우기"
+  await focusByTab(page.getByRole('button', { name: "'평일반' 시간표 지우기" }));
+  await page.keyboard.press('Enter');
+  expect(await everyStopShowsFocus('[role="dialog"]')).toBe(2);
+  await page.keyboard.press('Escape');
   // 저장하지 않고 떠나려 할 때의 확인 창: "계속 편집", "저장 안 함", "저장"
   await focusByTab(page.getByRole('button', { name: '토요일' }));
   await page.keyboard.press('Enter');
@@ -283,6 +288,43 @@ test('키보드만으로 새 시간표를 만들어 상세에 들어가고 목�
     '토요반',
     '수요반',
   ]);
+});
+
+test('키보드만으로 "이 시간표 쓰기"를 누르고, 지우기 확인 창을 Esc로 닫으면 초점이 돌아오며, 확인하면 목록으로 돌아온다', async () => {
+  await seedFull();
+  await launch();
+  await openScreenByKeyboard('시간표');
+  await focusByTab(page.getByRole('button', { name: /^토요반/ }));
+  await page.keyboard.press('Enter');
+
+  // "이 시간표 쓰기"는 Enter로 누르고, 단추가 바뀐 "쓰는 중" 표시로 초점이 옮겨 간다
+  await focusByTab(page.getByRole('button', { name: '이 시간표 쓰기' }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: "이제 '토요반' 시간표로 종이 울려요" })).toBeVisible();
+  await expect(page.locator('.timetable-detail__actions .badge')).toBeFocused();
+  await expect
+    .poll(async () => timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).find((t) => t.active)?.name)
+    .toBe('토요반');
+
+  // 지우기 확인 창: 처음 초점은 "취소", Esc로 닫으면 "시간표 지우기" 단추로 돌아온다
+  const remove = page.getByRole('button', { name: "'토요반' 시간표 지우기" });
+  await focusByTab(remove);
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', {
+    name: "'토요반' 시간표를 지울까요?",
+  });
+  await expect(dialog.getByRole('button', { name: '취소' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(remove).toBeFocused();
+
+  // Tab으로 "시간표 지우기"까지 가서 Enter로 지우면 목록의 첫 카드에 초점이 있다
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: '시간표 지우기' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: "'토요반' 시간표를 지웠어요" })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^평일반/ })).toBeFocused();
 });
 
 test('키보드만으로 시간대 탭을 고르고 요일을 켜고 수업 시간을 더해 고친 뒤 저장하며, 확인 창의 Esc와 초점 돌아오기가 맞다', async () => {

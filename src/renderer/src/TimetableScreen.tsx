@@ -4,12 +4,14 @@ import { CreateTimetableModal } from './CreateTimetableModal';
 import { Dial } from './Dial';
 import { DogArt } from './dog/DogArt';
 import { ActionIcon } from './icons';
-import { DETAIL_BACK_SELECTOR, DETAIL_START_SELECTOR, TimetableDetail, type LeaveGuard } from './TimetableDetail';
+import { ActiveBadge, DETAIL_BACK_SELECTOR, DETAIL_START_SELECTOR, TimetableDetail, type LeaveGuard } from './TimetableDetail';
 import type { ToastApi } from './Toasts';
 import { slotSummary, WEEKDAY_SHORT } from './weekdays';
 
 type Props = {
   timetables: Timetable[];
+  /** 쓰는 시간표의 id. 없으면 null이다. */
+  activeTimetable: string | null;
   /** 빈 상태와 상세 시계판 가운데에 그릴 강아지의 테마 id. */
   dogTheme: string;
   /** 만들었다는 알림과 저장했다는 알림을 띄우고, 고치기 시작하면 종소리 되돌리기 알림을 거둔다. */
@@ -30,7 +32,7 @@ const cardSelector = (id: string): string => `[data-timetable-id="${CSS.escape(i
  * 목록 카드 하나. 누르면 상세로 들어가는 단추 하나이고, 색 점과 한 줄 이름, 모든 시간대의 요일 동그라미 일곱,
  * 첫 시간대의 작은 시계판, 시간대별 요약 두 줄까지(셋째부터 "외 N개")가 있다.
  */
-function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): void }) {
+function TimetableCard({ timetable, active, onOpen }: { timetable: Timetable; active: boolean; onOpen(): void }) {
   /** 어느 시간대에든 든 요일. */
   const days = new Set(timetable.slots.flatMap((slot) => slot.days));
   /** 화면 읽기에 읽어 줄 요일. 동그라미는 모양만 보여 주므로 따로 둔다. */
@@ -44,10 +46,17 @@ function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): 
   return (
     // 이름이 잘려도 마우스를 올리면 전체 이름이 뜨고, 화면 읽기는 잘리지 않은 글자를 읽는다
     <li className="timetable-cards__item">
-      <button type="button" className="tcard" title={timetable.name} data-timetable-id={timetable.id} onClick={onOpen}>
+      <button
+        type="button"
+        className={`tcard${active ? ' tcard--active' : ''}`}
+        title={timetable.name}
+        data-timetable-id={timetable.id}
+        onClick={onOpen}
+      >
         <span className="tcard__top">
           <i className="dot" aria-hidden="true" style={{ background: `var(--timetable-${timetable.color})` }} />
           <span className="tcard__name">{timetable.name}</span>
+          {active && <ActiveBadge />}
         </span>
         <span className="sr-only">요일 {daysText}</span>
         <span className="mini-days" aria-hidden="true">
@@ -80,7 +89,7 @@ function TimetableCard({ timetable, onOpen }: { timetable: Timetable; onOpen(): 
  * 목록은 시간표마다 카드 한 장을 격자로 놓고 맨 끝에 "새 시간표" 카드를 둔다. 넘치면 격자 안에서 스크롤한다.
  * 시간표가 하나도 없으면 같은 격자의 첫 칸에 카드 하나 크기의 빈 상태를 보여 준다.
  */
-export function TimetableScreen({ timetables, dogTheme, toasts, registerGuard, onDirtyChange }: Props) {
+export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts, registerGuard, onDirtyChange }: Props) {
   const { notify } = toasts;
   /** 상세로 연 시간표 id. 목록이면 null이다. */
   const [openId, setOpenId] = useState<string | null>(null);
@@ -91,6 +100,8 @@ export function TimetableScreen({ timetables, dogTheme, toasts, registerGuard, o
 
   /** 상세로 연 시간표. 만든 직후 메인의 새 상태가 아직 오지 않았으면 잠깐 없다. */
   const shown = openId === null ? undefined : timetables.find((t) => t.id === openId);
+  /** "쓰는 중"을 드러낼지. 시간표가 하나뿐이면 쓰는 시간표라는 개념을 숨긴다. */
+  const showActive = timetables.length > 1;
 
   // 목록과 상세를 오간 뒤, 새로 그려진 요소에 초점을 준다. 만든 시간표가 아직 상태에 없으면 올 때까지 기다린다
   useEffect(function focusAfterMove() {
@@ -138,12 +149,25 @@ export function TimetableScreen({ timetables, dogTheme, toasts, registerGuard, o
         {shown && (
           <TimetableDetail
             timetable={shown}
+            isActive={shown.id === activeTimetable}
+            showActive={showActive}
+            isOnly={timetables.length === 1}
             dogTheme={dogTheme}
             toasts={toasts}
             registerGuard={registerGuard}
             onDirtyChange={onDirtyChange}
             onBack={() => {
               focusAfter.current = cardSelector(shown.id);
+              setOpenId(null);
+            }}
+            onDeleted={(name) => {
+              notify({
+                key: 'timetable-deleted',
+                kind: 'success',
+                text: `'${name}' 시간표를 지웠어요`,
+              });
+              // 지운 카드는 없으므로 목록의 첫 카드(남은 것이 없으면 "시간표 만들기")에 초점을 둔다
+              focusAfter.current = '.timetable-cards button';
               setOpenId(null);
             }}
           />
@@ -172,7 +196,12 @@ export function TimetableScreen({ timetables, dogTheme, toasts, registerGuard, o
     <>
       <ul className="timetable-cards" aria-label="시간표 목록">
         {timetables.map((t) => (
-          <TimetableCard key={t.id} timetable={t} onOpen={() => open(t.id, DETAIL_BACK_SELECTOR)} />
+          <TimetableCard
+            key={t.id}
+            timetable={t}
+            active={showActive && t.id === activeTimetable}
+            onOpen={() => open(t.id, DETAIL_BACK_SELECTOR)}
+          />
         ))}
         <li className="timetable-cards__item">
           <button type="button" className="tcard tcard--new" onClick={() => setCreating(true)}>

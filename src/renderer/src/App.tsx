@@ -178,6 +178,7 @@ export function App() {
         {screen === 'timetable' && state && (
           <TimetableScreen
             timetables={state.timetables}
+            activeTimetable={state.activeTimetable}
             dogTheme={state.settings.dogTheme}
             toasts={toasts}
             registerGuard={registerGuard}
