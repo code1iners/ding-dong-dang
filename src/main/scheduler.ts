@@ -1,11 +1,11 @@
-import { decideBell, type BellKind, type BellSchedule } from '../shared/bell-decision';
+import { decideBell, type BellKind, type BellInput } from '../shared/bell-decision';
 import type { Data } from '../shared/data';
 
 /** 잠자기 막기의 종류. system은 방치로 인한 잠자기만, display는 화면 꺼짐까지 막는다. */
 export type KeepAwakeMode = 'system' | 'display';
 
 /** 스케줄러가 판정할 때마다 읽는 저장된 값. */
-export type SchedulerData = BellSchedule & Pick<Data, 'settings'>;
+export type SchedulerData = BellInput & Pick<Data, 'settings'>;
 
 /** 스케줄러가 받는 갈아 끼울 수 있는 부품. 실제 앱은 Electron에 닿는 것을, 테스트는 가짜를 끼운다. */
 export type SchedulerParts = {

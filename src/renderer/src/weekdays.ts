@@ -26,12 +26,12 @@ export function daysSummary(days: readonly Weekday[]): string {
   const picked = WEEKDAYS.filter((d) => days.includes(d));
   if (picked.length === 0) return '요일 없음';
   if (picked.length === WEEKDAYS.length) return '매일';
-  /** 이어진 요일 묶음. 각 묶음은 WEEKDAYS 순서로 붙어 있다. */
+  /** 이어진 요일들(연속 구간). 각 구간은 WEEKDAYS 순서로 붙어 있다. */
   const runs: Weekday[][] = [];
   for (const day of picked) {
-    /** 지금까지의 마지막 묶음. */
+    /** 지금까지의 마지막 구간. */
     const last = runs.at(-1);
-    // 앞 요일 바로 다음 요일이면 그 묶음에 잇고, 아니면 새 묶음을 연다
+    // 앞 요일 바로 다음 요일이면 그 구간에 잇고, 아니면 새 구간을 연다
     if (last && WEEKDAYS.indexOf(last.at(-1)!) + 1 === WEEKDAYS.indexOf(day)) last.push(day);
     else runs.push([day]);
   }

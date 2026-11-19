@@ -21,7 +21,7 @@ export type BellStatus = {
 };
 
 /** 날짜마다 어느 수업 시간으로 종이 울리는지 정하는 저장된 값. 스케줄러, 업데이트 잠금, 돌아다니는 강아지, 현황 화면이 같은 값을 넘긴다. */
-export type BellSchedule = {
+export type BellInput = {
   timetables: readonly Timetable[];
   /** 쓰는 시간표의 id. 종은 이 시간표만 따른다. */
   activeTimetable: string | null;
@@ -29,7 +29,7 @@ export type BellSchedule = {
   bellsOffDate: string | null;
 };
 
-export type BellDecisionInput = BellSchedule & {
+export type BellDecisionInput = BellInput & {
   /** 지난번 확인한 시각(에포크 ms). 앱을 막 켰으면 null. */
   lastChecked: number | null;
   /** 지금 시각(에포크 ms). */
@@ -69,7 +69,7 @@ export function localDate(at: number): string {
  * 그 시각이 속한 현지 날짜의 수업 시간(자정부터의 분). 그날의 수업 시간을 정하는 곳은 여기 한 군데다.
  * 쓰는 시간표에서 그 날짜의 요일이 든 시간대의 수업 시간이고, 쓰는 시간표나 그 요일의 시간대가 없으면 빈 목록이다.
  */
-function periodsOfDay(input: BellSchedule, at: number): readonly Period[] {
+function periodsOfDay(input: BellInput, at: number): readonly Period[] {
   // getDay()는 항상 0~6이라 표에 빈 칸이 없다
   /** 그 날짜의 요일. */
   const day = WEEKDAY_BY_DAY[new Date(at).getDay()] as Weekday;
