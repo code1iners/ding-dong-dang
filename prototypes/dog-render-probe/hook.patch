@@ -1,0 +1,114 @@
+diff --git a/src/renderer/dog.html b/src/renderer/dog.html
+index fff8ba2..8ed1fc1 100644
+--- a/src/renderer/dog.html
++++ b/src/renderer/dog.html
+@@ -3,7 +3,7 @@
+ <html lang="ko">
+   <head>
+     <meta charset="UTF-8" />
+-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
++    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:" />
+     <meta name="color-scheme" content="light only" />
+     <title>딩동댕 강아지</title>
+   </head>
+diff --git a/src/renderer/src/dog-window.ts b/src/renderer/src/dog-window.ts
+index c8f9b42..605ad8d 100644
+--- a/src/renderer/src/dog-window.ts
++++ b/src/renderer/src/dog-window.ts
+@@ -2,6 +2,7 @@
+ // 창을 옮기는 일, 동작을 정하는 일, 클릭 통과는 메인이 한다. 이 화면은 그림만 맡는다.
+ 
+ import { DOG_WINDOW_PAD_BOTTOM } from '../../shared/roaming-dog';
++import { createProbe, type Probe, type ProbeMode } from '../../../prototypes/dog-render-probe/probe';
+ import { framesPerSecond, type DogAction } from '../../shared/status-view';
+ import type { DogView, DogWindowApi } from '../../shared/dog-window';
+ import { HEART_COUNT, HEART_MAX_DELAY_S, HEART_MS, HEART_PATH, randomBetween } from './dog/hearts';
+@@ -49,6 +50,8 @@ let mounted: { rig: DogRig; theme: DogTheme; themeId: string; height: number } |
+ let view: DogView | null = null;
+ /** 지금 동작을 시작한 시각(ms)과 그 동작. 동작이 바뀌면 처음부터 센다. */
+ let started: { action: DogAction; at: number } | null = null;
++/** 실험 방식의 그리기 손잡이. */
++let probe: Probe | null = null;
+ /** 그리기 타이머. */
+ let drawTimer: ReturnType<typeof setInterval> | undefined;
+ /** 끄는 동안 기울기를 정하려고 재는 창의 가로 자리와 빠르기. 창은 메인이 옮기고, 화면은 옮겨진 자리만 읽는다. */
+@@ -69,6 +72,10 @@ function mount(themeId: string, height: number): void {
+   /** 붙인 그림. */
+   const rig = mountDog(flip, theme);
+   mounted = { rig, theme, themeId, height };
++  probe?.stop();
++  probe = null;
++  const mode = import.meta.env['VITE_DOG_PROBE'] as ProbeMode | undefined;
++  if (mode) probe = createProbe(mode, rig, flip);
+   rig.pose('idle', 0);
+   report();
+ }
+@@ -109,7 +116,7 @@ function draw(): void {
+   if (!mounted || !view || !started) return;
+   /** 동작을 시작한 뒤의 초. */
+   const t = (performance.now() - started.at) / 1000;
+-  mounted.rig.pose(view.action, t);
++  if (!(probe && probe.handles(view.action) && probe.ready(view.action))) mounted.rig.pose(view.action, t);
+   /** 그림이 바라보는 쪽. 옆모습 그림만 있고, 그 그림만 걷는 쪽으로 돌린다. */
+   const faces = mounted.theme.faces;
+   /** 끌리거나 내려오는 중이면 기울인다. */
+@@ -126,6 +133,21 @@ function schedule(): void {
+   drawTimer = undefined;
+   if (!view || view.paused) return;
+   draw();
++  if (probe) {
++    /** 이 동작의 실험 방식 준비가 끝났는지에 따라 기존 타이머를 쓰거나 맡긴다. */
++    const action = view.action;
++    if (probe.handles(action)) {
++      if (probe.ready(action)) {
++        probe.play(action);
++        return;
++      }
++      void probe.prepare(action).then(() => {
++        if (view?.action === action) schedule();
++      });
++    } else {
++      probe.stop();
++    }
++  }
+   if (reducedQuery.matches && view.action !== 'idle' && view.action !== 'sleepy') return;
+   drawTimer = setInterval(draw, 1000 / framesPerSecond(view.action));
+ }
+diff --git a/src/renderer/src/dog/DogArt.tsx b/src/renderer/src/dog/DogArt.tsx
+index 74fb62c..e0e2816 100644
+--- a/src/renderer/src/dog/DogArt.tsx
++++ b/src/renderer/src/dog/DogArt.tsx
+@@ -1,4 +1,5 @@
+ import { useEffect, useRef, useState } from 'react';
++import { createProbe, type ProbeMode } from '../../../../prototypes/dog-render-probe/probe';
+ import { framesPerSecond, type DogAction } from '../../../shared/status-view';
+ import { mountDog, type DogRig } from './rig';
+ import { themeById } from './themes';
+@@ -61,7 +62,26 @@ export function DogArt({ themeId, action, className }: Props) {
+       rig.pose(action, 0);
+       if (reduced) return;
+       /** 동작의 그리는 횟수에 맞춘 타이머. */
+-      const timer = setInterval(() => rig.pose(action, (performance.now() - start) / 1000), 1000 / framesPerSecond(action));
++      let timer: ReturnType<typeof setInterval> | undefined = setInterval(() => rig.pose(action, (performance.now() - start) / 1000), 1000 / framesPerSecond(action));
++      const mode = import.meta.env['VITE_DOG_PROBE'] as ProbeMode | undefined;
++      const box = boxRef.current;
++      if (mode && box) {
++        const probe = createProbe(mode, rig, box);
++        let live = true;
++        if (probe.handles(action)) {
++          void probe.prepare(action).then(() => {
++            if (!live) return;
++            clearInterval(timer);
++            timer = undefined;
++            probe.play(action);
++          });
++        }
++        return () => {
++          live = false;
++          clearInterval(timer);
++          probe.stop();
++        };
++      }
+       return () => clearInterval(timer);
+     },
+     [rig, action, reduced],

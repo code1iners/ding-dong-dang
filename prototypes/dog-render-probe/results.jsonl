@@ -1,0 +1,10 @@
+{"variant":"base","config":"both","wall":600,"totalPct":20.05,"byTypePct":{"main":2.65,"gpu-process":9.44,"utility":0,"renderer":7.95},"load0":"{ 17.10 17.12 17.46 }","load1":"{ 8.08 10.97 13.80 }","at":"2026-11-19T15:34:10.163Z"}
+{"variant":"sprite","config":"both","wall":600,"totalPct":20,"byTypePct":{"main":2.66,"gpu-process":9.07,"utility":0,"renderer":8.28},"load0":"{ 7.73 10.58 13.54 }","load1":"{ 7.71 9.39 11.69 }","at":"2026-11-19T15:44:45.804Z"}
+{"variant":"waapi","config":"both","wall":600,"totalPct":81.84,"byTypePct":{"main":3.02,"gpu-process":53.66,"utility":0,"renderer":25.16},"load0":"{ 9.68 9.67 11.69 }","load1":"{ 19.63 14.01 12.73 }","at":"2026-11-19T15:55:21.652Z"}
+{"variant":"base","config":"ring","wall":301,"totalPct":20.94,"byTypePct":{"main":0.04,"gpu-process":11.74,"utility":0,"renderer":9.16},"load0":"{ 26.34 16.36 13.64 }","load1":"{ 41.22 29.50 20.32 }","at":"2026-11-19T16:00:58.718Z"}
+{"variant":"sprite","config":"ring","wall":300,"totalPct":16.24,"byTypePct":{"main":0.04,"gpu-process":10.59,"utility":0,"renderer":5.61},"load0":"{ 40.40 30.73 21.15 }","load1":"{ 21.04 25.79 21.99 }","at":"2026-11-19T16:06:35.404Z"}
+{"variant":"waapi","config":"ring","wall":300,"totalPct":84.57,"byTypePct":{"main":0.04,"gpu-process":59.6,"utility":0,"renderer":24.92},"load0":"{ 25.37 26.27 22.31 }","load1":"{ 13.64 18.56 20.00 }","at":"2026-11-19T16:12:11.549Z"}
+{"variant":"base","config":"roam","wall":300,"totalPct":12.84,"byTypePct":{"main":2.79,"gpu-process":5.7,"utility":0,"renderer":4.34},"load0":"{ 11.25 17.39 19.52 }","load1":"{ 8.89 12.80 16.77 }","at":"2026-11-19T16:17:47.279Z"}
+{"variant":"sprite","config":"roam","wall":300,"totalPct":16.61,"byTypePct":{"main":2.39,"gpu-process":7.88,"utility":0,"renderer":6.34},"load0":"{ 8.30 12.26 16.41 }","load1":"{ 7.34 9.40 13.86 }","at":"2026-11-19T16:23:22.690Z"}
+{"variant":"waapi","config":"roam","wall":300,"totalPct":42.61,"byTypePct":{"main":2.45,"gpu-process":27.78,"utility":0,"renderer":12.38},"load0":"{ 8.17 9.36 13.66 }","load1":"{ 8.82 9.73 12.58 }","at":"2026-11-19T16:28:58.113Z"}
+ALL-DONE

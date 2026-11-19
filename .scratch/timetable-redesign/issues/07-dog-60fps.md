@@ -4,18 +4,18 @@
 
 Blocked by: 01
 
-Status: ready-for-agent
+Status: resolved
 
 - [x] `framesPerSecond`가 모든 동작에서 60을 돌려주고, 창 안 강아지와 돌아다니는 강아지(메인 · 강아지 창)가 같은 값을 쓴다. 화면 주사율에 맞춘 그리기는 쓰지 않는다.
 - [x] 단위 테스트: 모든 동작에서 60이다. 기존 4/24를 확인하던 테스트를 고친다.
 - [x] 기존 강아지 e2e(`dog`, `roaming-dog`)가 통과한다.
-- [ ] [28번](../../class-bell-app/issues/28-roaming-dog-window-verification.md)과 같은 방법으로 수업 시간 10분 평균 CPU를 재어 Comments에 적는다. 코어 하나의 5% 이하이면 완료, 넘으면 구현을 멈추고 수치와 함께 사용자에게 확인받는다.
+- [x] [28번](../../class-bell-app/issues/28-roaming-dog-window-verification.md)과 같은 방법으로 수업 시간 10분 평균 CPU를 재어 Comments에 적는다. 코어 하나의 5% 이하이면 완료, 넘으면 구현을 멈추고 수치와 함께 사용자에게 확인받는다. (22.07%로 넘어 사용자 확인을 받았다: 2026-11-20 "60 유지, 기준 약 20%" — Comments 참고)
 - [x] v1 스펙과 `DESIGN.md`에 남은 "초당 4번 · 24번" 문장이 없다(02에서 안내를 단 문장 제외, `grep`으로 확인).
-- [ ] 마지막 변경 뒤 `npm run check`가 통과한다. (강아지 테스트는 모두 통과, 관련 없는 `window-bounds` 앱 첫 창 시간 초과가 번갈아 한 건 남음 — Comments 참고)
+- [x] 마지막 변경 뒤 `npm run check`가 통과한다.
 
 ## Comments
 
-### 2026-11-19 구현 기록 (상태 유지: ready-for-agent — CPU 기준 초과로 사용자 확인 대기)
+### 2026-11-19 구현 기록 (이 시점에는 CPU 기준 초과로 사용자 확인 대기였고, 아래 2026-11-20 결정으로 해소됨)
 
 **구현**
 - `src/shared/status-view.ts`: `framesPerSecond`가 동작별 표(`Record<DogAction, number>`)로 모든 동작에서 60. 창 안 강아지(`DogArt.tsx`)·메인(`roaming-dog.ts`)·강아지 창(`dog-window.ts`)이 같은 함수를 쓴다. 화면 주사율(rAF) 그리기는 쓰지 않는다.
@@ -37,3 +37,21 @@ Status: ready-for-agent
 
 **검증**
 - 최종 변경 뒤 `DDD_HEADLESS=1 npm run check`: typecheck · lint · unit 통과, e2e 101 통과 / 1 실패(`window-bounds` 첫 창 시간 초과, 이 티켓과 무관) / 1 건너뜀. `window-bounds`를 3회 반복하면 5 통과 / 1 실패(다른 테스트가 같은 시간 초과).
+
+### 2026-11-20 그리는 방식 실험과 사용자 결정 (DOG60-KEEP-DECISION)
+
+**사용자 결정: 모든 동작 초당 60번을 그대로 둔다. CPU 기준은 수업 시간 10분 평균 코어 하나의 약 20%로 올린 것으로 기록한다.** 그리는 방식 변경 · 횟수 줄이기 · 가려질 때 멈추기는 하지 않는다. 스펙 CPU 기준 문장(210 · 293행 부근)에 이 결정을 덧붙였다.
+
+**그리는 방식 실험** (한 테마, 28번과 같은 방법: 앱 프로세스 트리 전체 누적 CPU 시간, 예열 30초 뒤, 앱 창 표시 · 돌아다니는 강아지 켬, 하루 종일 수업 시간. 둘 다는 600초, 나머지는 300초. 코어 하나 기준 %, 부하 평균 8~40로 흔들림)
+
+| 방식 | 고리 안만 | 돌아다니는 창만 | 둘 다 | 둘 다의 GPU / 렌더러 / 메인 |
+| --- | --- | --- | --- | --- |
+| 지금 방식(JS 매 프레임, 60번) | 20.9 | 12.8 | 20.1 | 9.4 / 8.0 / 2.7 |
+| 미리 그린 프레임 묶음(sprite, CSS steps) | 16.2 | 16.6 | 20.0 | 9.1 / 8.3 / 2.7 |
+| CSS · Web Animations(waapi, transform) | 84.6 | 42.6 | 81.8 | 53.7 / 25.2 / 3.0 |
+
+- 결론: 비용 대부분이 GPU · 렌더러 합성이고 메인은 3% 안팎이다. 그리는 방식보다 그리는 횟수에 달려 있다. sprite는 이득이 없고(둘 다 20.0), waapi는 4배 나쁘다.
+- 한계: 방식당 한 번씩만 쟀고 부하가 흔들려 몇 %p 차이는 오차일 수 있다. 화면 품질은 눈으로 보지 않았다.
+- 실험 코드 · 패치 · 스크립트 · `results.jsonl` · README는 `prototypes/dog-render-probe/`에 있다. 제품 코드는 바꾸지 않았다.
+
+**최종 검증**: 마지막 변경(스펙 안내 · prototypes 추가) 뒤 `DDD_HEADLESS=1 npm run check` 한 번에 통과(typecheck · lint · unit · e2e 102 통과 / 1 건너뜀). 앞서 간헐로 실패하던 `window-bounds` 첫 창 시간 초과도 이번엔 통과했다(부하 탓 실패였다고 보지만 원인은 확정하지 않았다).
