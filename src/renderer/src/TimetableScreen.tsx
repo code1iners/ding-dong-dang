@@ -28,6 +28,8 @@ const SUMMARY_LINES = 2;
 
 /** 시간표 id로 목록 카드를 찾는 선택자를 만든다. 상세에서 돌아오면 그 카드로 초점을 돌려준다. */
 const cardSelector = (id: string): string => `[data-timetable-id="${CSS.escape(id)}"]`;
+/** 목록의 첫 단추. 시간표를 지우고 돌아오면 첫 카드(남은 것이 없으면 "시간표 만들기")에 초점을 둔다. */
+const FIRST_LIST_BUTTON_SELECTOR = '.timetable-cards button';
 
 /**
  * 목록 카드 하나. 누르면 상세로 들어가는 단추 하나이고, 색 점과 한 줄 이름, 모든 시간대의 요일 동그라미 일곱,
@@ -167,7 +169,7 @@ export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts,
                 text: `'${name}' 시간표를 지웠어요`,
               });
               // 지운 카드는 없으므로 목록의 첫 카드(남은 것이 없으면 "시간표 만들기")에 초점을 둔다
-              focusAfter.current = '.timetable-cards button';
+              focusAfter.current = FIRST_LIST_BUTTON_SELECTOR;
               setOpenId(null);
             }}
           />

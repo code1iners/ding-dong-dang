@@ -19,6 +19,12 @@ export const DETAIL_BACK_SELECTOR = '.back-button';
 const ACTIVE_BADGE_SELECTOR = '[data-active-badge]';
 /** 위 줄의 "시간표 지우기". 하나뿐인 시간표에서 "이 시간표 쓰기"를 누르면 표시가 없어 이 단추로 초점을 옮긴다. */
 const DELETE_BUTTON_SELECTOR = '[data-delete-timetable]';
+/** 고른 시간대의 첫 요일 동그라미. 시간대를 더하면 이리로 초점을 옮긴다. */
+const FIRST_DAY_SELECTOR = '.slot-day';
+/** 고른 시간대 탭. 시간대를 지우면 이리로 초점을 옮긴다. */
+const SELECTED_TAB_SELECTOR = '.slot-tab[aria-pressed="true"]';
+/** key로 수업 시간 줄의 시작 시각 칸을 찾는 선택자를 만든다. 줄을 더하면 이 칸으로 초점을 옮긴다. */
+const rowStartSelector = (key: number): string => `[data-row-key="${key}"] input`;
 
 /**
  * 왼쪽 카드 맨 위의 색 점 · 이름 · ✎. ✎를 누르면 그 자리에서 입력으로 바뀌고 ✓ · ×가 나온다.
@@ -295,14 +301,14 @@ export function TimetableDetail({
   function addSlotAndSelect(): void {
     edit(addSlot);
     setSlotIndex(slots.length);
-    focusAfter.current = '.slot-day';
+    focusAfter.current = FIRST_DAY_SELECTOR;
   }
 
   /** 고른 시간대를 지우고 앞 시간대를 고른다. 초점은 고른 탭으로 간다. */
   function removeSelectedSlot(): void {
     edit((all) => removeSlot(all, index));
     setSlotIndex(Math.max(0, index - 1));
-    focusAfter.current = '.slot-tab[aria-pressed="true"]';
+    focusAfter.current = SELECTED_TAB_SELECTOR;
   }
 
   /** 초안을 버린다. */
@@ -331,7 +337,7 @@ export function TimetableDetail({
   useEffect(
     function focusAfterEdit() {
       if (focusKey.current !== null) {
-        document.querySelector<HTMLInputElement>(`[data-row-key="${focusKey.current}"] input`)?.focus();
+        document.querySelector<HTMLInputElement>(rowStartSelector(focusKey.current))?.focus();
         focusKey.current = null;
       }
       if (focusAfter.current !== null) {
