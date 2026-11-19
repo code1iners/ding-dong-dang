@@ -1,8 +1,8 @@
 // 시간표 만들기 · 이름 바꾸기 · 시간대 저장 · 쓰는 시간표 정하기 · 지우기. 저장 데이터를 받아 새 데이터를 돌려주는 순수 함수다.
 // 바뀌는 것이 없거나 받지 않는 값이면 받은 데이터를 그대로 돌려줘서, 부르는 쪽이 `===`로 변경 여부를 알 수 있다.
 
-import { WEEKDAYS, type Data, type Timetable, type TimetableSlot } from './data';
-import { sortByStart } from './period-edit';
+import type { Data, Timetable, TimetableSlot } from './data';
+import { toSavedSlots } from './slot-edit';
 
 /** 시간표 색의 개수(DESIGN.md의 여덟 색). */
 export const TIMETABLE_COLOR_COUNT = 8;
@@ -44,11 +44,9 @@ export function renameTimetable(data: Data, id: string, name: string): Data {
  */
 export function setSlots(data: Data, id: string, slots: readonly TimetableSlot[]): Data {
   if (slots.length === 0 || daysOverlap(slots) || !data.timetables.some((t) => t.id === id)) return data;
+  // 상세가 "바꾼 것 없음"을 판단하는 모양과 같아야 저장 직후 "저장"이 꺼지므로 같은 함수로 정리한다
   /** 정렬하고 받은 목록과 끊어 낸 시간대. */
-  const saved = slots.map((slot) => ({
-    days: WEEKDAYS.filter((d) => slot.days.includes(d)),
-    periods: sortByStart(slot.periods).map(({ start, end }) => ({ start, end })),
-  }));
+  const saved = toSavedSlots(slots);
   return { ...data, timetables: data.timetables.map((t) => (t.id === id ? { ...t, slots: saved } : t)) };
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyData, type Data, type TimetableSlot } from './data';
+import { sameSlots } from './slot-edit';
 import { createTimetable, daysOverlap, deleteTimetable, renameTimetable, setActiveTimetable, setSlots } from './timetable-ops';
 
 /** 이름이 '반0', '반1'…인 시간표를 n개 만든 데이터. id는 `t0`, `t1`…이다. */
@@ -110,6 +111,20 @@ describe('setSlots', () => {
   it('없는 시간표는 무시한다', () => {
     const data = withTimetables(1);
     expect(setSlots(data, 'nope', [{ days: ['mon'], periods: [] }])).toBe(data);
+  });
+
+  it('저장한 값은 상세가 보낸 초안과 같다고 판단된다(저장 직후 "저장" 단추가 꺼진다)', () => {
+    /** 요일과 줄 순서가 섞이고 화면의 줄 key가 붙은 초안. */
+    const draft = [
+      { days: ['fri', 'mon'] as const, periods: [{ key: 7, start: 600, end: 650 }, { key: 1, start: 540, end: 590 }] },
+      { days: ['sun'] as const, periods: [] },
+    ];
+    const next = setSlots(withTimetables(1), 't0', draft.map((s) => ({ days: [...s.days], periods: [...s.periods] })));
+    expect(sameSlots(draft, next.timetables[0]!.slots)).toBe(true);
+    expect(next.timetables[0]!.slots).toEqual([
+      { days: ['mon', 'fri'], periods: [{ start: 540, end: 590 }, { start: 600, end: 650 }] },
+      { days: ['sun'], periods: [] },
+    ]);
   });
 
   it('받은 목록을 고치지 않고 복사해 저장한다', () => {
