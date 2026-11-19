@@ -2,7 +2,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import { emptyData, type Data } from '../src/shared/data';
+import { dataWith, weekdayOf } from './timetable-fixture';
 import { localDate } from '../src/shared/bell-decision';
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
@@ -19,7 +20,7 @@ function min(clock: string): number {
 }
 
 /** 오늘 요일의 키. getDay()는 일요일이 0이다. */
-const todayKey = WEEKDAYS[(new Date().getDay() + 6) % 7]!;
+const todayKey = weekdayOf();
 
 /** 오늘 이 시각(시, 분, 초)의 Date. */
 function today(h: number, m = 0, s = 0): Date {
@@ -29,12 +30,12 @@ function today(h: number, m = 0, s = 0): Date {
 
 /** 수업 시간 목록을 오늘 요일에 배정한 저장 파일을 쓴다. */
 async function seed(periods: [string, string][] | null, patch: Partial<Data> = {}): Promise<void> {
-  const data: Data = { ...emptyData(), ...patch };
+  let data: Data = { ...emptyData(), ...patch };
   if (periods) {
-    data.timetables = [
-      { id: 't', name: '시험반', color: 0, periods: periods.map(([start, end]) => ({ start: min(start), end: min(end) })) },
-    ];
-    data.weekdays = { ...data.weekdays, [todayKey]: 't' };
+    data = dataWith(
+      [{ id: 't', name: '시험반', days: [todayKey], periods: periods.map(([start, end]) => ({ start: min(start), end: min(end) })) }],
+      data,
+    );
   }
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
 }

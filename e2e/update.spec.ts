@@ -6,7 +6,8 @@ import { AUTO_START_ARG } from '../src/main/auto-start';
 import { UPDATE_ATTEMPT_FILE } from '../src/main/update-attempt';
 import type { AppState, UpdateView } from '../src/shared/bridge';
 import { CHANNEL } from '../src/shared/bridge';
-import { emptyData, WEEKDAYS, type Data } from '../src/shared/data';
+import type { Data } from '../src/shared/data';
+import { dataWith, weekdayOf } from './timetable-fixture';
 
 // 앱 내 업데이트의 화면을 실제 앱으로 본다. --data-dir로 띄운 실행은 실제 릴리스를 확인하지 않으므로,
 // 버전 줄의 모습 · 주황 점 · 확인 모달 · 잠금은 테스트가 메인 프로세스에서 가짜 업데이트 상태를 화면에 보내 확인한다.
@@ -29,7 +30,7 @@ test.afterEach(async () => {
 });
 
 /** 오늘 요일의 키. getDay()는 일요일이 0이다. */
-const todayKey = WEEKDAYS[(new Date().getDay() + 6) % 7]!;
+const todayKey = weekdayOf();
 
 /**
  * 오늘 수업 하나의 시작 시각(자정부터의 분). 진짜 시각에서 여섯 시간 넘게 떨어진 03:00이나 15:00을 골라,
@@ -39,11 +40,7 @@ const lessonStart = Math.abs(new Date().getHours() - 3) >= 6 && Math.abs(new Dat
 
 /** 오늘 수업 하나를 배정한 저장 파일을 쓴다. */
 async function seedLesson(): Promise<void> {
-  const data: Data = {
-    ...emptyData(),
-    timetables: [{ id: 't', name: '시험반', color: 0, periods: [{ start: lessonStart, end: lessonStart + 50 }] }],
-  };
-  data.weekdays = { ...data.weekdays, [todayKey]: 't' };
+  const data: Data = dataWith([{ id: 't', name: '시험반', days: [todayKey], periods: [{ start: lessonStart, end: lessonStart + 50 }] }]);
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
 }
 

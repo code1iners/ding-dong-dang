@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import { emptyData, type Data } from '../src/shared/data';
+import type { Data } from '../src/shared/data';
+import { dataWith } from './timetable-fixture';
 
 // 설정의 "모든 데이터 지우기"를 실제 앱으로 본다. --data-dir로 띄워 임시 폴더만 지우고, OS의 자동 시작 등록은 건드리지 않는다.
 
@@ -28,8 +29,7 @@ test.afterEach(async () => {
 async function seedDataDir(): Promise<void> {
   /** 써 넣을 저장 파일. */
   const data: Data = {
-    ...emptyData(),
-    timetables: [{ id: 't1', name: '평일반', color: 0, periods: [{ start: 540, end: 590 }] }],
+    ...dataWith([{ id: 't1', name: '평일반', days: [], periods: [{ start: 540, end: 590 }] }]),
     sounds: [{ id: 's1', name: '우리 종', file: 's1.wav' }],
     startBell: 's1',
   };

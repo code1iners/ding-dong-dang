@@ -2,8 +2,8 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { emptyData, type Data } from '../src/shared/data';
-import { createTimetable } from '../src/shared/timetable-ops';
+import type { Data } from '../src/shared/data';
+import { dataWith, timetablesOf, type TimetableSpec } from './timetable-fixture';
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -34,11 +34,19 @@ async function saved(): Promise<Data> {
 }
 
 /** 시간표 n개가 있고 월요일에 첫 시간표를 배정한 저장 파일을 쓴다. 이름은 "반0", "반1"… */
-async function seed(n: number): Promise<void> {
-  let data = emptyData();
-  for (let i = 0; i < n; i += 1) data = { ...createTimetable(data, `t${i}`, i === 0 ? 'mon' : undefined) };
-  data.timetables = data.timetables.map((t, i) => ({ ...t, name: `반${i}` }));
-  await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
+async function seed(n: number, firstDays: TimetableSpec['days'] = ['mon']): Promise<void> {
+  const specs: TimetableSpec[] = Array.from({ length: n }, (_, i) => ({ id: `t${i}`, name: `반${i}`, days: i === 0 ? firstDays : [], periods: [] }));
+  await writeFile(join(dataDir, 'data.json'), JSON.stringify(dataWith(specs)));
+}
+
+/** 저장 파일의 시간표를 읽는다. */
+async function savedTimetables() {
+  return timetablesOf(await saved());
+}
+
+/** 저장 파일에서 시간표 하나의 요일. */
+async function savedDays(id: string) {
+  return (await savedTimetables()).find((t) => t.id === id)?.days;
 }
 
 test.beforeEach(async () => {
@@ -78,9 +86,9 @@ test('시간표를 만들어 요일에 배정하면 즉시 저장되고 앱을 �
 
   await expect(page.getByRole('button', { name: '수요일 · 새 시간표' })).toBeVisible();
   /** 저장 파일. */
-  const data = await saved();
-  expect(data.timetables.map((t) => [t.name, t.color])).toEqual([['새 시간표', 0]]);
-  expect(data.weekdays.wed).toBe(data.timetables[0]!.id);
+  const created = timetablesOf(await saved());
+  expect(created.map((t) => [t.name, t.color])).toEqual([['새 시간표', 0]]);
+  expect(created[0]!.days).toContain('wed');
 
   await quit();
   await launch();
@@ -95,12 +103,13 @@ test('시간표를 고르면 선택한 요일만 바뀌고, 없음을 고르면 
   await page.getByRole('button', { name: /시간표 고르기/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: '반2' }).click();
   await expect(page.getByRole('button', { name: '금요일 · 반2' })).toBeVisible();
-  expect((await saved()).weekdays).toMatchObject({ mon: 't0', fri: 't2' });
+  expect(await savedDays('t0')).toEqual(['mon']);
+  expect(await savedDays('t2')).toEqual(['fri']);
 
   await page.getByRole('button', { name: /시간표 고르기/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: '없음' }).click();
   await expect(page.getByRole('button', { name: '금요일 · 시간표 없음' })).toBeVisible();
-  expect((await saved()).weekdays.fri).toBeNull();
+  expect((await savedTimetables()).flatMap((t) => t.days)).not.toContain('fri');
 });
 
 test('선택 창의 목록은 다섯 줄 반 높이에서 스크롤되고, 없음과 새 시간표는 맨 아래에 계속 보인다', async () => {
@@ -139,7 +148,7 @@ test('Esc는 아무것도 바꾸지 않고 선택 창을 닫고 초점은 입력
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(select).toBeFocused();
-  expect((await saved()).weekdays).toMatchObject({ mon: 't0' });
+  expect(await savedDays('t0')).toEqual(['mon']);
 });
 
 test('편집을 누를 때만 이름 바꾸기와 지우기가 나타나고 빈 이름으로는 바꿀 수 없다', async () => {
@@ -160,7 +169,7 @@ test('편집을 누를 때만 이름 바꾸기와 지우기가 나타나고 빈 
   await expect(dialog.getByRole('alert')).toContainText('이름을 비울 수 없어요');
   await expect(dialog.getByRole('button', { name: "'반1' 이름 저장" })).toBeDisabled();
   await input.press('Enter');
-  expect((await saved()).timetables[1]!.name).toBe('반1');
+  expect((await savedTimetables())[1]!.name).toBe('반1');
 
   // Esc는 이름 바꾸기만 접고 창은 닫지 않는다
   await input.press('Escape');
@@ -172,7 +181,7 @@ test('편집을 누를 때만 이름 바꾸기와 지우기가 나타나고 빈 
   await dialog.getByRole('textbox').press('Enter');
   await expect(dialog.getByText('토요반')).toBeVisible();
   await expect(dialog.getByRole('textbox')).toHaveCount(0);
-  await expect.poll(async () => (await saved()).timetables[1]!.name).toBe('토요반');
+  await expect.poll(async () => (await savedTimetables())[1]!.name).toBe('토요반');
 
   await dialog.getByRole('button', { name: '완료' }).click();
   await expect(dialog.getByRole('button', { name: /이름 바꾸기/ })).toHaveCount(0);
@@ -192,7 +201,7 @@ test('배정되지 않은 시간표는 바로 지워지고 알림의 되돌리�
   /** 되돌리기 알림. */
   const toast = page.getByRole('status').filter({ hasText: "'반1' 시간표를 지웠어요" });
   await expect(toast).toBeVisible();
-  expect((await saved()).timetables.map((t) => t.id)).toEqual(['t0', 't2']);
+  expect((await savedTimetables()).map((t) => t.id)).toEqual(['t0', 't2']);
 
   // 4초가 지나도 남는다
   await page.waitForTimeout(4500);
@@ -202,7 +211,7 @@ test('배정되지 않은 시간표는 바로 지워지고 알림의 되돌리�
   await toast.getByRole('button', { name: '되돌리기' }).focus();
   await page.keyboard.press('Enter');
   await expect(dialog.getByText('반1', { exact: true })).toBeVisible();
-  await expect.poll(async () => (await saved()).timetables.map((t) => t.id)).toEqual(['t0', 't1', 't2']);
+  await expect.poll(async () => (await savedTimetables()).map((t) => t.id)).toEqual(['t0', 't1', 't2']);
   await expect(toast).toBeHidden();
 
   // 되돌렸다는 성공 알림은 4초 뒤에 사라진다
@@ -231,11 +240,8 @@ test('다른 일을 하면 되돌리기 알림이 사라진다', async () => {
 });
 
 test('배정된 시간표를 지우려 하면 영향받는 요일을 보여 주는 확인 모달이 뜨고 기본 초점은 취소다', async () => {
-  await seed(2);
-  // 반0을 월요일에 더해 토요일에도 배정한다
-  const data = await saved();
-  data.weekdays.sat = 't0';
-  await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
+  // 반0은 월요일과 토요일에 배정한다
+  await seed(2, ['mon', 'sat']);
   await launch();
 
   await page.getByRole('button', { name: /시간표 고르기/ }).click();
@@ -253,14 +259,14 @@ test('배정된 시간표를 지우려 하면 영향받는 요일을 보여 주�
   await page.keyboard.press('Escape');
   await expect(confirm).toBeHidden();
   await expect(page.getByRole('dialog', { name: '시간표 편집' })).toBeVisible();
-  expect((await saved()).timetables).toHaveLength(2);
+  expect((await savedTimetables())).toHaveLength(2);
 
   // 지우면 그 요일은 없음이 된다
   await page.getByRole('dialog').getByRole('button', { name: "'반0' 지우기" }).click();
   await confirm.getByRole('button', { name: '시간표 지우기' }).click();
   await expect(confirm).toBeHidden();
-  await expect.poll(async () => (await saved()).weekdays).toMatchObject({ mon: null, sat: null });
-  expect((await saved()).timetables.map((t) => t.id)).toEqual(['t1']);
+  await expect.poll(async () => (await savedTimetables()).flatMap((t) => t.days)).toEqual([]);
+  expect((await savedTimetables()).map((t) => t.id)).toEqual(['t1']);
   // 배정된 시간표를 지울 때는 되돌리기 알림이 없다
   await expect(page.getByRole('status')).toHaveCount(0);
   // 지운 뒤에도 초점은 모달 안에 있다
@@ -325,5 +331,5 @@ test('저장에 실패하면 실패 알림이 뜨고 바꾼 내용은 화면에 
   await chmod(dataDir, 0o755);
   await page.getByRole('button', { name: /시간표 고르기/ }).click();
   await page.getByRole('dialog').locator('.timetable-option--new').click();
-  await expect.poll(async () => (await saved()).timetables.length).toBe(2);
+  await expect.poll(async () => (await savedTimetables()).length).toBe(2);
 });

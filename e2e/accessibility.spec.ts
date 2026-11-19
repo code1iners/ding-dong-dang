@@ -2,8 +2,8 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
-import { emptyData, type Data } from '../src/shared/data';
-import { assignWeekday, createTimetable, setPeriods } from '../src/shared/timetable-ops';
+import type { Data } from '../src/shared/data';
+import { dataWith, timetablesOf } from './timetable-fixture';
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -17,14 +17,18 @@ const at = (h: number, m: number): number => h * 60 + m;
 
 /** 모든 화면의 모든 부품이 나오도록 채운 저장 파일: 시간표 둘(하나는 월요일에 배정), 등록한 종소리 하나. */
 async function seedFull(): Promise<void> {
-  let data = createTimetable(emptyData(), 't0', 'mon');
-  data = createTimetable(data, 't1');
-  data = assignWeekday(data, 'wed', 't0');
-  data = setPeriods(data, 't0', [
-    { start: at(9, 0), end: at(9, 45) },
-    { start: at(9, 55), end: at(10, 40) },
+  const data = dataWith([
+    {
+      id: 't0',
+      name: '평일반',
+      days: ['mon', 'wed'],
+      periods: [
+        { start: at(9, 0), end: at(9, 45) },
+        { start: at(9, 55), end: at(10, 40) },
+      ],
+    },
+    { id: 't1', name: '토요반', days: [], periods: [] },
   ]);
-  data.timetables = data.timetables.map((t, i) => ({ ...t, name: i === 0 ? '평일반' : '토요반' }));
   data.sounds = [{ id: 'mine', name: '내 종소리', file: 'mine.wav' }];
   data.settings = { ...data.settings, hideNoticeShown: true };
   await mkdir(join(dataDir, 'sounds'), { recursive: true });
@@ -196,7 +200,7 @@ test('키보드만으로 시간표를 만들고 수업 시간을 저장하고 �
   await expect(page.getByRole('status').filter({ hasText: '수업 시간을 저장했어요' })).toBeVisible();
   /** 저장된 파일. */
   const saved = JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data;
-  expect(saved.timetables[0]?.periods).toEqual([{ start: at(8, 50), end: at(9, 35) }]);
+  expect(timetablesOf(saved)[0]?.periods).toEqual([{ start: at(8, 50), end: at(9, 35) }]);
 
   // 다른 요일 동그라미를 키보드로 고르고(눌림 상태가 바뀐다) 시간표를 배정한다
   const tuesday = page.getByRole('button', { name: /^화요일 · / });
@@ -208,8 +212,8 @@ test('키보드만으로 시간표를 만들고 수업 시간을 저장하고 �
   await focusByTab(dialog.locator('.timetable-list').getByRole('button', { name: '새 시간표' }));
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);
-  expect(((JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).weekdays as Record<string, string | null>).tue).toBe(
-    saved.timetables[0]?.id,
+  expect(timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).find((t) => t.days.includes('tue'))?.id).toBe(
+    timetablesOf(saved)[0]?.id,
   );
 });
 
@@ -251,7 +255,7 @@ test('키보드만으로 시작종을 바꾸고 설정의 스위치와 슬라이
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(wipe).toBeFocused();
   // 지워지지 않았다
-  expect((JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data).timetables).toHaveLength(2);
+  expect(timetablesOf(JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')) as Data)).toHaveLength(2);
 });
 
 test('모든 화면과 모달에서 Tab이 닿는 부품마다 초점 표시가 보이고, 모달 안에서는 초점이 모달 밖으로 나가지 않는다', async () => {
