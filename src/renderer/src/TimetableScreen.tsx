@@ -93,6 +93,7 @@ function TimetableCard({ timetable, active, onOpen }: { timetable: Timetable; ac
  * 시간표가 하나도 없으면 같은 격자의 첫 칸에 카드 하나 크기의 빈 상태를 보여 준다.
  */
 export function TimetableScreen({ timetables, activeTimetable, dogTheme, toasts, registerGuard, onDirtyChange }: Props) {
+  /** 만들기 · 지우기 결과를 알리는 함수. */
   const { notify } = toasts;
   /** 상세로 연 시간표 id. 목록이면 null이다. */
   const [openId, setOpenId] = useState<string | null>(null);
