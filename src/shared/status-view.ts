@@ -50,9 +50,12 @@ export function ringDogAction(kind: StatusKind, { ringing, petted }: { ringing: 
 }
 
 /**
- * 동작을 그리는 횟수(초당). 평소 · 졸림은 느리게 움직여 초당 4번, 그 밖은 24번이다(스펙 "돌아다니는 강아지").
- * 화면 주사율에 맞춘 그리기를 쓰지 않아 CPU를 아낀다. 창 안의 강아지와 돌아다니는 강아지가 같이 쓴다.
+ * 동작을 그리는 횟수(초당). 평소 · 졸림을 포함한 모든 동작이 60번이다(시간표 다시 만들기 스펙 "강아지 그리는 횟수").
+ * 화면 주사율에 맞춘 그리기는 쓰지 않고 타이머로 정한다. 창 안의 강아지와 돌아다니는 강아지가 같이 쓴다.
  */
 export function framesPerSecond(action: DogAction): number {
-  return action === 'idle' || action === 'sleepy' ? 4 : 24;
+  return FRAMES_PER_SECOND[action];
 }
+
+/** 동작마다 그리는 횟수. 동작을 더하면 여기도 정해야 컴파일된다. */
+const FRAMES_PER_SECOND: Record<DogAction, number> = { idle: 60, happy: 60, sleepy: 60, move: 60, drag: 60, fall: 60 };

@@ -26,12 +26,25 @@ test.afterEach(async () => {
   await rm(dataDir, { recursive: true, force: true });
 });
 
+/**
+ * 앱 창(index.html)의 화면을 잡는다. 숨긴 종 재생기 창(bell.html)이 같은 때에 만들어져 `firstWindow()`가 그쪽을 먼저 돌려주는 일이 있어,
+ * 그러면 `.ring-dog`가 없는 화면을 기다리다 시간이 초과된다.
+ */
+async function appPage(launched: ElectronApplication): Promise<Page> {
+  /** 앱 창인지 가리는 주소 조건. */
+  const isAppPage = (candidate: Page) => candidate.url().endsWith('/index.html');
+  /** 이미 떠 있는 창 가운데 앱 창. 화면을 아직 불러오지 않아 주소가 비어 있는 창은 건너뛴다. */
+  const open = launched.windows().find(isAppPage);
+  if (open) return open;
+  return launched.waitForEvent('window', { predicate: isAppPage });
+}
+
 /** 저장 파일을 쓰고 앱을 띄운다. */
 async function launch(patch: Partial<Data> = {}): Promise<void> {
   const data: Data = { ...emptyData(), ...patch, settings: { ...emptyData().settings, hideNoticeShown: true, ...patch.settings } };
   await writeFile(join(dataDir, 'data.json'), JSON.stringify(data));
   app = await electron.launch({ args: [resolve(__dirname, '..'), `--data-dir=${dataDir}`] });
-  page = await app.firstWindow();
+  page = await appPage(app);
 }
 
 /** 고리 안 강아지의 그림 칸. */
@@ -143,7 +156,7 @@ test('강아지는 움직이고, OS의 동작 줄이기가 켜져 있으면 멈�
   await launch();
   /** 고리 안 강아지 그림의 모든 transform을 이은 글. */
   const pose = () => ringDog().evaluate((el) => [...el.querySelectorAll('[transform]')].map((e) => e.getAttribute('transform')).join('|'));
-  // 평소는 초당 4번 그리므로 1초 안에 자세가 바뀐다
+  // 평소도 그리는 중이므로 1초 안에 자세가 바뀐다
   const first = await pose();
   await expect.poll(pose, { timeout: 2_000 }).not.toBe(first);
 
@@ -249,7 +262,7 @@ test('설정에서 테마를 바꾸면 고리 안 강아지가 바뀌고, 앱을
 
   // 저장 파일을 건드리지 않고 같은 데이터 폴더로 다시 띄운다
   app = await electron.launch({ args: [resolve(__dirname, '..'), `--data-dir=${dataDir}`] });
-  page = await app.firstWindow();
+  page = await appPage(app);
   await expect(ringDog()).toHaveAttribute('data-dog-theme', 'bucktooth');
   await openSettings();
   await expect(page.getByRole('radio', { name: '뻐드렁니 강아지' })).toHaveAttribute('aria-checked', 'true');
