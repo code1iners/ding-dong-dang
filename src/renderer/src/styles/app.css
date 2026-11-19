@@ -659,6 +659,47 @@ button.tcard--new:focus-visible {
   white-space: nowrap;
 }
 
+/* "🔔 쓰는 중" 표시: 초록 알약에 글자 색. 높이 28이 카드 이름 줄 높이다 */
+.badge {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--color-green);
+  color: var(--color-ink);
+  font-size: var(--font-size-1);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.badge .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* "이 시간표 쓰기"를 누른 뒤 초점이 이 표시로 옮겨 온다 */
+.badge:focus-visible {
+  outline: var(--focus-ring) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* 쓰는 시간표 카드는 글자 색 3px 테두리로 굵게 두른다 */
+button.tcard--active {
+  box-shadow:
+    0 var(--band-height) 0 var(--band),
+    inset 0 0 0 3px var(--color-ink);
+}
+
+button.tcard--active:focus-visible {
+  box-shadow:
+    0 var(--band-height) 0 var(--band),
+    inset 0 0 0 3px var(--color-ink),
+    0 0 0 var(--focus-ring) var(--color-focus),
+    0 var(--band-height) 0 var(--focus-ring) var(--color-focus);
+}
+
 /* 요일 동그라미 일곱: 쓰는 요일은 시간표 색 면과 글자 색 테두리, 안 쓰는 요일은 점선 테두리 */
 .mini-days {
   display: flex;
@@ -743,6 +784,23 @@ button.tcard--new:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+/* 위 줄 오른쪽: 쓰는 시간표 동작과 "시간표 지우기". 작은 단추는 아래 띠만큼 띄워 왼쪽 링크와 가운데를 맞춘다 */
+.timetable-detail__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.timetable-detail__actions .button--sm {
+  margin-bottom: var(--band-height);
+}
+
+/* 빨간 글자의 작은 단추. 옅은 면 위 빨강 글자 대비는 design-contrast 테스트가 지킨다 */
+.button--red-text {
+  color: var(--color-red);
 }
 
 /* "← 시간표 목록". 바탕 위라 링크 색(대비 3.9:1) 대신 글자 색을 쓴다 */

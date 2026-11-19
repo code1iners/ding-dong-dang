@@ -138,6 +138,17 @@ function TimetableName({ timetable, start }: { timetable: Timetable; start: bool
   );
 }
 
+/** "🔔 쓰는 중" 표시. 시간표가 둘 이상일 때만 쓰는 시간표의 카드와 상세 위 줄에 단다. */
+export function ActiveBadge({ focusTarget = false }: { focusTarget?: boolean }) {
+  // 상세에서 "이 시간표 쓰기"를 누르면 단추가 이 표시로 바뀌므로, 초점을 받아 둘 수 있게 한다(Tab 순서에는 들지 않는다)
+  return (
+    <span className="badge" tabIndex={focusTarget ? -1 : undefined} data-active-badge={focusTarget || undefined}>
+      <ActionIcon name="bell" />
+      쓰는 중
+    </span>
+  );
+}
+
 /**
  * 저장하지 않고 떠나려는 길을 막는 손잡이. 바꾼 것이 없으면 바로 `proceed`를 부르고,
  * 초안이 있으면 확인 창으로 묻고 사용자가 허락한 뒤에 부른다.
@@ -171,6 +182,12 @@ function errorText(slots: readonly DraftSlot[], error: SlotError): string {
 
 type Props = {
   timetable: Timetable;
+  /** 이 시간표가 쓰는 시간표인지. */
+  isActive: boolean;
+  /** 쓰는 시간표 동작("쓰는 중" 표시나 "이 시간표 쓰기")을 보여 줄지. 시간표가 둘 이상일 때만이다. */
+  showActive: boolean;
+  /** 하나뿐인 시간표인지. 지우면 종이 멈춘다고 알린다. */
+  isOnly: boolean;
   /** 시계판 가운데 강아지의 테마 id. */
   dogTheme: string;
   /** "저장했어요" 알림을 띄우고, 고치기 시작하면 종소리 되돌리기 알림을 거둔다. */
@@ -181,6 +198,8 @@ type Props = {
   registerGuard(guard: LeaveGuard | null): void;
   /** 초안이 생기거나 사라질 때 앱에 알린다. */
   onDirtyChange(dirty: boolean): void;
+  /** 시간표를 지운 뒤. 초안은 묻지 않고 버린다. 받은 이름으로 알리고 목록으로 돌아간다. */
+  onDeleted(name: string): void;
 };
 
 /**
@@ -188,7 +207,18 @@ type Props = {
  * 왼쪽 카드는 이름, 시간대 탭, 고른 시간대의 요일 동그라미, 시계판이고, 오른쪽 카드는 고른 시간대의 수업 시간과 "되돌리기" · "저장"이다.
  * 요일 켜고 끄기, 시간대 더하기 · 지우기, 수업 시간 고치기는 초안에 쌓였다가 "저장" 한 번으로 시간대 저장에 반영된다.
  */
-export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerGuard, onDirtyChange }: Props) {
+export function TimetableDetail({
+  timetable,
+  isActive,
+  showActive,
+  isOnly,
+  dogTheme,
+  toasts,
+  onBack,
+  registerGuard,
+  onDirtyChange,
+  onDeleted,
+}: Props) {
   /** 저장하지 않은 시간대 목록. 바꾼 것이 없으면 null이다. */
   const [draft, setDraft] = useState<readonly DraftSlot[] | null>(null);
   /** 고른 시간대의 번호. 시간대가 줄면 마지막 시간대로 당겨 쓴다. */
@@ -197,6 +227,12 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
   const [pendingLeave, setPendingLeave] = useState<{ proceed: () => void } | null>(null);
   /** 저장하는 중인지. 두 번 누르지 않게 한다. */
   const [saving, setSaving] = useState(false);
+  /** 지우기 확인 창이 떠 있는지. */
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /** 지우는 중인지. 두 번 누르지 않게 한다. */
+  const [deleting, setDeleting] = useState(false);
+  /** 쓰는 시간표로 정하는 중인지. 두 번 눌러 알림이 겹치지 않게 한다. */
+  const [activating, setActivating] = useState(false);
   /** 새로 더한 줄의 key. 그 줄이 그려지면 시작 시각 칸으로 초점을 보내고 비운다. */
   const focusKey = useRef<number | null>(null);
   /** 시간대를 더하거나 지운 뒤 초점을 둘 요소의 선택자. 그려지면 초점을 주고 비운다. */
@@ -292,7 +328,7 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
     }
   }
 
-  // 새로 더한 줄이 그려지면 그 줄의 시작 시각 칸으로, 시간대를 더하거나 지웠으면 정한 요소로 초점을 보낸다
+  // 새로 더한 줄이 그려지면 그 줄의 시작 시각 칸으로, 시간대를 더하거나 지웠거나 쓰는 시간표가 됐으면 정한 요소로 초점을 보낸다
   useEffect(
     function focusAfterEdit() {
       if (focusKey.current !== null) {
@@ -300,12 +336,46 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
         focusKey.current = null;
       }
       if (focusAfter.current !== null) {
-        document.querySelector<HTMLElement>(focusAfter.current)?.focus();
-        focusAfter.current = null;
+        /** 초점을 받을 요소. "쓰는 중" 표시는 메인의 새 상태가 와야 그려지므로, 없으면 다음 그리기에서 다시 찾는다. */
+        const target = document.querySelector<HTMLElement>(focusAfter.current);
+        if (target) {
+          target.focus();
+          focusAfter.current = null;
+        }
       }
     },
-    [draft, slotIndex],
+    [draft, slotIndex, isActive],
   );
+
+  /**
+   * 이 시간표를 쓰는 시간표로 바로 저장한다. 초안은 건드리지 않고 그대로 남는다.
+   * 단추가 "쓰는 중" 표시로 바뀌므로 초점을 그 표시로 옮긴다.
+   */
+  async function activate(): Promise<void> {
+    if (activating) return;
+    setActivating(true);
+    // 새 상태가 명령의 답보다 먼저 올 수 있어 보내기 전에 정해 둔다
+    focusAfter.current = '[data-active-badge]';
+    /** 메인의 저장 결과. */
+    const result = await send({ type: 'set-active-timetable', id: timetable.id });
+    setActivating(false);
+    if (!result.ok) {
+      focusAfter.current = null;
+      return;
+    }
+    toasts.notify({ key: 'timetable-activated', kind: 'success', text: `이제 '${timetable.name}' 시간표로 종이 울려요` });
+  }
+
+  /** 확인 창의 "시간표 지우기": 바로 지우고 목록으로 돌아간다. 초안은 시간표와 함께 버린다. 실패하면 창만 닫고 남는다. */
+  async function confirmDelete(): Promise<void> {
+    if (deleting) return;
+    setDeleting(true);
+    /** 메인의 저장 결과. */
+    const result = await send({ type: 'delete-timetable', id: timetable.id });
+    setDeleting(false);
+    setConfirmingDelete(false);
+    if (result.ok) onDeleted(timetable.name);
+  }
 
   /** 떠나기 전에 묻는다. 바꾼 것이 없으면 바로 간다. */
   const requestLeave: LeaveGuard = (proceed) => {
@@ -375,6 +445,25 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
           <ActionIcon name="left" />
           시간표 목록
         </button>
+        <div className="timetable-detail__actions">
+          {showActive &&
+            (isActive ? (
+              <ActiveBadge focusTarget />
+            ) : (
+              <button type="button" className="button button--ghost button--sm" onClick={() => void activate()}>
+                <ActionIcon name="bell" />이 시간표 쓰기
+              </button>
+            ))}
+          <button
+            type="button"
+            className="button button--ghost button--sm button--red-text"
+            aria-label={`'${timetable.name}' 시간표 지우기`}
+            onClick={() => setConfirmingDelete(true)}
+          >
+            <ActionIcon name="bin" />
+            시간표 지우기
+          </button>
+        </div>
       </div>
       <div className="timetable-detail__cols">
         <section className="card card--dial timetable-left" aria-label={`'${timetable.name}' 이름과 요일`}>
@@ -501,6 +590,25 @@ export function TimetableDetail({ timetable, dogTheme, toasts, onBack, registerG
           </div>
         </section>
       </div>
+
+      {confirmingDelete && (
+        <Modal title={`'${timetable.name}' 시간표를 지울까요?`} onClose={() => setConfirmingDelete(false)}>
+          <p>
+            {isActive || isOnly
+              ? '지금 종이 울리는 시간표예요. 지우면 다른 시간표를 쓰기 전까지 종이 울리지 않아요.'
+              : '지운 시간표는 되돌릴 수 없어요.'}
+          </p>
+          <div className="modal__actions">
+            {/* 되돌릴 수 없는 일이라 처음 초점은 "취소"다 */}
+            <button type="button" className="button button--ghost" data-autofocus onClick={() => setConfirmingDelete(false)}>
+              취소
+            </button>
+            <button type="button" className="button button--red" disabled={deleting} onClick={() => void confirmDelete()}>
+              시간표 지우기
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {pendingLeave && (
         <Modal title="바꾼 내용을 저장할까요?" width={440} onClose={() => setPendingLeave(null)}>

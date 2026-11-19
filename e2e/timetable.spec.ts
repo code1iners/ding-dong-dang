@@ -5,7 +5,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { emptyData, type Data } from '../src/shared/data';
 import { dataWith, timetablesOf, version1Data, weekdayOf, type TimetableSpec } from './timetable-fixture';
 
-// 시간표 화면의 목록(카드) · 만들기 · 상세와 저장 파일. 상세 편집은 period-editing.spec.ts가, 쓰는 시간표 바꾸기 · 지우기 흐름은 06 티켓이 이 파일에 더한다.
+// 시간표 화면의 목록(카드) · 만들기 · 상세 · 쓰는 시간표 바꾸기 · 지우기와 저장 파일. 상세 편집은 period-editing.spec.ts가 맡는다.
 
 /** 이 파일의 테스트가 쓰는 데이터 폴더. 테스트마다 새로 만든다. */
 let dataDir: string;
@@ -369,6 +369,11 @@ test('창 920 × 580과 1000에서 이름 창과 상세 뼈대가 창 안에 있
       days: [],
       periods: [],
     },
+    {
+      name: '2026 겨울방학 애견미용 집중 특강반 오후 중등부',
+      days: [],
+      periods: [],
+    },
   ]);
   await launch();
   for (const [width, height] of [
@@ -396,6 +401,188 @@ test('창 920 × 580과 1000에서 이름 창과 상세 뼈대가 창 안에 있
     expect(bar.y + bar.height).toBeLessThanOrEqual(card.y);
     expect(card.y + card.height).toBeLessThanOrEqual(height);
     expect(pen.x + pen.width).toBeLessThanOrEqual(card.x + card.width);
+    await expectBarFits(width);
+    await backButton().click();
+    // 쓰는 시간표가 아닌 시간표는 "이 시간표 쓰기" 단추가 나와 위 줄이 더 길다
+    await cards().nth(1).click();
+    await expect(page.getByRole('button', { name: '이 시간표 쓰기' })).toBeVisible();
+    await expectBarFits(width);
     await backButton().click();
   }
+});
+
+/** 상세 위 줄의 왼쪽 링크와 오른쪽 동작이 창 안에 한 줄로 있고 서로 겹치지 않으며, 단추 글자가 잘리지 않는다. */
+async function expectBarFits(width: number): Promise<void> {
+  const back = (await backButton().boundingBox())!;
+  const actions = (await page.locator('.timetable-detail__actions').boundingBox())!;
+  expect(back.x + back.width).toBeLessThanOrEqual(actions.x);
+  expect(actions.x + actions.width).toBeLessThanOrEqual(width);
+  expect(Math.abs(back.y + back.height / 2 - (actions.y + actions.height / 2))).toBeLessThan(8);
+  const clipped = await page
+    .locator('.timetable-detail__actions > *')
+    .evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).length);
+  expect(clipped).toBe(0);
+}
+
+/** 요일 키의 화면 이름. 상세의 요일 동그라미 이름이다. */
+const WEEKDAY_NAME: Record<string, string> = {
+  mon: '월요일',
+  tue: '화요일',
+  wed: '수요일',
+  thu: '목요일',
+  fri: '금요일',
+  sat: '토요일',
+  sun: '일요일',
+};
+
+/** 왼쪽 세로 줄의 화면 단추. */
+const railButton = (name: string) => page.getByRole('navigation', { name: '화면' }).getByRole('button', { name, exact: true });
+
+/** 현황 화면 오늘 교시의 도장 수. */
+const pawCount = () => page.getByRole('list', { name: '오늘 교시' }).getByRole('listitem').count();
+
+/** 지우기 확인 창. */
+const deleteDialog = (name: string) => page.getByRole('dialog', { name: `'${name}' 시간표를 지울까요?` });
+
+test('두 번째 시간표를 만들면 쓰는 중 표시가 생기고, "이 시간표 쓰기"로 표시가 옮겨 가며 초안은 그대로이고 종과 현황이 새 시간표를 따른다', async () => {
+  /** 오늘 요일. 현황의 도장 수로 종이 어느 시간표를 따르는지 본다. */
+  const today = weekdayOf();
+  await seed([
+    {
+      id: 'weekday',
+      name: '평일반',
+      days: [today],
+      periods: [
+        { start: at(9, 0), end: at(9, 50) },
+        { start: at(10, 0), end: at(10, 50) },
+      ],
+    },
+  ]);
+  await launch();
+  await expect(page.getByText('쓰는 중')).toHaveCount(0);
+
+  // 두 번째 시간표를 만들면 상세에 "이 시간표 쓰기"가, 목록의 쓰는 시간표 카드에 표시와 굵은 테두리가 생긴다
+  await page.getByRole('button', { name: '새 시간표' }).click();
+  await createDialog().getByRole('textbox', { name: '이름' }).fill('토요반');
+  await createDialog().getByRole('button', { name: '만들기' }).click();
+  const activate = page.getByRole('button', { name: '이 시간표 쓰기' });
+  await expect(activate).toBeVisible();
+  await expect(page.locator('.timetable-detail .badge')).toHaveCount(0);
+  await backButton().click();
+  await expect(cards().nth(0)).toHaveClass(/tcard--active/);
+  await expect(cards().nth(0).locator('.badge')).toHaveText('쓰는 중');
+  await expect(cards().nth(1)).not.toHaveClass(/tcard--active/);
+  await expect(cards().nth(1).locator('.badge')).toHaveCount(0);
+  // 표시가 있어도 없어도 요일 줄 높이가 같다
+  const daysTop = await cards().evaluateAll((els) =>
+    els.map((el) => Math.round(el.querySelector('.mini-days')!.getBoundingClientRect().top)),
+  );
+  expect(new Set(daysTop).size).toBe(1);
+  // 쓰는 시간표의 상세에는 단추 대신 표시가 있다
+  await cards().nth(0).click();
+  await expect(page.locator('.timetable-detail__actions .badge')).toHaveText('쓰는 중');
+  await expect(activate).toHaveCount(0);
+  await backButton().click();
+
+  // 토요반에 오늘 요일과 수업 시간 하나를 초안으로 둔 채 "이 시간표 쓰기"를 누른다
+  await cards().nth(1).click();
+  await page.getByRole('group', { name: '이 시간대를 쓰는 요일' }).getByRole('button', { name: WEEKDAY_NAME[today] }).click();
+  await page.getByRole('button', { name: '수업 시간', exact: true }).click();
+  await activate.click();
+  await expect(page.getByRole('status').filter({ hasText: "이제 '토요반' 시간표로 종이 울려요" })).toBeVisible();
+  const badge = page.locator('.timetable-detail__actions .badge');
+  await expect(badge).toHaveText('쓰는 중');
+  await expect(badge).toBeFocused();
+  // 쓰는 시간표만 저장되고 초안은 저장되지 않은 채 남는다
+  await expect.poll(async () => (await saved()).activeTimetable).not.toBe('weekday');
+  const saturday = timetablesOf(await saved()).find((t) => t.name === '토요반')!;
+  expect(saturday.active).toBe(true);
+  expect(saturday.slots).toEqual([{ days: [], periods: [] }]);
+  await expect(page.getByRole('button', { name: '저장', exact: true })).toHaveAttribute('aria-disabled', 'false');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect.poll(async () => timetablesOf(await saved()).find((t) => t.name === '토요반')!.days).toEqual([today]);
+
+  // 표시가 토요반 카드로 옮겨 간다
+  await backButton().click();
+  await expect(cards().nth(0)).not.toHaveClass(/tcard--active/);
+  await expect(cards().nth(1)).toHaveClass(/tcard--active/);
+  await expect(cards().nth(1).locator('.badge')).toHaveText('쓰는 중');
+
+  // 현황은 토요반의 이름과 수업 시간 하나를 따른다
+  await railButton('현황').click();
+  await expect(page.locator('.status__timetable')).toHaveText('쓰는 시간표 토요반');
+  await expect.poll(pawCount).toBe(1);
+});
+
+test('지우기는 항상 확인 창을 거치고, 쓰는 시간표를 지우면 다른 시간표로 넘기지 않고 종이 멈추며, 하나 남으면 쓰는 중 표시가 사라진다', async () => {
+  await seed([
+    {
+      id: 'weekday',
+      name: '평일반',
+      days: [weekdayOf()],
+      periods: [{ start: at(9, 0), end: at(9, 50) }],
+    },
+    { id: 'saturday', name: '토요반', days: ['sat'], periods: [] },
+    { id: 'vacation', name: '방학 특강', days: [], periods: [] },
+  ]);
+  await launch();
+
+  // 쓰는 시간표가 아닌 시간표: "취소"에 초점이 있고 "취소"로 닫으면 남는다
+  await cards().nth(2).click();
+  const remove = page.getByRole('button', {
+    name: "'방학 특강' 시간표 지우기",
+  });
+  await expect(remove).toHaveText('시간표 지우기');
+  await remove.click();
+  const vacationDialog = deleteDialog('방학 특강');
+  await expect(vacationDialog).toContainText('지운 시간표는 되돌릴 수 없어요.');
+  await expect(vacationDialog.getByRole('button', { name: '취소' })).toBeFocused();
+  await vacationDialog.getByRole('button', { name: '취소' }).click();
+  await expect(vacationDialog).toBeHidden();
+  await expect(remove).toBeFocused();
+  expect(timetablesOf(await saved())).toHaveLength(3);
+  // 확인하면 지우고 목록으로 돌아가며, 되돌리기는 없다
+  await remove.click();
+  await vacationDialog.getByRole('button', { name: '시간표 지우기' }).click();
+  const deletedToast = page.getByRole('status').filter({ hasText: "'방학 특강' 시간표를 지웠어요" });
+  await expect(deletedToast).toBeVisible();
+  await expect(deletedToast.getByRole('button', { name: '되돌리기' })).toHaveCount(0);
+  await expect(cards()).toHaveCount(2);
+  await expect(cards().first()).toBeFocused();
+  await expect.poll(async () => timetablesOf(await saved()).map((t) => t.name)).toEqual(['평일반', '토요반']);
+  await expect(cards().nth(0).locator('.badge')).toHaveText('쓰는 중');
+
+  // 쓰는 시간표: 저장 안 한 초안이 있어도 묻지 않고 초안과 함께 지운다
+  await cards().nth(0).click();
+  await page.getByRole('group', { name: '이 시간대를 쓰는 요일' }).getByRole('button', { name: '일요일' }).click();
+  await page.getByRole('button', { name: "'평일반' 시간표 지우기" }).click();
+  const weekdayDialog = deleteDialog('평일반');
+  await expect(weekdayDialog).toContainText('지금 종이 울리는 시간표예요. 지우면 다른 시간표를 쓰기 전까지 종이 울리지 않아요.');
+  await weekdayDialog.getByRole('button', { name: '시간표 지우기' }).click();
+  await expect(page.getByRole('status').filter({ hasText: "'평일반' 시간표를 지웠어요" })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(cards()).toHaveCount(1);
+  // 남은 토요반으로 넘기지 않고, 하나 남았으니 쓰는 중 표시도 없다
+  await expect.poll(async () => (await saved()).activeTimetable).toBeNull();
+  expect(
+    timetablesOf(await saved()).map((t) => ({
+      name: t.name,
+      active: t.active,
+      days: t.days,
+    })),
+  ).toEqual([{ name: '토요반', active: false, days: ['sat'] }]);
+  await expect(page.getByText('쓰는 중')).toHaveCount(0);
+  await expect(cards().first()).not.toHaveClass(/tcard--active/);
+
+  // 하나뿐인 시간표는 쓰는 시간표가 아니어도 종이 멈춘다고 알린다
+  await cards().first().click();
+  await page.getByRole('button', { name: "'토요반' 시간표 지우기" }).click();
+  await expect(deleteDialog('토요반')).toContainText('지금 종이 울리는 시간표예요.');
+  await page.keyboard.press('Escape');
+  await expect(deleteDialog('토요반')).toBeHidden();
+
+  // 쓰는 시간표가 없으니 현황은 "시간표 없음" 상태다
+  await railButton('현황').click();
+  await expect(page.getByText('시간표를 만들어 주세요')).toBeVisible();
+  await expect(page.locator('.status__timetable')).toHaveCount(0);
 });
