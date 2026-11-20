@@ -66,6 +66,8 @@ const ACTION_ICONS = {
   down: { width: 3, shape: <path d="M6 9.5l6 6 6-6" /> },
   right: { width: 3, shape: <path d="M5 12h14M13 6l6 6-6 6" /> },
   left: { width: 3, shape: <path d="M19 12H5M11 6l-6 6 6 6" /> },
+  // 앱 밖(브라우저)으로 나가는 단추에 붙인다
+  external: { width: 2.4, shape: <path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5" /> },
 } satisfies Record<string, { width: number; shape: ReactNode }>;
 
 /** 동작 아이콘 이름. */

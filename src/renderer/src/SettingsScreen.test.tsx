@@ -116,10 +116,10 @@ describe('설정 화면의 버전 줄', () => {
   const versionRow = (status: UpdateStatus, locked = false) =>
     rowOf(render({ update: { status, installFailures: 0, justUpdated: null }, updateTiming: { ...UNLOCKED, locked } }), 'setting-version');
 
-  it('"모든 데이터" 바로 위에 있다', () => {
+  it('"의견 보내기" 바로 위에 있다', () => {
     /** 줄 이름의 차례. */
     const labels = [...render().matchAll(/id="(setting-[a-z-]+)"/g)].map((m) => m[1]);
-    expect(labels.slice(-2)).toEqual(['setting-version', 'setting-wipe']);
+    expect(labels.slice(-3)).toEqual(['setting-version', 'setting-feedback', 'setting-wipe']);
   });
 
   it('새 버전이 없으면 지금 버전과 "최신이에요"만 있고 단추가 없다', () => {
@@ -184,5 +184,16 @@ describe('왼쪽 설정 단추의 주황 점', () => {
     const button = settingsButton(false);
     expect(button).not.toContain('rail-button__dot');
     expect(button).toContain('aria-label="설정"');
+  });
+});
+
+describe('설정 화면의 의견 보내기 줄', () => {
+  it('"모든 데이터" 바로 위에 있고, 단추가 대상을 담은 이름으로 읽힌다', () => {
+    const html = render();
+    const row = rowOf(html, 'setting-feedback');
+    expect(row).toContain('의견 보내기');
+    expect(row).toContain('버그나 불편한 점');
+    expect(row).toContain('aria-label="의견 보내기 폼 열기"');
+    expect(row).toContain('보내기');
   });
 });

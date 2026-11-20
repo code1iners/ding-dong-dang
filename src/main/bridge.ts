@@ -86,6 +86,8 @@ export function parseCommand(raw: unknown): Command | null {
       return typeof value.on === 'boolean' ? { type: 'set-auto-start', on: value.on } : null;
     case 'open-auto-start-help':
       return { type: 'open-auto-start-help' };
+    case 'open-feedback-form':
+      return { type: 'open-feedback-form' };
     case 'confirm-hide':
       return { type: 'confirm-hide' };
     case 'dismiss-hide-notice':

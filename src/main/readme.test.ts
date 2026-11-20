@@ -29,7 +29,7 @@ describe('README 링크', () => {
   });
 
   it('요구된 절이 모두 있다', () => {
-    for (const h of ['내려받기', 'Windows에 설치하기', '차단 화면이 뜨면 (Smart App Control)', 'Mac에 설치하기', '업데이트', '그 밖의 안내', '개발자용']) {
+    for (const h of ['내려받기', 'Windows에 설치하기', '차단 화면이 뜨면 (Smart App Control)', 'Mac에 설치하기', '업데이트', '그 밖의 안내', '의견 보내기', '개발자용']) {
       expect(anchors).toContain(anchorOf(h));
     }
     expect(readme.indexOf('## 개발자용')).toBeGreaterThan(readme.indexOf('## 그 밖의 안내'));

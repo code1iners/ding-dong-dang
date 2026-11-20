@@ -25,6 +25,7 @@ import { validateSlots } from '../shared/timetable-validation';
 import { updateTimingAt } from '../shared/update';
 import { APP_ID } from './app-identity';
 import { AUTO_START_HELP_URL, electronLoginItem, inertLoginItem, isRegistered, launchedByAutoStart, reconcileAutoStart } from './auto-start';
+import { feedbackFormUrl } from './feedback-form';
 import { openBellPlayer, type BellPlayer } from './bell-player';
 import { openBridge } from './bridge';
 import { DEFAULT_DATA_DIR_NAME, dataDirFromArgv } from './data-dir';
@@ -311,6 +312,12 @@ void app.whenReady().then(() => {
           break;
         case 'open-auto-start-help':
           void shell.openExternal(AUTO_START_HELP_URL);
+          break;
+        case 'open-feedback-form':
+          // 폼 서버 상태는 미리 확인하지 않는다. 열리지 않으면 브라우저가 알린다(ADR 0002)
+          void shell.openExternal(
+            feedbackFormUrl({ appVersion: app.getVersion(), platform: process.platform, systemVersion: process.getSystemVersion() }),
+          );
           break;
         case 'create-timetable': {
           /** 새 시간표의 id. 화면이 만든 시간표의 상세로 들어갈 때 쓴다. */

@@ -24,7 +24,7 @@ type Props = {
   updateTiming: UpdateClock;
 };
 
-/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이고, 맨 아래 "모든 데이터" 바로 위에 버전 줄이 있다. */
+/** 설정 화면. DESIGN.md의 항목 순서대로 줄이 놓이고, 아래쪽은 버전 · 의견 보내기 · 모든 데이터 순서다. */
 export function SettingsScreen({ settings, autoStartRegistered, appVersion, update, updateTiming }: Props) {
   /** 켜 달라고 했는데 OS에 등록되지 않은 상태. 스위치는 꺼진 채로 두고 그 줄에 이유와 방법을 보여 준다. */
   const autoStartFailed = settings.autoStart && !autoStartRegistered;
@@ -109,6 +109,21 @@ export function SettingsScreen({ settings, autoStartRegistered, appVersion, upda
         </div>
       </div>
       <UpdateRow appVersion={appVersion} update={update} locked={updateTiming.locked} onUpdate={() => setConfirmingUpdate(true)} />
+      <div className="setting-row">
+        <span id="setting-feedback">의견 보내기</span>
+        <span className="setting-row__note">버그나 불편한 점</span>
+        <div className="setting-row__control">
+          <button
+            type="button"
+            className="button button--ghost button--sm"
+            aria-label="의견 보내기 폼 열기"
+            onClick={() => void window.dingdong.command({ type: 'open-feedback-form' })}
+          >
+            보내기
+            <ActionIcon name="external" />
+          </button>
+        </div>
+      </div>
       {/* 맨 아래 줄 */}
       <div className="setting-row">
         <span id="setting-wipe">모든 데이터</span>
