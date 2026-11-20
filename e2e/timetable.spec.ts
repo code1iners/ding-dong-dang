@@ -251,7 +251,7 @@ test('빈 상태에서 이름을 받아 만들면 상세로 들어가고, 앱을
   const dialog = createDialog();
   await expect(dialog).toBeVisible();
   const name = dialog.getByRole('textbox', { name: '이름' });
-  await expect(name).toHaveAttribute('placeholder', '예: 평일반');
+  await expect(name).toHaveAttribute('placeholder', '예: 취미반');
   await expect(name).toBeFocused();
   const create = dialog.getByRole('button', { name: '만들기' });
   // 비어 있거나 공백뿐인 이름은 받지 않는다

@@ -43,7 +43,7 @@ export function CreateTimetableModal({ onCreate, onClose }: Props) {
           <span className="field__label">이름</span>
           <input
             className="input"
-            placeholder="예: 평일반"
+            placeholder="예: 취미반"
             value={name}
             data-autofocus
             onChange={(e) => setName(e.target.value)}
