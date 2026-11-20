@@ -1,7 +1,7 @@
 {
   "name": "ding-dong-dang",
   "productName": "딩동댕",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "정해진 시각에 수업 종을 울리는 데스크톱 앱",
   "main": "out/main/index.js",
