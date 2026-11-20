@@ -486,7 +486,7 @@ test('아이콘만 있는 단추는 대상을 포함한 이름이 있고 마우�
     'true',
   );
   await railButton('설정').click();
-  for (const name of ['돌아다니는 강아지', '컴퓨터를 켜면 자동 시작', '닫으면 숨기기', '수업 중 화면 켜 두기']) {
+  for (const name of ['돌아다니는 강아지', '컴퓨터를 켜면 자동 시작', '닫으면 숨기기', '수업 중 컴퓨터 화면 켜짐 유지']) {
     await expect(page.getByRole('switch', { name })).toHaveAttribute('aria-checked', /^(true|false)$/);
   }
 

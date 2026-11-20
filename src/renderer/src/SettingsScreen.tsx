@@ -99,11 +99,16 @@ export function SettingsScreen({ settings, autoStartRegistered, appVersion, upda
         </div>
       </div>
       <div className="setting-row">
-        <span id="setting-keep-screen-on">수업 중 화면 켜 두기</span>
+        <span id="setting-keep-screen-on">수업 중 컴퓨터 화면 켜짐 유지</span>
+        {/* 끄면 화면만 꺼질 수 있고 컴퓨터는 깨어 있어 종은 울린다. 끈 뒤에 어떻게 되는지를 이름에서 알 수 없어서 보조 글로 풀어 준다 */}
+        <span id="setting-keep-screen-on-note" className="setting-row__note">
+          꺼도 종은 울려요
+        </span>
         <div className="setting-row__control">
           <Switch
             on={settings.keepScreenOn}
             labelledBy="setting-keep-screen-on"
+            describedBy="setting-keep-screen-on-note"
             onChange={(on) => void window.dingdong.command({ type: 'set-keep-screen-on', on })}
           />
         </div>

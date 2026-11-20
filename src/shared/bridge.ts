@@ -60,7 +60,7 @@ export type StorageNotice = {
 
 /** 렌더러가 메인에 보내는 명령. `type`으로 구분하는 합 타입이다. */
 export type Command =
-  /** "수업 중 화면 켜 두기"를 켜거나 끈다. */
+  /** "수업 중 컴퓨터 화면 켜짐 유지"를 켜거나 끈다. */
   | { type: 'set-keep-screen-on'; on: boolean }
   /** "돌아다니는 강아지"를 켜거나 끈다. 끄면 강아지 창이 숨고, 종이 울리는 동안에만 나타난다. */
   | { type: 'set-roaming-dog'; on: boolean }

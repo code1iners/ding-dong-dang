@@ -165,11 +165,14 @@ test('Jua 글꼴이 내장되어 있고 OS가 어두운 모드여도 색이 바�
   await page.emulateMedia({ colorScheme: null });
 });
 
-test('설정 화면의 "수업 중 화면 켜 두기" 스위치는 처음에 꺼져 있고 바꾸는 즉시 저장된다', async () => {
+test('설정 화면의 "수업 중 컴퓨터 화면 켜짐 유지" 스위치는 처음에 꺼져 있고 바꾸는 즉시 저장된다', async () => {
   await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '설정' }).click();
-  /** 화면 켜 두기 스위치. */
-  const toggle = page.getByRole('switch', { name: '수업 중 화면 켜 두기' });
+  /** 화면 켜짐 유지 스위치. */
+  const toggle = page.getByRole('switch', { name: '수업 중 컴퓨터 화면 켜짐 유지' });
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  // 끈 뒤에 어떻게 되는지를 보조 글로 알리고, 스위치의 설명으로도 읽힌다
+  await expect(page.getByText('꺼도 종은 울려요')).toBeVisible();
+  await expect(toggle).toHaveAccessibleDescription('꺼도 종은 울려요');
 
   /** 데이터 폴더의 저장 파일에 적힌 값. */
   const saved = async () => JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8')).settings.keepScreenOn;

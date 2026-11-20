@@ -65,7 +65,7 @@ test('키보드로 "보내기"에 초점을 옮겨 눌러도 같은 폼을 연�
   /** 의견 보내기 단추. */
   const send = page.getByRole('button', { name: '의견 보내기 폼 열기' });
   // 위쪽 줄의 스위치에서 Tab만으로 이 단추에 닿는지 본다(버전 줄에는 상태에 따라 단추가 있을 수 있다)
-  await page.getByRole('switch', { name: '수업 중 화면 켜 두기' }).focus();
+  await page.getByRole('switch', { name: '수업 중 컴퓨터 화면 켜짐 유지' }).focus();
   for (let i = 0; i < 10 && !(await send.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
   await expect(send).toBeFocused();
   await page.keyboard.press('Enter');

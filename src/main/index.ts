@@ -538,7 +538,7 @@ void app.whenReady().then(() => {
     ) {
       hub.update({ storage: { ...notice, saveFailed, saveFailures: failures }, ...view });
     }
-    // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜 두기를 1초 기다리지 않고 반영한다
+    // 바뀐 시간표 · 배정 · 오늘만 끄기 · 화면 켜짐 유지를 1초 기다리지 않고 반영한다
     scheduler?.check();
     refreshTray();
     // 설정 · 시간표 · 오늘만 끄기가 바뀌면 강아지의 보이기와 동작도 바로 맞춘다

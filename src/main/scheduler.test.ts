@@ -136,7 +136,7 @@ describe('스케줄러', () => {
     expect(awake()).toEqual(['keep awake system', 'release awake']);
   });
 
-  it('"수업 중 화면 켜 두기"가 켜져 있으면 화면 꺼짐도 막고, 바꾸면 바로 종류를 바꾼다', () => {
+  it('"수업 중 컴퓨터 화면 켜짐 유지"가 켜져 있으면 화면 꺼짐도 막고, 바꾸면 바로 종류를 바꾼다', () => {
     const data = mondayData();
     const s = setup(mon(9, 30, 0), { ...data, settings: { ...data.settings, keepScreenOn: true } });
     expect(s.log).toEqual(['keep awake display']);
