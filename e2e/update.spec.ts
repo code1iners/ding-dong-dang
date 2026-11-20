@@ -109,28 +109,28 @@ test('--data-dir로 띄운 실행은 실제 릴리스를 확인하지 않고 버
   await openSettings();
   /** 앱 버전. */
   const version = await app!.evaluate(({ app: electronApp }) => electronApp.getVersion());
-  await expect(versionRow()).toContainText('버전');
-  await expect(versionRow()).toContainText(version);
+  await expect(versionRow()).toContainText(`버전 ${version}`);
   await expect(versionRow().getByRole('button')).toHaveCount(0);
-  await expect(versionRow()).not.toContainText('최신이에요');
-  await expect(versionRow()).not.toContainText('새 버전을 확인할 수 없어요');
+  await expect(versionRow()).not.toContainText('최신 버전이에요');
+  await expect(versionRow()).not.toContainText('새 버전을 확인하지 못했어요');
   expect((await mainState()).update.status).toEqual({ kind: 'off' });
 });
 
-test('버전 줄의 세 모습: 최신이에요, 확인 실패와 다시 확인, 준비된 새 버전과 업데이트', async () => {
+test('버전 줄의 세 모습: 최신 버전이에요, 확인 실패와 다시 확인, 새 버전이 있어요와 업데이트', async () => {
   await launch();
   await openSettings();
 
   await sendUpdate({ status: { kind: 'up-to-date' } });
-  await expect(versionRow()).toContainText('최신이에요');
+  await expect(versionRow()).toContainText('최신 버전이에요');
   await expect(versionRow().getByRole('button')).toHaveCount(0);
 
   await sendUpdate({ status: { kind: 'check-failed' } });
-  await expect(versionRow()).toContainText('새 버전을 확인할 수 없어요');
+  await expect(versionRow()).toContainText('새 버전을 확인하지 못했어요');
   await expect(versionRow().getByRole('button', { name: '다시 확인' })).toBeVisible();
 
   await sendUpdate({ status: { kind: 'ready', version: '9.9.0' } });
-  await expect(versionRow()).toContainText('새 버전 9.9.0');
+  await expect(versionRow()).toContainText('새 버전이 있어요');
+  await expect(versionRow()).not.toContainText('9.9.0');
   await expect(versionRow().getByRole('button', { name: '업데이트' })).toBeEnabled();
   await page.screenshot({ path: test.info().outputPath('version-row-ready.png') });
 });

@@ -122,24 +122,26 @@ describe('설정 화면의 버전 줄', () => {
     expect(labels.slice(-3)).toEqual(['setting-version', 'setting-feedback', 'setting-wipe']);
   });
 
-  it('새 버전이 없으면 지금 버전과 "최신이에요"만 있고 단추가 없다', () => {
+  it('새 버전이 없으면 이름표 "버전 1.2.0"과 "최신 버전이에요"만 있고 단추가 없다', () => {
     const row = versionRow({ kind: 'up-to-date' });
-    expect(row).toContain('1.2.0');
-    expect(row).toContain('최신이에요');
+    expect(row).toContain('버전 1.2.0');
+    expect(row).toContain('최신 버전이에요');
     expect(row).not.toContain('<button');
   });
 
-  it('확인에 실패하면 "새 버전을 확인할 수 없어요"와 "다시 확인"이 나온다', () => {
+  it('확인에 실패하면 "새 버전을 확인하지 못했어요"와 "다시 확인"이 나온다', () => {
     const row = versionRow({ kind: 'check-failed' });
-    expect(row).toContain('1.2.0');
-    expect(row).toContain('새 버전을 확인할 수 없어요');
+    expect(row).toContain('버전 1.2.0');
+    expect(row).toContain('새 버전을 확인하지 못했어요');
     expect(row).toContain('>다시 확인</button>');
-    expect(row).not.toContain('최신이에요');
+    expect(row).not.toContain('최신 버전이에요');
   });
 
-  it('새 버전이 준비되면 새 버전 번호와 "업데이트" 단추가 나온다', () => {
+  it('새 버전이 준비되면 "새 버전이 있어요"와 "업데이트" 단추가 나오고, 새 번호는 확인 모달에서만 보인다', () => {
     const row = versionRow({ kind: 'ready', version: '1.3.0' });
-    expect(row).toContain('새 버전 1.3.0');
+    expect(row).toContain('버전 1.2.0');
+    expect(row).toContain('새 버전이 있어요');
+    expect(row).not.toContain('1.3.0');
     expect(row).toMatch(/<button[^>]*>업데이트<\/button>/);
     expect(row).not.toMatch(/<button[^>]*disabled/);
   });
@@ -147,6 +149,7 @@ describe('설정 화면의 버전 줄', () => {
   it('잠기면 "업데이트"가 잠기고 "종이 울린 뒤에 할 수 있어요"가 단추의 설명으로 나온다', () => {
     const row = versionRow({ kind: 'ready', version: '1.3.0' }, true);
     expect(row).toContain('종이 울린 뒤에 할 수 있어요');
+    expect(row).not.toContain('새 버전이 있어요');
     expect(row).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="setting-update-locked"[^>]*>업데이트<\/button>/);
   });
 
@@ -159,8 +162,9 @@ describe('설정 화면의 버전 줄', () => {
   it('확인하지 않는 실행, 확인 중, 내려받는 중, 검증 실패 뒤에는 지금 버전만 보인다', () => {
     for (const status of [{ kind: 'off' }, { kind: 'idle' }, { kind: 'checking' }, { kind: 'downloading', version: '1.3.0' }] as const) {
       const row = versionRow(status);
-      expect(row).toContain('1.2.0');
-      expect(row).not.toContain('최신이에요');
+      expect(row).toContain('버전 1.2.0');
+      expect(row).not.toContain('최신 버전이에요');
+      expect(row).not.toContain('새 버전이 있어요');
       expect(row).not.toContain('1.3.0');
       expect(row).not.toContain('<button');
     }

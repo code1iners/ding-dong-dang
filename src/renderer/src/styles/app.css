@@ -206,14 +206,9 @@ button {
   width: 150px;
 }
 
-/* 버전 줄의 지금 버전, "최신이에요" 같은 덜 중요한 글자 */
+/* 버전 줄의 "최신 버전이에요", "새 버전이 있어요" 같은 덜 중요한 글자 */
 .setting-row__note {
   color: var(--color-ink-2);
-  font-size: var(--font-size-2);
-}
-
-/* 준비된 새 버전 번호. 시안의 주황 글자는 흰 면에서 4.5:1이 안 되어 글자 색으로 쓴다 */
-.setting-row__new {
   font-size: var(--font-size-2);
 }
 

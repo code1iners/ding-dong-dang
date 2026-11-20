@@ -9,6 +9,9 @@ import type { UpdateClock } from './useUpdateTiming';
 /** 설치를 맡겨 앱이 곧 다시 켜질 때 잠긴 "업데이트" 곁에 쓰는 이유. */
 const INSTALLING_TEXT = '다시 켜는 중이에요';
 
+/** 새 버전이 준비됐을 때 버전 줄에 쓰는 말. 왼쪽 설정 단추의 이름(Rail)과 같은 말이다. */
+const NEW_VERSION_TEXT = '새 버전이 있어요';
+
 type RowProps = {
   /** 지금 앱 버전. */
   appVersion: string;
@@ -21,8 +24,9 @@ type RowProps = {
 };
 
 /**
- * 설정 화면의 버전 줄. 새 버전이 없으면 지금 버전과 "최신이에요", 확인에 실패하면 "새 버전을 확인할 수 없어요"와 "다시 확인",
- * 준비되면 새 버전 번호와 "업데이트"다. 확인 중 · 내려받는 중 · 검증 실패 · 확인하지 않는 실행은 지금 버전만 보인다.
+ * 설정 화면의 버전 줄. 이름표가 "버전 <지금 버전>"이고, 새 버전이 없으면 "최신 버전이에요", 확인에 실패하면 "새 버전을 확인하지 못했어요"와 "다시 확인",
+ * 준비되면 "새 버전이 있어요"와 "업데이트"다. 새 버전 번호는 확인 모달에서 "지금 → 새"로 보여 주므로 줄에는 적지 않는다.
+ * 확인 중 · 내려받는 중 · 검증 실패 · 확인하지 않는 실행은 이름표만 보인다.
  */
 export function UpdateRow({ appVersion, update, locked, onUpdate }: RowProps) {
   /** 준비된 새 버전. */
@@ -33,7 +37,8 @@ export function UpdateRow({ appVersion, update, locked, onUpdate }: RowProps) {
   const reason = installing ? INSTALLING_TEXT : locked ? UPDATE_LOCKED_TEXT : null;
   return (
     <div className="setting-row">
-      <span id="setting-version">버전</span>
+      {/* 숫자를 이름표에 붙여 두 숫자가 나란히 놓여 어느 쪽이 지금 버전인지 헷갈리지 않게 한다. 한 글자열로 줘 텍스트 노드가 갈라지지 않게 한다 */}
+      <span id="setting-version">{`버전 ${appVersion}`}</span>
       <div className="setting-row__control">
         {version ? (
           <>
@@ -43,10 +48,7 @@ export function UpdateRow({ appVersion, update, locked, onUpdate }: RowProps) {
                 {reason}
               </span>
             ) : (
-              <>
-                <span className="setting-row__note">{appVersion}</span>
-                <span className="setting-row__new">새 버전 {version}</span>
-              </>
+              <span className="setting-row__note">{NEW_VERSION_TEXT}</span>
             )}
             <button
               type="button"
@@ -60,11 +62,10 @@ export function UpdateRow({ appVersion, update, locked, onUpdate }: RowProps) {
           </>
         ) : (
           <>
-            <span className="setting-row__note">{appVersion}</span>
-            {update.status.kind === 'up-to-date' && <span className="setting-row__note">최신이에요</span>}
+            {update.status.kind === 'up-to-date' && <span className="setting-row__note">최신 버전이에요</span>}
             {update.status.kind === 'check-failed' && (
               <>
-                <span className="setting-row__note">새 버전을 확인할 수 없어요</span>
+                <span className="setting-row__note">새 버전을 확인하지 못했어요</span>
                 <button
                   type="button"
                   className="button button--ghost button--sm"
