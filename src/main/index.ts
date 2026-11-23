@@ -268,6 +268,8 @@ void app.whenReady().then(() => {
       bellRinging: false,
       ...viewOf(storage.get()),
       previewingSound: null,
+      // 창은 처음에 숨어 있다. 나타나는 순간 show 이벤트가 true로 바꾼다
+      windowShown: false,
       closeNotice: false,
       autoStartRegistered: autoStartRegistered(),
       update: { status: { kind: updatesEnabled ? 'idle' : 'off' }, installFailures: 0, justUpdated },
@@ -580,8 +582,22 @@ void app.whenReady().then(() => {
     );
     // 사용자가 시스템 설정에서 바꿨을 수 있으니 창이 앞으로 올 때마다 등록 상태를 다시 묻는다
     mainWindow.on('focus', refreshAutoStart);
+    // 창이 보이는지를 화면에 알려 숨은 동안 강아지 그리기를 멈추게 한다
+    /** 지금 만든 앱 창. 이벤트가 늦게 와도 이 창만 본다. */
+    const created = mainWindow;
+    /** 앱 창의 보임 여부를 화면에 알린다. 바뀔 때만 보낸다. */
+    const reportShown = (): void => {
+      /** 지금 화면에 보이는지. 최소화한 창은 보이지 않는 것으로 본다. */
+      const shown = !created.isDestroyed() && created.isVisible() && !created.isMinimized();
+      if (hub.get().windowShown !== shown) hub.update({ windowShown: shown });
+    };
+    created.on('show', reportShown);
+    created.on('hide', reportShown);
+    created.on('minimize', reportShown);
+    created.on('restore', reportShown);
     mainWindow.on('closed', () => {
       mainWindow = null;
+      if (hub.get().windowShown) hub.update({ windowShown: false });
     });
   };
 

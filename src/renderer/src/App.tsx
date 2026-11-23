@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DogArt } from './dog/DogArt';
+import { DogArt, WindowShownContext } from './dog/DogArt';
 import { Modal } from './Modal';
 import { BellScreen, UNDO_SOUND_PREFIX } from './BellScreen';
 import { Rail } from './Rail';
@@ -166,43 +166,45 @@ export function App() {
   );
 
   return (
-    <div className="app">
-      <Rail
-        current={screen}
-        onSelect={(next) => next !== screen && leave(() => setScreen(next))}
-        updateReady={state ? readyVersion(state.update.status) !== null : false}
-      />
-      {/* 화면 제목은 보이지 않게 두고(DESIGN.md "글"), 화면 읽기용 이름만 붙인다. 비어 있는 화면은 화면 티켓에서 채운다 */}
-      <main className="screen" aria-label={name}>
-        {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
-        {screen === 'timetable' && state && (
-          <TimetableScreen
-            timetables={state.timetables}
-            activeTimetable={state.activeTimetable}
-            dogTheme={state.settings.dogTheme}
-            toasts={toasts}
-            registerGuard={registerGuard}
-            onDirtyChange={setEditingDirty}
-          />
+    <WindowShownContext.Provider value={state?.windowShown ?? true}>
+      <div className="app">
+        <Rail
+          current={screen}
+          onSelect={(next) => next !== screen && leave(() => setScreen(next))}
+          updateReady={state ? readyVersion(state.update.status) !== null : false}
+        />
+        {/* 화면 제목은 보이지 않게 두고(DESIGN.md "글"), 화면 읽기용 이름만 붙인다. 비어 있는 화면은 화면 티켓에서 채운다 */}
+        <main className="screen" aria-label={name}>
+          {screen === 'status' && state && <StatusScreen state={state} onMakeTimetable={() => setScreen('timetable')} />}
+          {screen === 'timetable' && state && (
+            <TimetableScreen
+              timetables={state.timetables}
+              activeTimetable={state.activeTimetable}
+              dogTheme={state.settings.dogTheme}
+              toasts={toasts}
+              registerGuard={registerGuard}
+              onDirtyChange={setEditingDirty}
+            />
+          )}
+          {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
+          {screen === 'settings' && state && <Settings state={state} />}
+        </main>
+        {state?.closeNotice && (
+          <Modal
+            title="딩동댕은 계속 켜져 있어요"
+            illustration={<DogArt themeId={state.settings.dogTheme} action="idle" className="modal__dog" />}
+            onClose={dismissHideNotice}
+          >
+            <p>{HIDE_NOTICE_TEXT}</p>
+            <div className="modal__actions">
+              <button type="button" className="button" data-autofocus onClick={confirmHide}>
+                창 닫기
+              </button>
+            </div>
+          </Modal>
         )}
-        {screen === 'bells' && state && <BellScreen state={state} toasts={toasts} />}
-        {screen === 'settings' && state && <Settings state={state} />}
-      </main>
-      {state?.closeNotice && (
-        <Modal
-          title="딩동댕은 계속 켜져 있어요"
-          illustration={<DogArt themeId={state.settings.dogTheme} action="idle" className="modal__dog" />}
-          onClose={dismissHideNotice}
-        >
-          <p>{HIDE_NOTICE_TEXT}</p>
-          <div className="modal__actions">
-            <button type="button" className="button" data-autofocus onClick={confirmHide}>
-              창 닫기
-            </button>
-          </div>
-        </Modal>
-      )}
-      <ToastStack toasts={toasts.toasts} dismiss={toasts.dismiss} />
-    </div>
+        <ToastStack toasts={toasts.toasts} dismiss={toasts.dismiss} />
+      </div>
+    </WindowShownContext.Provider>
   );
 }

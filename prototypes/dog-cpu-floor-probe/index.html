@@ -1,0 +1,30 @@
+<!doctype html><html><body style="margin:0;background:transparent;overflow:hidden">
+<div id="box" style="position:absolute;left:50%;bottom:8px;width:130px;height:96px;transform:translateX(-50%)"></div>
+<canvas id="cv" width="260" height="192" style="display:none;position:absolute;left:0;bottom:0;width:260px;height:192px"></canvas>
+<script>
+const mode = new URLSearchParams(location.search).get('mode');
+const fps = mode.includes('30') ? 30 : mode.includes('15') ? 15 : 60;
+const box = document.getElementById('box');
+fetch('dog.svg').then(r=>r.text()).then(txt=>{
+  box.innerHTML = txt;
+  const svg = box.querySelector('svg'); svg.setAttribute('width','100%'); svg.setAttribute('height','100%');
+  const els=[...svg.querySelectorAll('path,circle,ellipse,rect,polygon,polyline,line')];
+  const t0=performance.now();
+  if (mode.startsWith('static')) return;
+  if (mode.includes('svgattr')) {            // 현재 방식: 요소마다 transform 속성 갱신, setInterval
+    setInterval(()=>{ const t=(performance.now()-t0)/1000; els.forEach((el,i)=>{ const a=Math.sin(t*3+i)*2; el.setAttribute('transform',`rotate(${a} 100 100)`);});}, 1000/fps);
+  } else if (mode.includes('cssanim')) {     // JS 없이 CSS @keyframes(transform)만. 합성기가 돌린다
+    const st=document.createElement('style'); st.textContent='@keyframes w{0%{transform:translateX(-50%) rotate(-3deg)}50%{transform:translateX(-50%) translateY(-4px) rotate(3deg)}100%{transform:translateX(-50%) rotate(-3deg)}}#box{will-change:transform;animation:w 0.5s linear infinite}'; document.head.append(st);
+  } else if (mode.includes('cssbox')) {      // 그림 한 장을 통째로 CSS transform(합성기 처리), rAF
+    box.style.willChange='transform';
+    const tick=()=>{ const t=(performance.now()-t0)/1000; box.style.transform=`translateX(-50%) translateY(${Math.sin(t*6)*4}px) rotate(${Math.sin(t*3)*3}deg)`; setTimeout(tick,1000/fps); }; tick();
+  } else if (mode.includes('canvas')) {      // 한 번 그린 비트맵을 canvas에 매 프레임 drawImage
+    const img=new Image(); const blob=new Blob([txt],{type:'image/svg+xml'}); img.src=URL.createObjectURL(blob);
+    img.onload=()=>{ box.style.display='none'; const cv=document.getElementById('cv'); cv.style.display='block'; const c=cv.getContext('2d');
+      setInterval(()=>{ const t=(performance.now()-t0)/1000; c.clearRect(0,0,260,192); c.save(); c.translate(130,190); c.rotate(Math.sin(t*3)*0.05); c.drawImage(img,-65,-96,130,96); c.restore(); }, 1000/fps); };
+  } else if (mode.includes('empty')) {       // 투명 창에서 아주 작은 DOM 변화만(합성 한 번당 최소 비용)
+    const dot=document.createElement('div'); dot.style.cssText='position:absolute;left:0;top:0;width:2px;height:2px;background:#000'; document.body.append(dot);
+    setInterval(()=>{ dot.style.transform=`translateX(${(performance.now()/16)%50}px)`; }, 1000/fps);
+  }
+});
+</script></body></html>

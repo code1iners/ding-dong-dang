@@ -14,7 +14,7 @@ export type DogView = {
   action: DogAction;
   /** 바라보는 쪽. 1이 오른쪽이다. 옆모습 그림만 이 쪽으로 돌린다. */
   facing: Facing;
-  /** 화면이 잠기거나 PC가 잠들어 그리기를 멈췄는지. */
+  /** 그리기를 멈췄는지. 화면이 잠겼거나 PC가 잠들었을 때, 그리고 창이 숨어 있을 때 참이다. */
   paused: boolean;
 };
 

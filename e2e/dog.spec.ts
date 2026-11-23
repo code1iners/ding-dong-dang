@@ -168,6 +168,35 @@ test('강아지는 움직이고, OS의 동작 줄이기가 켜져 있으면 멈�
   expect(await pose()).toBe(still);
 });
 
+test('앱 창을 닫아 숨기면 고리 안 강아지는 그리기를 멈추고, 다시 열면 다시 그린다', async () => {
+  // 숨은 창도 Chromium은 보이는 중으로 보고 늦추지 않으므로, 메인이 알려 줘야 멈춘다
+  await launch();
+  /** 고리 안 강아지 그림의 모든 transform을 이은 글. */
+  const pose = () => ringDog().evaluate((el) => [...el.querySelectorAll('[transform]')].map((e) => e.getAttribute('transform')).join('|'));
+  /** 앱 창(index.html)에 하는 일. */
+  const onAppWindow = (act: 'close' | 'show') =>
+    app!.evaluate(({ BrowserWindow }, what) => {
+      const win = BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('/index.html'))!;
+      if (what === 'close') win.close();
+      else win.show();
+    }, act);
+  await expect(ringDog()).toHaveAttribute('data-paused', 'false');
+  const drawing = await pose();
+  await expect.poll(pose, { timeout: 2_000 }).not.toBe(drawing);
+
+  await onAppWindow('close');
+  await expect(ringDog()).toHaveAttribute('data-paused', 'true');
+  // 멈추기 전에 이미 걸린 마지막 그리기가 끝난 뒤의 자세에서 움직이지 않는다
+  await page.waitForTimeout(300);
+  const still = await pose();
+  await page.waitForTimeout(1_200);
+  expect(await pose()).toBe(still);
+
+  await onAppWindow('show');
+  await expect(ringDog()).toHaveAttribute('data-paused', 'false');
+  await expect.poll(pose, { timeout: 2_000 }).not.toBe(still);
+});
+
 test('처음 닫을 때 모달과 시간표가 없는 시간표 화면에 강아지가 나온다', async () => {
   await launch({ settings: { ...emptyData().settings, hideNoticeShown: false } });
   await page.getByRole('navigation', { name: '화면' }).getByRole('button', { name: '시간표' }).click();

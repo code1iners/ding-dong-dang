@@ -102,6 +102,8 @@ test('렌더러는 Node에 닿지 않고 상태 구독, 명령, 창 닫기 요�
     endBell: 'westminster-end',
     masterVolume: 100,
     previewingSound: null,
+    // 앱 창이 떠 있는 상태다
+    windowShown: true,
     closeNotice: false,
     // 자동 검증 실행은 OS에 등록하지 않고 설정 값(기본 켬)을 그대로 보여 준다
     autoStartRegistered: true,

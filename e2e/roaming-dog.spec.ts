@@ -493,6 +493,29 @@ test('화면이 잠기거나 PC가 잠들면 그리기를 멈추고, 풀리면 �
   await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-paused', 'false');
 });
 
+test('"돌아다니는 강아지"를 끄면 숨은 강아지 창은 그리지 않고, 켜면 다시 그린다', async () => {
+  // 꺼진 채 시작해도, 켠 뒤 다시 꺼도 보이지 않는 창이 초당 60번 그리지 않는다
+  await launch({ settings: { ...emptyData().settings, roamingDog: false } });
+  const dog = await dogPage();
+  await expect.poll(async () => (await dogWindow()).visible).toBe(false);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-paused', 'true');
+  const hiddenPose = await pose(dog);
+  await dog.waitForTimeout(1_200);
+  expect(await pose(dog)).toBe(hiddenPose);
+
+  await page.evaluate(() => window.dingdong.command({ type: 'set-roaming-dog', on: true }));
+  await expect.poll(async () => (await dogWindow()).visible).toBe(true);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-paused', 'false');
+  await expect.poll(() => pose(dog), { timeout: 2_000 }).not.toBe(hiddenPose);
+
+  await page.evaluate(() => window.dingdong.command({ type: 'set-roaming-dog', on: false }));
+  await expect.poll(async () => (await dogWindow()).visible).toBe(false);
+  await expect(dog.locator('.roaming-dog')).toHaveAttribute('data-paused', 'true');
+  const stoppedPose = await pose(dog);
+  await dog.waitForTimeout(1_200);
+  expect(await pose(dog)).toBe(stoppedPose);
+});
+
 test('종이 울리면 강아지가 신남이 되고 누르면 종이 멈추며, 설정을 끈 채 종이 울리면 바닥 가운데에 나타났다 재생이 끝나면 사라진다. 앱 창은 포커스를 잃지 않는다', async () => {
   // 투명하게 띄운 헤드리스 실행에서는 앱 창이 포커스를 받지 못해 포커스 단언이 성립하지 않는다
   test.skip(isHeadlessEnv(process.env), '헤드리스 실행에서는 포커스를 검증할 수 없다');

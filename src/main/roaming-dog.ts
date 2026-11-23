@@ -100,6 +100,11 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
   const power = { locked: false, asleep: false };
   /** 지금 그리기를 멈췄는지. */
   let paused = false;
+  /**
+   * 창을 숨겨 둔 채인지. 숨은 창도 Chromium은 보이는 중으로 보고 `backgroundThrottling: false`라 늦추지 않으므로,
+   * 렌더러가 스스로 멈추도록 그릴 내용에 멈춤으로 알린다. 창은 처음에 숨어 있고, 처음 나타날 때까지 이 값이 참이다.
+   */
+  let hidden = true;
   /** 지금 창이 클릭을 통과시키는지. */
   let ignoring = true;
   /** 주 모니터의 바닥. 모니터 구성이 바뀔 때만 다시 읽는다. */
@@ -156,7 +161,7 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
       height: data.settings.dogHeight,
       action: dog?.action ?? 'idle',
       facing: dog?.facing ?? 1,
-      paused,
+      paused: paused || hidden,
     };
     /** 견주기 위한 열쇠. */
     const key = JSON.stringify(view);
@@ -237,8 +242,11 @@ export function openRoamingDog(options: Options): RoamingDogWindow {
     if (!data.settings.roamingDog && !scene.ringing) {
       summoned = false;
       hide();
+      hidden = true;
+      sendView(data);
       return;
     }
+    hidden = false;
     dog ??= placeDog(scene, now, Math.random);
     if (!data.settings.roamingDog && !summoned) dog = summonDog(dog, scene);
     summoned = !data.settings.roamingDog;

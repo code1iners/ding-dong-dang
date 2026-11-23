@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { framesPerSecond, type DogAction } from '../../../shared/status-view';
 import { mountDog, type DogRig } from './rig';
 import { themeById } from './themes';
@@ -20,6 +20,12 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
+/**
+ * 앱 창이 화면에 보이는지. 숨은 창도 Chromium은 보이는 중으로 보고 타이머를 늦추지 않으므로, 메인이 알려 준 값으로 강아지를 멈춘다.
+ * 앱 밖(견본 화면, 단위 시험)에서는 값을 주지 않아 보이는 것으로 본다.
+ */
+export const WindowShownContext = createContext(true);
+
 type Props = {
   /** 저장된 강아지 테마 id. 모르는 id는 기본 테마다. */
   themeId: string;
@@ -31,7 +37,7 @@ type Props = {
 
 /**
  * 창 안의 강아지 그림. 칸을 꽉 채우고 발이 바닥에 닿는다.
- * 동작마다 정한 횟수로 타이머가 다시 그리고, OS의 동작 줄이기가 켜져 있으면 그 동작의 첫 자세로 멈춘다.
+ * 동작마다 정한 횟수로 타이머가 다시 그리고, OS의 동작 줄이기가 켜져 있거나 앱 창이 숨어 있으면 그 동작의 첫 자세로 멈춘다.
  */
 export function DogArt({ themeId, action, className }: Props) {
   /** 그림을 붙일 칸. */
@@ -40,6 +46,8 @@ export function DogArt({ themeId, action, className }: Props) {
   const [rig, setRig] = useState<DogRig | null>(null);
   /** 동작 줄이기가 켜져 있는지. */
   const reduced = useReducedMotion();
+  /** 앱 창이 보이는지. 숨어 있으면 그리지 않는다. */
+  const shown = useContext(WindowShownContext);
 
   useEffect(
     function mountTheme() {
@@ -59,13 +67,13 @@ export function DogArt({ themeId, action, className }: Props) {
       /** 이 동작을 시작한 시각(ms). */
       const start = performance.now();
       rig.pose(action, 0);
-      if (reduced) return;
+      if (reduced || !shown) return;
       /** 동작의 그리는 횟수에 맞춘 타이머. */
       const timer = setInterval(() => rig.pose(action, (performance.now() - start) / 1000), 1000 / framesPerSecond(action));
       return () => clearInterval(timer);
     },
-    [rig, action, reduced],
+    [rig, action, reduced, shown],
   );
 
-  return <div ref={boxRef} className={`dog-art${className ? ` ${className}` : ''}`} data-dog-theme={themeById(themeId).id} data-dog-action={action} />;
+  return <div ref={boxRef} className={`dog-art${className ? ` ${className}` : ''}`} data-dog-theme={themeById(themeId).id} data-dog-action={action} data-paused={!shown} />;
 }

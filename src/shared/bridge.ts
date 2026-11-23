@@ -34,6 +34,11 @@ export type AppState = {
   masterVolume: number;
   /** 지금 미리 듣는 중인 음원 id. 없으면 null. 종이 울리는 것과는 따로다. */
   previewingSound: string | null;
+  /**
+   * 앱 창이 화면에 보이는지. 닫아서 숨기거나 최소화하면 false다.
+   * 숨은 창도 Chromium은 보이는 중으로 보고 타이머를 늦추지 않아서, 화면은 이 값으로 강아지 그리기를 멈춘다.
+   */
+  windowShown: boolean;
   /** 처음 닫는 중이라 "딩동댕은 계속 켜져 있어요" 안내를 보여야 하는지. 창을 숨기기 전에 한 번 뜬다. */
   closeNotice: boolean;
   /** OS에 물은 자동 시작 등록 상태. 설정의 "컴퓨터를 켜면 자동 시작" 값이 아니라 실제로 로그인 때 뜨도록 등록돼 있는지다. */
