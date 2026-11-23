@@ -160,9 +160,11 @@ export function decodeWav(bytes: Uint8Array): Wav {
   return { sampleRate: view.getUint32(24, true), samples };
 }
 
-/** 파일 전체 RMS를 이 값으로 맞춘다(약 -17.7 dBFS). 화음 차임이 최대값 한도 안에서 낼 수 있는 가장 큰 크기보다 작게 잡았다. */
+/** 12개의 기본 크기를 맞추는 RMS(약 -17.7 dBFS). 화음 차임이 최대값 한도 안에서 낼 수 있는 가장 큰 크기보다 작게 잡았다. 키우기 전의 크기다. */
 export const TARGET_RMS = 0.13;
-/** 레벨을 맞춘 뒤에도 넘지 않아야 하는 최대값. 1에 닿으면 찌그러지므로 여유를 둔다. */
+/** 기본 크기에서 올리는 폭(dB). 다른 앱 소리에 묻히지 않도록 올리고, 넘치는 피크는 리미터가 누른다. */
+export const BOOST_DB = 9;
+/** 파일의 최대값 한도. 1에 닿으면 찌그러지므로 여유를 둔다. 리미터가 이 값까지만 허용한다. */
 export const PEAK_CEILING = 0.95;
 
 /** 내장 음원 id → 악보 키. id는 src/shared/builtin-sounds.ts와 같다. */
@@ -192,9 +194,56 @@ export function levelToTarget(samples: Float32Array, id: string): Float32Array {
   return leveled;
 }
 
+/** 리미터가 피크를 미리 내다보며 줄이기 시작하는 시간(초). */
+const LIMITER_ATTACK_SECONDS = 0.002;
+/** 눌렀던 소리가 원래 크기로 돌아오는 데 걸리는 시간 상수(초). 이만큼 지나면 눌린 폭의 약 63%가 풀린다. */
+const LIMITER_RELEASE_SECONDS = 0.04;
+
+/**
+ * 최대값이 한도를 넘지 않게 눌러 준다. 피크 앞에서부터 서서히 줄이고, 소리의 모양은 곱하기로만 바꾼다.
+ * 넘는 샘플만 잘라 내면 파형이 찌그러져 거친 소리가 나서, 배율을 부드럽게 바꾸는 방식을 쓴다.
+ */
+export function limit(samples: Float32Array, ceiling: number): Float32Array {
+  /** 내다보는 샘플 수. */
+  const look = Math.max(1, Math.round(LIMITER_ATTACK_SECONDS * SAMPLE_RATE));
+  /** 샘플마다 한도 안에 들어오려면 곱해야 하는 배율. */
+  const need = Float64Array.from(samples, (v) => (Math.abs(v) > ceiling ? ceiling / Math.abs(v) : 1));
+  /** 그 샘플부터 앞으로 look개 안에서 가장 작은 배율. */
+  const lowest = new Float64Array(need.length);
+  for (let i = 0; i < need.length; i++) {
+    /** 내다보는 구간의 끝. */
+    const end = Math.min(need.length, i + look);
+    /** 이 구간에서 가장 작은 배율. */
+    let min = 1;
+    for (let k = i; k < end; k++) min = Math.min(min, need[k] as number);
+    lowest[i] = min;
+  }
+  /** 샘플 하나마다 눌린 배율이 1로 돌아오는 비율. */
+  const recover = 1 - Math.exp(-1 / (LIMITER_RELEASE_SECONDS * SAMPLE_RATE));
+  /** 바로 앞 샘플의 배율. */
+  let previous = 1;
+  return samples.map((v, i) => {
+    // 가장 작은 배율을 look개 평균내면, 피크 앞 look개 동안 1에서 목표까지 내려간다
+    /** 평균 낸 목표 배율. */
+    let target = 0;
+    for (let j = 0; j < look; j++) target += lowest[Math.max(0, i - j)] as number;
+    target /= look;
+    // 눌릴 때는 목표를 따르고, 풀릴 때는 앞 배율에서 1을 향해 천천히 올라간다
+    previous = Math.min(target, previous + (1 - previous) * recover);
+    return v * previous;
+  });
+}
+
 export function renderBuiltinSound(id: string): Uint8Array {
   const key = SCORE_KEY_BY_ID[id];
   const score = key ? SCORES[key] : undefined;
   if (!score) throw new Error(`악보가 없는 음원 id: ${id}`);
-  return encodeWav(levelToTarget(renderScore(score), id));
+  /** 올리기 전에 RMS를 맞춘 소리. */
+  const leveled = levelToTarget(renderScore(score), id);
+  /** 올리는 배율. */
+  const boost = 10 ** (BOOST_DB / 20);
+  // 16비트로 반올림하면 한도가 한 단계 올라갈 수 있어 한도 아래 정수로 맞춘다
+  /** 리미터에 넘기는 한도. 16비트 정수 한도에서 내림해 반올림 뒤에도 PEAK_CEILING를 넘지 않는다. */
+  const ceiling = Math.floor(PEAK_CEILING * 32767) / 32767;
+  return encodeWav(limit(leveled.map((v) => v * boost), ceiling));
 }
